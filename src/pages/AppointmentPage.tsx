@@ -330,7 +330,7 @@ const AppointmentPage = () => {
           </Button>
           <Button
             onClick={sendWhatsApp}
-            className="w-full bg-green-600 hover:bg-green-700 text-primary-foreground"
+            className="w-full btn-whatsapp"
             size="lg"
           >
             <Send className="w-4 h-4 mr-2" />
