@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Clock, Phone, ChevronRight } from 'lucide-react';
+import { Clock, Phone, ChevronRight, CalendarDays } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
@@ -28,7 +28,7 @@ const Index = () => {
       <div className="p-4 space-y-3">
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <Calendar className="w-12 h-12 mb-3 opacity-40" />
+            <CalendarDays className="w-12 h-12 mb-3 opacity-40" />
             <p className="text-base font-medium">No hay citas para hoy</p>
             <p className="text-sm mt-1">Presiona "Nueva" para agregar una cita</p>
           </div>
