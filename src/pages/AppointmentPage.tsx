@@ -291,7 +291,7 @@ const AppointmentPage = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/jpeg,image/png,image/bmp,image/gif,image/webp,image/tiff"
             multiple
             onChange={handleImageUpload}
             className="hidden"
