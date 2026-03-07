@@ -158,26 +158,37 @@ const AppointmentPage = () => {
       y += 5;
     }
 
-    // Images
+    // Images – 2 per row, 6 per page (3 rows × 2 cols)
     const currentAppointment = store.getAppointment(id || '');
     if (currentAppointment && currentAppointment.images.length > 0) {
-      doc.addPage();
-      y = 20;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Imágenes del Estudio', margin, y);
-      y += 10;
+      const imgWidth = (contentWidth - 5) / 2; // 5px gap between columns
+      const imgHeight = 75;
+      const rowGap = 5;
+      const imagesPerPage = 6;
+      let imgIndex = 0;
 
-      for (const img of currentAppointment.images) {
-        if (y > 200) {
-          doc.addPage();
-          y = 20;
-        }
-        try {
-          doc.addImage(img, 'JPEG', margin, y, contentWidth / 2, 80);
-          y += 90;
-        } catch {
-          // skip
+      while (imgIndex < currentAppointment.images.length) {
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Imágenes del Estudio', margin, y);
+        y += 10;
+
+        let countOnPage = 0;
+        while (imgIndex < currentAppointment.images.length && countOnPage < imagesPerPage) {
+          const col = countOnPage % 2;
+          const x = margin + col * (imgWidth + 5);
+          try {
+            doc.addImage(currentAppointment.images[imgIndex], 'JPEG', x, y, imgWidth, imgHeight);
+          } catch {
+            // skip
+          }
+          imgIndex++;
+          countOnPage++;
+          if (col === 1 || imgIndex >= currentAppointment.images.length || countOnPage >= imagesPerPage) {
+            y += imgHeight + rowGap;
+          }
         }
       }
     }
