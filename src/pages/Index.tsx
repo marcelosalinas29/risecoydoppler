@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -18,10 +18,15 @@ const statusClass: Record<StudyStatus, string> = {
 const Index = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [selectedDate] = useState(today);
-  const appointments = useClinicStore((s) => s.getAppointmentsByDate(selectedDate));
+  const allAppointments = useClinicStore((s) => s.appointments);
   const navigate = useNavigate();
 
-  const sorted = [...appointments].sort((a, b) => a.time.localeCompare(b.time));
+  const sorted = useMemo(() => 
+    allAppointments
+      .filter((a) => a.date === selectedDate)
+      .sort((a, b) => a.time.localeCompare(b.time)),
+    [allAppointments, selectedDate]
+  );
 
   return (
     <AppLayout title={`Citas — ${format(new Date(selectedDate), "d 'de' MMMM", { locale: es })}`}>
