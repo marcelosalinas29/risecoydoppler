@@ -93,6 +93,34 @@ export const useClinicStore = create<ClinicStore>()(
       getAppointment: (id) => get().appointments.find((a) => a.id === id),
       getPatient: (id) => get().patients.find((p) => p.id === id),
     }),
-    { name: 'clinic-store' }
+    {
+      name: 'clinic-store',
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          return str ? JSON.parse(str) : null;
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch {
+            // Quota exceeded – remove images from stored data to free space
+            try {
+              const slim = JSON.parse(JSON.stringify(value));
+              if (slim?.state?.appointments) {
+                slim.state.appointments = slim.state.appointments.map((a: any) => ({
+                  ...a,
+                  images: [],
+                }));
+              }
+              localStorage.setItem(name, JSON.stringify(slim));
+            } catch {
+              // silently fail
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
+    }
   )
 );
