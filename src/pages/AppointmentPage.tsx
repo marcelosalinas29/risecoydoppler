@@ -27,11 +27,13 @@ const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useClinicStore();
+  const { profile, isSecretary } = useAuth();
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
   const [report, setReport] = useState(appointment?.report || '');
+
 
   const handleSaveReport = useCallback(() => {
     if (!id) return;
