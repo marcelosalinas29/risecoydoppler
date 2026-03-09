@@ -84,7 +84,7 @@ const AppointmentPage = () => {
 
   const applyTemplate = (content: string) => {
     setReport(content);
-    setShowTemplates(false);
+    setIsEditing(true);
   };
 
   const buildPdfDoc = async (): Promise<jsPDF> => {
