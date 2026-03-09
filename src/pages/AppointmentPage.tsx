@@ -103,10 +103,13 @@ const AppointmentPage = () => {
     // Header
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Clínica de Ultrasonido', margin + 35, 22);
+    doc.text('Diagnóstico Médico Reconquista', margin + 35, 20);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ECOGRAFÍA Y DOPPLER', margin + 35, 28);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Informe de Ecografía', margin + 35, 30);
+    doc.text('Informe de Estudio', margin + 35, 35);
 
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.5);
@@ -200,10 +203,26 @@ const AppointmentPage = () => {
   const sendWhatsApp = () => {
     if (!appointment) return;
     handleSaveReport();
+
+    // Limpiar número y asegurar código de país (Argentina por defecto)
+    let phone = appointment.patient.phone.replace(/[\s\-\(\)]/g, '');
+    // Si empieza con +, solo quitar el +
+    if (phone.startsWith('+')) {
+      phone = phone.substring(1);
+    }
+    // Si empieza con 0, quitar el 0 y agregar 54 (Argentina)
+    else if (phone.startsWith('0')) {
+      phone = '54' + phone.substring(1);
+    }
+    // Si no tiene código de país (menos de 12 dígitos), agregar 54
+    else if (phone.replace(/\D/g, '').length <= 10) {
+      phone = '54' + phone;
+    }
+    phone = phone.replace(/\D/g, '');
+
     const message = encodeURIComponent(
-      `*Informe de Ecografía*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${appointment.studyType}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n${report}\n\n_Clínica de Ultrasonido_`
+      `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${appointment.studyType}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n${report}`
     );
-    const phone = appointment.patient.phone.replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
 
     if (id) {
