@@ -161,29 +161,22 @@ const AppointmentPage = () => {
       y += 5;
     }
 
-    // Firma y sello digital
-    if (y > 230) {
-      doc.addPage();
-      y = 20;
-    }
-    y += 15;
+    // Firma y sello digital — siempre al pie derecho de la página
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const signY = pageHeight - 35;
     const signX = pageWidth - margin - 70;
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
-    doc.line(signX, y, signX + 70, y);
-    y += 6;
+    doc.line(signX, signY, signX + 70, signY);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Dr. Salinas A. Marcelo', signX + 35, y, { align: 'center' });
-    y += 5;
+    doc.text('Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Médico especialista en', signX + 35, y, { align: 'center' });
-    y += 4;
-    doc.text('Diagnóstico por Imágenes', signX + 35, y, { align: 'center' });
-    y += 5;
+    doc.text('Médico especialista en', signX + 35, signY + 11, { align: 'center' });
+    doc.text('Diagnóstico por Imágenes', signX + 35, signY + 15, { align: 'center' });
     doc.setFontSize(7);
-    doc.text('MN 134217  MP 7298  Fº54  Lº4to', signX + 35, y, { align: 'center' });
+    doc.text('MN 134217  MP 7298  Fº54  Lº4to', signX + 35, signY + 20, { align: 'center' });
 
     // Images – 2 per row, 6 per page (3 rows × 2 cols)
     const currentAppointment = store.getAppointment(id || '');
