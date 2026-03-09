@@ -382,12 +382,14 @@ const AppointmentPage = () => {
               {currentAppointment.images.map((img, i) => (
                 <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
                   <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
-                  <button
-                    onClick={() => { if (id) store.removeImageFromAppointment(id, i); }}
-                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {!isSecretary && (
+                    <button
+                      onClick={() => { if (id) store.removeImageFromAppointment(id, i); }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
