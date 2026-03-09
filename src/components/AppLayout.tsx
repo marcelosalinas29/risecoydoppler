@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Calendar, Search, Plus } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Calendar, Users, PlusCircle, LogOut, UserCircle } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,12 +12,19 @@ interface AppLayoutProps {
 
 const navItems = [
   { path: '/', icon: Calendar, label: 'Citas' },
-  { path: '/patients', icon: Search, label: 'Pacientes' },
-  { path: '/new', icon: Plus, label: 'Nueva' },
+  { path: '/patients', icon: Users, label: 'Pacientes' },
+  { path: '/new', icon: PlusCircle, label: 'Nueva' },
 ];
 
 const AppLayout = ({ children, title }: AppLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, role, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -27,6 +35,26 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-primary-foreground/90 tracking-wide uppercase">Ecografía y Doppler</h1>
             <p className="text-xs text-primary-foreground/60 truncate">{title}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {profile && (
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-1.5 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+              >
+                <UserCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {role === 'secretary' ? 'Secretaria' : profile.full_name.split(' ')[0]}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
