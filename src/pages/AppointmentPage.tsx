@@ -14,7 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 import clinicLogo from '@/assets/clinic-logo.png';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
