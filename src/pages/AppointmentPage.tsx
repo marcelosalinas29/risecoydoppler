@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale';
 import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
 import { REPORT_TEMPLATES } from '@/data/reportTemplates';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,13 @@ const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useClinicStore();
+  const { profile, isSecretary } = useAuth();
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
   const [report, setReport] = useState(appointment?.report || '');
+
 
   const handleSaveReport = useCallback(() => {
     if (!id) return;
@@ -170,13 +173,16 @@ const AppointmentPage = () => {
     doc.line(signX, signY, signX + 70, signY);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
+    doc.text(profile?.full_name || 'Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Médico especialista en', signX + 35, signY + 11, { align: 'center' });
-    doc.text('Diagnóstico por Imágenes', signX + 35, signY + 15, { align: 'center' });
+    const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
+    specialtyLines.forEach((line, idx) => {
+      doc.text(line, signX + 35, signY + 11 + idx * 4, { align: 'center' });
+    });
     doc.setFontSize(7);
-    doc.text('MN 134217  MP 7298  Fº54  Lº4to', signX + 35, signY + 20, { align: 'center' });
+    const licenseY = signY + 11 + specialtyLines.length * 4;
+    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
     // Images – 2 per row, 6 per page (3 rows × 2 cols)
     const currentAppointment = store.getAppointment(id || '');
@@ -284,7 +290,7 @@ const AppointmentPage = () => {
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
           </div>
 
-          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)}>
+          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Cambiar estado" />
             </SelectTrigger>
@@ -302,15 +308,17 @@ const AppointmentPage = () => {
           <div className="flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
-              Informe
+              Informe {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTemplates(!showTemplates)}
-            >
-              Plantillas <ChevronDown className="w-3 h-3 ml-1" />
-            </Button>
+            {!isSecretary && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplates(!showTemplates)}
+              >
+                Plantillas <ChevronDown className="w-3 h-3 ml-1" />
+              </Button>
+            )}
           </div>
 
           {showTemplates && (
@@ -332,47 +340,56 @@ const AppointmentPage = () => {
             onChange={(e) => setReport(e.target.value)}
             placeholder="Escriba el informe aquí..."
             className="min-h-[200px] font-mono text-sm"
+            disabled={isSecretary}
           />
-          <Button onClick={handleSaveReport} className="w-full">
-            Guardar Informe
-          </Button>
+          {!isSecretary && (
+            <Button onClick={handleSaveReport} className="w-full">
+              Guardar Informe
+            </Button>
+          )}
         </div>
 
         {/* Images Section */}
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3">
           <h2 className="font-semibold flex items-center gap-2">
             <ImagePlus className="w-4 h-4 text-primary" />
-            Imágenes
+            Imágenes {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
           </h2>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/bmp,image/gif,image/webp,image/tiff"
-            multiple
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full"
-          >
-            <ImagePlus className="w-4 h-4 mr-2" />
-            Cargar Imágenes
-          </Button>
+          {!isSecretary && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/bmp,image/gif,image/webp,image/tiff"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full"
+              >
+                <ImagePlus className="w-4 h-4 mr-2" />
+                Cargar Imágenes
+              </Button>
+            </>
+          )}
 
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
                 <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
                   <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
-                  <button
-                    onClick={() => { if (id) store.removeImageFromAppointment(id, i); }}
-                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {!isSecretary && (
+                    <button
+                      onClick={() => { if (id) store.removeImageFromAppointment(id, i); }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
