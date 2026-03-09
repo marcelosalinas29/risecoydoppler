@@ -231,35 +231,70 @@ const AppointmentPage = () => {
     toast.success('PDF generado exitosamente');
   };
 
-  const sendWhatsApp = () => {
-    if (!appointment) return;
+  const sendWhatsApp = async () => {
+    if (!appointment || !id) return;
     handleSaveReport();
 
-    // Limpiar número y asegurar código de país (Argentina por defecto)
-    let phone = appointment.patient.phone.replace(/[\s\-\(\)]/g, '');
-    // Si empieza con +, solo quitar el +
-    if (phone.startsWith('+')) {
-      phone = phone.substring(1);
-    }
-    // Si empieza con 0, quitar el 0 y agregar 54 (Argentina)
-    else if (phone.startsWith('0')) {
-      phone = '54' + phone.substring(1);
-    }
-    // Si no tiene código de país (menos de 12 dígitos), agregar 54
-    else if (phone.replace(/\D/g, '').length <= 10) {
-      phone = '54' + phone;
-    }
-    phone = phone.replace(/\D/g, '');
+    toast.info('Generando PDF y subiendo...');
 
-    const message = encodeURIComponent(
-      `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${appointment.studyType}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n${report}`
-    );
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    try {
+      // 1. Generate PDF as blob
+      const doc = await buildPdfDoc();
+      const pdfBlob = doc.output('blob');
+      const fileName = `informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}_${Date.now()}.pdf`;
 
-    if (id) {
+      // 2. Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('reports')
+        .upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 3. Get public URL
+      const { data: urlData } = supabase.storage.from('reports').getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+
+      // 4. Generate QR code as data URL
+      const qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 256, margin: 1 });
+
+      // 5. Show QR in a new window for the patient
+      const qrWindow = window.open('', '_blank');
+      if (qrWindow) {
+        qrWindow.document.write(`
+          <html>
+          <head><title>QR Informe - ${appointment.patient.name}</title></head>
+          <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;margin:0;background:#f8f9fa;">
+            <h2 style="margin-bottom:8px;">Informe de ${appointment.patient.name}</h2>
+            <p style="color:#666;margin-bottom:24px;">Escaneá el QR para descargar el informe PDF</p>
+            <img src="${qrDataUrl}" alt="QR Code" style="width:256px;height:256px;" />
+            <a href="${publicUrl}" target="_blank" style="margin-top:16px;color:#2563eb;">Descargar PDF directamente</a>
+          </body>
+          </html>
+        `);
+      }
+
+      // 6. Send WhatsApp with link
+      let phone = appointment.patient.phone.replace(/[\s\-\(\)]/g, '');
+      if (phone.startsWith('+')) {
+        phone = phone.substring(1);
+      } else if (phone.startsWith('0')) {
+        phone = '54' + phone.substring(1);
+      } else if (phone.replace(/\D/g, '').length <= 10) {
+        phone = '54' + phone;
+      }
+      phone = phone.replace(/\D/g, '');
+
+      const message = encodeURIComponent(
+        `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${appointment.studyType}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n📄 *Descargá tu informe PDF aquí:*\n${publicUrl}`
+      );
+      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+
       store.updateAppointmentStatus(id, 'sent');
+      toast.success('PDF subido y WhatsApp abierto');
+    } catch (err) {
+      console.error('Error al enviar:', err);
+      toast.error('Error al generar o subir el PDF');
     }
-    toast.success('Abriendo WhatsApp...');
   };
 
   if (!appointment) {
