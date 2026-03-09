@@ -7,7 +7,7 @@ import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
-import { REPORT_TEMPLATES } from '@/data/reportTemplates';
+import TemplateSelector from '@/components/TemplateSelector';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,7 @@ const AppointmentPage = () => {
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isEditing, setIsEditing] = useState(!appointment?.report);
 
   const [report, setReport] = useState(appointment?.report || '');
 
@@ -83,7 +84,7 @@ const AppointmentPage = () => {
 
   const applyTemplate = (content: string) => {
     setReport(content);
-    setShowTemplates(false);
+    setIsEditing(true);
   };
 
   const buildPdfDoc = async (): Promise<jsPDF> => {
@@ -353,42 +354,56 @@ const AppointmentPage = () => {
               <FileText className="w-4 h-4 text-primary" />
               Informe {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
-            {!isSecretary && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTemplates(!showTemplates)}
-              >
-                Plantillas <ChevronDown className="w-3 h-3 ml-1" />
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {!isSecretary && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTemplates(true)}
+                  >
+                    Plantillas <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                  {report && !isEditing && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          {showTemplates && (
-            <div className="bg-muted rounded-lg border border-border overflow-hidden">
-              {REPORT_TEMPLATES.map((t) => (
-                <button
-                  key={t.name}
-                  onClick={() => applyTemplate(t.content)}
-                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-secondary transition-colors border-b border-border last:border-0 font-medium"
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <Textarea
-            value={report}
-            onChange={(e) => setReport(e.target.value)}
-            placeholder="Escriba el informe aquí..."
-            className="min-h-[200px] font-mono text-sm"
-            disabled={isSecretary}
+          <TemplateSelector
+            open={showTemplates}
+            onOpenChange={setShowTemplates}
+            onApply={applyTemplate}
+            currentReport={report}
           />
-          {!isSecretary && (
-            <Button onClick={handleSaveReport} className="w-full">
-              Guardar Informe
-            </Button>
+
+          {isEditing || !report ? (
+            <>
+              <Textarea
+                value={report}
+                onChange={(e) => setReport(e.target.value)}
+                placeholder="Escriba el informe aquí..."
+                className="min-h-[200px] font-mono text-sm"
+                disabled={isSecretary}
+              />
+              {!isSecretary && (
+                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full">
+                  Guardar Informe
+                </Button>
+              )}
+            </>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap text-foreground">
+              {report}
+            </div>
           )}
         </div>
 
