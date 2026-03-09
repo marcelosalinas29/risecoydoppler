@@ -103,10 +103,13 @@ const AppointmentPage = () => {
     // Header
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Clínica de Ultrasonido', margin + 35, 22);
+    doc.text('Diagnóstico Médico Reconquista', margin + 35, 20);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ECOGRAFÍA Y DOPPLER', margin + 35, 28);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Informe de Ecografía', margin + 35, 30);
+    doc.text('Informe de Estudio', margin + 35, 35);
 
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.5);
