@@ -308,15 +308,17 @@ const AppointmentPage = () => {
           <div className="flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
-              Informe
+              Informe {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTemplates(!showTemplates)}
-            >
-              Plantillas <ChevronDown className="w-3 h-3 ml-1" />
-            </Button>
+            {!isSecretary && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplates(!showTemplates)}
+              >
+                Plantillas <ChevronDown className="w-3 h-3 ml-1" />
+              </Button>
+            )}
           </div>
 
           {showTemplates && (
