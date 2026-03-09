@@ -7,7 +7,7 @@ import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
-import { REPORT_TEMPLATES } from '@/data/reportTemplates';
+import TemplateSelector from '@/components/TemplateSelector';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
