@@ -290,7 +290,7 @@ const AppointmentPage = () => {
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
           </div>
 
-          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)}>
+          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Cambiar estado" />
             </SelectTrigger>
