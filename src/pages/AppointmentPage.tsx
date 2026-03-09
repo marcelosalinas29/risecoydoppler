@@ -173,13 +173,16 @@ const AppointmentPage = () => {
     doc.line(signX, signY, signX + 70, signY);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
+    doc.text(profile?.full_name || 'Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Médico especialista en', signX + 35, signY + 11, { align: 'center' });
-    doc.text('Diagnóstico por Imágenes', signX + 35, signY + 15, { align: 'center' });
+    const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
+    specialtyLines.forEach((line, idx) => {
+      doc.text(line, signX + 35, signY + 11 + idx * 4, { align: 'center' });
+    });
     doc.setFontSize(7);
-    doc.text('MN 134217  MP 7298  Fº54  Lº4to', signX + 35, signY + 20, { align: 'center' });
+    const licenseY = signY + 11 + specialtyLines.length * 4;
+    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
     // Images – 2 per row, 6 per page (3 rows × 2 cols)
     const currentAppointment = store.getAppointment(id || '');
