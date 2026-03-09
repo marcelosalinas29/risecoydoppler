@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale';
 import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
 import { REPORT_TEMPLATES } from '@/data/reportTemplates';
 import { Button } from '@/components/ui/button';
