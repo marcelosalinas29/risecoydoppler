@@ -33,6 +33,7 @@ const AppointmentPage = () => {
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isEditing, setIsEditing] = useState(!appointment?.report);
 
   const [report, setReport] = useState(appointment?.report || '');
 
