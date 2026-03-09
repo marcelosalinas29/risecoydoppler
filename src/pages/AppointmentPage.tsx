@@ -86,9 +86,8 @@ const AppointmentPage = () => {
     setShowTemplates(false);
   };
 
-  const generatePDF = async () => {
-    if (!appointment) return;
-    handleSaveReport();
+  const buildPdfDoc = async (): Promise<jsPDF> => {
+    if (!appointment) throw new Error('No appointment');
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -166,7 +165,7 @@ const AppointmentPage = () => {
       y += 5;
     }
 
-    // Firma y sello digital — siempre al pie derecho de la página
+    // Firma y sello digital
     const pageHeight = doc.internal.pageSize.getHeight();
     const signY = pageHeight - 35;
     const signX = pageWidth - margin - 70;
@@ -186,16 +185,16 @@ const AppointmentPage = () => {
     const licenseY = signY + 11 + specialtyLines.length * 4;
     doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
-    // Images – 2 per row, 6 per page (3 rows × 2 cols)
-    const currentAppointment = store.getAppointment(id || '');
-    if (currentAppointment && currentAppointment.images.length > 0) {
-      const imgWidth = (contentWidth - 5) / 2; // 5px gap between columns
+    // Images
+    const currentApp = store.getAppointment(id || '');
+    if (currentApp && currentApp.images.length > 0) {
+      const imgWidth = (contentWidth - 5) / 2;
       const imgHeight = 75;
       const rowGap = 5;
       const imagesPerPage = 6;
       let imgIndex = 0;
 
-      while (imgIndex < currentAppointment.images.length) {
+      while (imgIndex < currentApp.images.length) {
         doc.addPage();
         y = 20;
         doc.setFontSize(12);
@@ -204,23 +203,30 @@ const AppointmentPage = () => {
         y += 10;
 
         let countOnPage = 0;
-        while (imgIndex < currentAppointment.images.length && countOnPage < imagesPerPage) {
+        while (imgIndex < currentApp.images.length && countOnPage < imagesPerPage) {
           const col = countOnPage % 2;
           const x = margin + col * (imgWidth + 5);
           try {
-            doc.addImage(currentAppointment.images[imgIndex], 'JPEG', x, y, imgWidth, imgHeight);
+            doc.addImage(currentApp.images[imgIndex], 'JPEG', x, y, imgWidth, imgHeight);
           } catch {
             // skip
           }
           imgIndex++;
           countOnPage++;
-          if (col === 1 || imgIndex >= currentAppointment.images.length || countOnPage >= imagesPerPage) {
+          if (col === 1 || imgIndex >= currentApp.images.length || countOnPage >= imagesPerPage) {
             y += imgHeight + rowGap;
           }
         }
       }
     }
 
+    return doc;
+  };
+
+  const generatePDF = async () => {
+    if (!appointment) return;
+    handleSaveReport();
+    const doc = await buildPdfDoc();
     doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
     toast.success('PDF generado exitosamente');
   };
