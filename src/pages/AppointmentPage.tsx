@@ -353,25 +353,29 @@ const AppointmentPage = () => {
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3">
           <h2 className="font-semibold flex items-center gap-2">
             <ImagePlus className="w-4 h-4 text-primary" />
-            Imágenes
+            Imágenes {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
           </h2>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/bmp,image/gif,image/webp,image/tiff"
-            multiple
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full"
-          >
-            <ImagePlus className="w-4 h-4 mr-2" />
-            Cargar Imágenes
-          </Button>
+          {!isSecretary && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/bmp,image/gif,image/webp,image/tiff"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full"
+              >
+                <ImagePlus className="w-4 h-4 mr-2" />
+                Cargar Imágenes
+              </Button>
+            </>
+          )}
 
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
