@@ -338,10 +338,13 @@ const AppointmentPage = () => {
             onChange={(e) => setReport(e.target.value)}
             placeholder="Escriba el informe aquí..."
             className="min-h-[200px] font-mono text-sm"
+            disabled={isSecretary}
           />
-          <Button onClick={handleSaveReport} className="w-full">
-            Guardar Informe
-          </Button>
+          {!isSecretary && (
+            <Button onClick={handleSaveReport} className="w-full">
+              Guardar Informe
+            </Button>
+          )}
         </div>
 
         {/* Images Section */}
