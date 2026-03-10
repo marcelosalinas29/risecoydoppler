@@ -151,7 +151,7 @@ const AppointmentPage = () => {
     doc.setFont('helvetica', 'bold');
     doc.text('Estudio:', margin, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(appointment.studyType, margin + 30, y);
+    doc.text(currentAppointment.studyType || appointment.studyType, margin + 30, y);
 
     y += 7;
     doc.setFont('helvetica', 'bold');
