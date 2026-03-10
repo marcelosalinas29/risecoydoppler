@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { UserCircle, Save } from 'lucide-react';
+import { UserCircle, Save, PenLine } from 'lucide-react';
 
 const ProfilePage = () => {
   const { profile, role, isDoctor, refreshProfile } = useAuth();
@@ -17,6 +17,7 @@ const ProfilePage = () => {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [specialty, setSpecialty] = useState(profile?.specialty ?? '');
   const [licenseNumbers, setLicenseNumbers] = useState(profile?.license_numbers ?? '');
+  const [signatureText, setSignatureText] = useState((profile as any)?.signature_text ?? '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -28,7 +29,8 @@ const ProfilePage = () => {
         full_name: fullName,
         specialty: specialty || null,
         license_numbers: licenseNumbers || null,
-      })
+        signature_text: signatureText || null,
+      } as any)
       .eq('user_id', profile.user_id);
 
     if (error) {
@@ -82,6 +84,31 @@ const ProfilePage = () => {
                   <p className="text-xs text-muted-foreground">
                     Aparecerá en el sello del PDF
                   </p>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1">
+                    <PenLine className="w-4 h-4" />
+                    Firma Digital (texto estilizado)
+                  </Label>
+                  <Input
+                    value={signatureText}
+                    onChange={(e) => setSignatureText(e.target.value)}
+                    placeholder="ej: Dr. Salinas A. Marcelo"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Texto que aparece como firma en el PDF. Si se deja vacío, se usa el nombre completo.
+                  </p>
+                  {(signatureText || fullName) && (
+                    <div className="bg-muted/50 rounded-lg p-4 mt-2 text-center">
+                      <p className="text-xs text-muted-foreground mb-2">Vista previa de firma:</p>
+                      <div className="border-t border-foreground/30 w-40 mx-auto pt-2">
+                        <p className="font-serif italic text-lg">{signatureText || fullName}</p>
+                        {specialty && <p className="text-xs text-muted-foreground">{specialty}</p>}
+                        {licenseNumbers && <p className="text-[10px] text-muted-foreground">{licenseNumbers}</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
