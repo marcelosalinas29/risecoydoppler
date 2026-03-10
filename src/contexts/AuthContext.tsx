@@ -10,6 +10,7 @@ interface Profile {
   full_name: string;
   specialty: string | null;
   license_numbers: string | null;
+  signature_text: string | null;
 }
 
 interface AuthContextType {
