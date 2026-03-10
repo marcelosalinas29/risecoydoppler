@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
-import { STUDY_TYPES, type StudyType } from '@/types/medical';
+import { STUDY_TYPES } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 const NewAppointmentPage = () => {
@@ -17,7 +17,8 @@ const NewAppointmentPage = () => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [phone, setPhone] = useState('');
-  const [studyType, setStudyType] = useState<StudyType>('Ecografía Abdominal');
+  const [selectedStudies, setSelectedStudies] = useState<string[]>([]);
+  const [customStudy, setCustomStudy] = useState('');
   const [time, setTime] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -31,8 +32,21 @@ const NewAppointmentPage = () => {
     setPhone(p.phone);
   };
 
+  const toggleStudy = (study: string) => {
+    setSelectedStudies(prev =>
+      prev.includes(study) ? prev.filter(s => s !== study) : [...prev, study]
+    );
+  };
+
+  const getStudyTypeString = () => {
+    const parts = [...selectedStudies];
+    if (customStudy.trim()) parts.push(customStudy.trim());
+    return parts.join(' + ');
+  };
+
   const handleSubmit = () => {
-    if (!name || !age || !phone || !time) {
+    const studyType = getStudyTypeString();
+    if (!name || !age || !phone || !time || !studyType) {
       toast.error('Por favor complete todos los campos');
       return;
     }
@@ -81,22 +95,37 @@ const NewAppointmentPage = () => {
           </div>
           <div className="space-y-2">
             <Label>Teléfono</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+52..." />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54..." />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Tipo de estudio</Label>
-          <Select value={studyType} onValueChange={(v) => setStudyType(v as StudyType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STUDY_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Tipo(s) de estudio</Label>
+          <div className="border border-border rounded-lg overflow-hidden max-h-[30vh] overflow-y-auto">
+            {STUDY_TYPES.map((t) => (
+              <label
+                key={t}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-secondary/50 transition-colors cursor-pointer border-b border-border last:border-0"
+              >
+                <Checkbox
+                  checked={selectedStudies.includes(t)}
+                  onCheckedChange={() => toggleStudy(t)}
+                />
+                <span className="text-sm">{t}</span>
+              </label>
+            ))}
+          </div>
+          <Input
+            value={customStudy}
+            onChange={(e) => setCustomStudy(e.target.value)}
+            placeholder="Otro estudio (escribir manualmente)"
+          />
+          {getStudyTypeString() && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-xs text-muted-foreground">Estudios seleccionados:</p>
+              <p className="text-sm font-medium">{getStudyTypeString()}</p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

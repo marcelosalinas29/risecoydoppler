@@ -62,6 +62,11 @@ export const useClinicStore = create<ClinicStore>()(
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, report } : a)),
         })),
 
+      updateAppointmentStudyType: (id, studyType) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) => (a.id === id ? { ...a, studyType } : a)),
+        })),
+
       addImagesToAppointment: (id, images) =>
         set((s) => ({
           appointments: s.appointments.map((a) =>
