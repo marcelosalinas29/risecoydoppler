@@ -55,6 +55,12 @@ const AppointmentPage = () => {
     toast.success(`Estado actualizado a: ${STATUS_LABELS[status]}`);
   };
 
+  const handleStudyTypeChange = (studyType: string) => {
+    if (!id) return;
+    store.updateAppointmentStudyType(id, studyType);
+    toast.success('Tipo de estudio actualizado');
+  };
+
   const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
