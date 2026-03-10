@@ -338,7 +338,12 @@ const AppointmentPage = () => {
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
             <span>Edad: {appointment.patient.age} años</span>
             <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
-            <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{appointment.studyType}</span>
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3" />{currentAppointment.studyType}
+              <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
+                <Edit2 className="w-3 h-3" />
+              </button>
+            </span>
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
           </div>
 
