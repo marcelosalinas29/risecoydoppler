@@ -183,7 +183,7 @@ const AppointmentPage = () => {
     doc.line(signX, signY, signX + 70, signY);
     
     // Signature text (stylized)
-    const sigText = (profile as any)?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
+    const sigText = profile?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
     doc.setFontSize(12);
     doc.setFont('times', 'bolditalic');
     doc.text(sigText, signX + 35, signY + 7, { align: 'center' });

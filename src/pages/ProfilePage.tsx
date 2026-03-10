@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [specialty, setSpecialty] = useState(profile?.specialty ?? '');
   const [licenseNumbers, setLicenseNumbers] = useState(profile?.license_numbers ?? '');
-  const [signatureText, setSignatureText] = useState((profile as any)?.signature_text ?? '');
+  const [signatureText, setSignatureText] = useState(profile?.signature_text ?? '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
