@@ -181,17 +181,21 @@ const AppointmentPage = () => {
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
     doc.line(signX, signY, signX + 70, signY);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(profile?.full_name || 'Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
+    
+    // Signature text (stylized)
+    const sigText = (profile as any)?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
+    doc.setFontSize(12);
+    doc.setFont('times', 'bolditalic');
+    doc.text(sigText, signX + 35, signY + 7, { align: 'center' });
+    
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
     specialtyLines.forEach((line, idx) => {
-      doc.text(line, signX + 35, signY + 11 + idx * 4, { align: 'center' });
+      doc.text(line, signX + 35, signY + 13 + idx * 4, { align: 'center' });
     });
     doc.setFontSize(7);
-    const licenseY = signY + 11 + specialtyLines.length * 4;
+    const licenseY = signY + 13 + specialtyLines.length * 4;
     doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
     // Images
