@@ -2,12 +2,13 @@ import { useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown } from 'lucide-react';
+import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus } from '@/types/medical';
 import TemplateSelector from '@/components/TemplateSelector';
+import StudyTypeSelector from '@/components/StudyTypeSelector';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ const AppointmentPage = () => {
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showStudySelector, setShowStudySelector] = useState(false);
   const [isEditing, setIsEditing] = useState(!appointment?.report);
 
   const [report, setReport] = useState(appointment?.report || '');
@@ -51,6 +53,12 @@ const AppointmentPage = () => {
     if (!id) return;
     store.updateAppointmentStatus(id, status);
     toast.success(`Estado actualizado a: ${STATUS_LABELS[status]}`);
+  };
+
+  const handleStudyTypeChange = (studyType: string) => {
+    if (!id) return;
+    store.updateAppointmentStudyType(id, studyType);
+    toast.success('Tipo de estudio actualizado');
   };
 
   const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
@@ -143,7 +151,7 @@ const AppointmentPage = () => {
     doc.setFont('helvetica', 'bold');
     doc.text('Estudio:', margin, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(appointment.studyType, margin + 30, y);
+    doc.text(currentAppointment.studyType || appointment.studyType, margin + 30, y);
 
     y += 7;
     doc.setFont('helvetica', 'bold');
@@ -173,17 +181,21 @@ const AppointmentPage = () => {
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
     doc.line(signX, signY, signX + 70, signY);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(profile?.full_name || 'Dr. Salinas A. Marcelo', signX + 35, signY + 6, { align: 'center' });
+    
+    // Signature text (stylized)
+    const sigText = profile?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
+    doc.setFontSize(12);
+    doc.setFont('times', 'bolditalic');
+    doc.text(sigText, signX + 35, signY + 7, { align: 'center' });
+    
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
     specialtyLines.forEach((line, idx) => {
-      doc.text(line, signX + 35, signY + 11 + idx * 4, { align: 'center' });
+      doc.text(line, signX + 35, signY + 13 + idx * 4, { align: 'center' });
     });
     doc.setFontSize(7);
-    const licenseY = signY + 11 + specialtyLines.length * 4;
+    const licenseY = signY + 13 + specialtyLines.length * 4;
     doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
     // Images
@@ -330,9 +342,21 @@ const AppointmentPage = () => {
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
             <span>Edad: {appointment.patient.age} años</span>
             <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
-            <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{appointment.studyType}</span>
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3" />{currentAppointment.studyType}
+              <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
+                <Edit2 className="w-3 h-3" />
+              </button>
+            </span>
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
-          </div>
+        </div>
+
+        <StudyTypeSelector
+          open={showStudySelector}
+          onOpenChange={setShowStudySelector}
+          onApply={handleStudyTypeChange}
+          currentValue={currentAppointment.studyType}
+        />
 
           <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
             <SelectTrigger className="w-full">

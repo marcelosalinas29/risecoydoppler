@@ -1,14 +1,6 @@
 export type StudyStatus = 'pending' | 'in-study' | 'reported' | 'sent';
 
-export type StudyType =
-  | 'Ecografía Abdominal'
-  | 'Ecografía Tiroidea'
-  | 'Ecografía Obstétrica'
-  | 'Ecografía Pélvica'
-  | 'Ecografía Renal'
-  | 'Ecografía de Tejidos Blandos'
-  | 'Ecografía Mamaria'
-  | 'Ecografía Doppler';
+export type StudyType = string;
 
 export interface Patient {
   id: string;
@@ -21,7 +13,7 @@ export interface Appointment {
   id: string;
   patientId: string;
   patient: Patient;
-  studyType: StudyType;
+  studyType: string;
   status: StudyStatus;
   date: string; // ISO date
   time: string; // HH:mm
@@ -30,7 +22,7 @@ export interface Appointment {
   createdAt: string;
 }
 
-export const STUDY_TYPES: StudyType[] = [
+export const STUDY_TYPES: string[] = [
   'Ecografía Abdominal',
   'Ecografía Tiroidea',
   'Ecografía Obstétrica',
@@ -39,6 +31,19 @@ export const STUDY_TYPES: StudyType[] = [
   'Ecografía de Tejidos Blandos',
   'Ecografía Mamaria',
   'Ecografía Doppler',
+  'Ecografía Vesical',
+  'Ecografía Prostática',
+  'Ecografía Vesical y Prostática',
+  'Ecografía Transvaginal',
+  'Ecografía Ginecológica',
+  'Ecografía Mamaria y Transvaginal',
+  'Ecografía Testicular',
+  'Ecografía de Partes Blandas',
+  'Ecografía Muscular',
+  'Ecografía Articular',
+  'Ecografía Doppler Venoso',
+  'Ecografía Doppler Arterial',
+  'Ecografía Doppler de Vasos de Cuello',
 ];
 
 export const STATUS_LABELS: Record<StudyStatus, string> = {
