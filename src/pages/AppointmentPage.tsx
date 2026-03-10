@@ -345,7 +345,14 @@ const AppointmentPage = () => {
               </button>
             </span>
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
-          </div>
+        </div>
+
+        <StudyTypeSelector
+          open={showStudySelector}
+          onOpenChange={setShowStudySelector}
+          onApply={handleStudyTypeChange}
+          currentValue={currentAppointment.studyType}
+        />
 
           <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
             <SelectTrigger className="w-full">
