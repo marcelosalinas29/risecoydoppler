@@ -9,6 +9,7 @@ interface ClinicStore {
   addAppointment: (data: { patientId: string; studyType: StudyType; date: string; time: string }) => Appointment;
   updateAppointmentStatus: (id: string, status: StudyStatus) => void;
   updateAppointmentReport: (id: string, report: string) => void;
+  updateAppointmentStudyType: (id: string, studyType: string) => void;
   addImagesToAppointment: (id: string, images: string[]) => void;
   removeImageFromAppointment: (id: string, index: number) => void;
   getAppointmentsByDate: (date: string) => Appointment[];
