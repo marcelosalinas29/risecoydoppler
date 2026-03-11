@@ -1,8 +1,9 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, PlusCircle, LogOut, UserCircle } from 'lucide-react';
+import { Calendar, Users, PlusCircle, LogOut, UserCircle, Search, X } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClinicStore } from '@/store/useClinicStore';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,6 +21,11 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { searchPatients, getPatientAppointments } = useClinicStore();
+
+  const searchResults = searchQuery.length >= 2 ? searchPatients(searchQuery) : [];
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,6 +43,13 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
             <p className="text-xs text-primary-foreground/60 truncate">{title}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+              title="Buscar paciente"
+            >
+              <Search className="w-4 h-4" />
+            </button>
             {profile && (
               <button
                 onClick={() => navigate('/profile')}
@@ -57,6 +70,61 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
             </button>
           </div>
         </div>
+
+        {/* Global Search Bar */}
+        {searchOpen && (
+          <div className="mt-2 max-w-2xl mx-auto animate-slide-up">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar paciente por nombre o teléfono..."
+                className="w-full pl-9 pr-9 py-2 rounded-lg bg-card text-foreground text-sm border-0 focus:outline-none focus:ring-2 focus:ring-accent"
+                autoFocus
+              />
+              <button
+                onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-1 bg-card rounded-lg shadow-md border border-border overflow-hidden max-h-60 overflow-y-auto">
+                {searchResults.slice(0, 8).map((p) => {
+                  const apts = getPatientAppointments(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        if (apts.length > 0) {
+                          navigate(`/appointment/${apts[0].id}`);
+                        } else {
+                          navigate('/patients');
+                        }
+                        setSearchOpen(false);
+                        setSearchQuery('');
+                      }}
+                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-0"
+                    >
+                      <span className="font-medium text-foreground">{p.name}</span>
+                      <span className="text-muted-foreground ml-2">— {p.phone}</span>
+                      {apts.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-2">({apts.length} estudio{apts.length > 1 ? 's' : ''})</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {searchQuery.length >= 2 && searchResults.length === 0 && (
+              <div className="mt-1 bg-card rounded-lg shadow-md border border-border p-3 text-sm text-muted-foreground text-center">
+                No se encontraron pacientes
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Content */}
