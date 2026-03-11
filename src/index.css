@@ -6,8 +6,10 @@
 
 @layer base {
   :root {
-    --background: 210 15% 97%;
+    --background: 210 20% 98%;
     --foreground: 215 30% 12%;
+
+    --action-primary: 224 76% 53%;
 
     --card: 0 0% 100%;
     --card-foreground: 215 30% 12%;
@@ -78,5 +80,15 @@
   }
   .btn-whatsapp {
     @apply bg-emerald-600 hover:bg-emerald-700 text-white;
+  }
+  .btn-action-primary {
+    background-color: hsl(var(--action-primary));
+    color: white;
+  }
+  .btn-action-primary:hover {
+    background-color: hsl(var(--action-primary) / 0.9);
+  }
+  .card-elevated {
+    @apply bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow;
   }
 }

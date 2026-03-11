@@ -419,7 +419,7 @@ const AppointmentPage = () => {
                 disabled={isSecretary}
               />
               {!isSecretary && (
-                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full">
+                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
                   Guardar Informe
                 </Button>
               )}
@@ -480,7 +480,7 @@ const AppointmentPage = () => {
 
         {/* Action Buttons */}
         <div className="space-y-3 pb-4">
-          <Button onClick={generatePDF} className="w-full" size="lg">
+          <Button onClick={generatePDF} className="w-full btn-action-primary" size="lg">
             <Download className="w-4 h-4 mr-2" />
             Generar Informe PDF
           </Button>
