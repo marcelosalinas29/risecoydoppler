@@ -419,7 +419,7 @@ const AppointmentPage = () => {
                 disabled={isSecretary}
               />
               {!isSecretary && (
-                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full">
+                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
                   Guardar Informe
                 </Button>
               )}

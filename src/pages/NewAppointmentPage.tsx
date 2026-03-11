@@ -139,7 +139,7 @@ const NewAppointmentPage = () => {
           </div>
         </div>
 
-        <Button onClick={handleSubmit} className="w-full" size="lg">
+        <Button onClick={handleSubmit} className="w-full btn-action-primary" size="lg">
           Crear Cita
         </Button>
       </div>
