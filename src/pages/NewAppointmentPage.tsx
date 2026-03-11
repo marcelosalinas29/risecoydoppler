@@ -14,6 +14,7 @@ const NewAppointmentPage = () => {
   const navigate = useNavigate();
   const { addPatient, addAppointment, searchPatients, patients } = useClinicStore();
   
+  const [dni, setDni] = useState('');
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,6 +29,7 @@ const NewAppointmentPage = () => {
   const selectExistingPatient = (p: typeof patients[0]) => {
     setSelectedPatientId(p.id);
     setName(p.name);
+    setDni(p.dni || '');
     setAge(String(p.age));
     setPhone(p.phone);
   };
@@ -47,13 +49,13 @@ const NewAppointmentPage = () => {
   const handleSubmit = () => {
     const studyType = getStudyTypeString();
     if (!name || !age || !phone || !time || !studyType) {
-      toast.error('Por favor complete todos los campos');
+      toast.error('Por favor complete todos los campos obligatorios');
       return;
     }
 
     let patientId = selectedPatientId;
     if (!patientId) {
-      const patient = addPatient({ name, age: parseInt(age), phone });
+      const patient = addPatient({ dni: dni.trim(), name, age: parseInt(age), phone });
       patientId = patient.id;
     }
 
@@ -81,11 +83,21 @@ const NewAppointmentPage = () => {
                   className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-0"
                 >
                   <span className="font-medium">{p.name}</span>
+                  {p.dni && <span className="text-muted-foreground ml-1">DNI: {p.dni}</span>}
                   <span className="text-muted-foreground ml-2">— {p.phone}</span>
                 </button>
               ))}
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>DNI / ID</Label>
+          <Input
+            value={dni}
+            onChange={(e) => setDni(e.target.value)}
+            placeholder="Número de documento"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

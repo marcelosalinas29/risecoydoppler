@@ -17,7 +17,13 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import clinicLogo from '@/assets/clinic-logo.png';
+import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
 import { supabase } from '@/integrations/supabase/client';
+
+// Map user emails to signature images
+const SIGNATURE_IMAGES: Record<string, string> = {
+  'marcelosalinas29@gmail.com': signatureMarceloSalinas,
+};
 
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
@@ -30,7 +36,7 @@ const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useClinicStore();
-  const { profile, isSecretary } = useAuth();
+  const { profile, isSecretary, user } = useAuth();
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -136,6 +142,13 @@ const AppointmentPage = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(appointment.patient.name, margin + 30, y);
 
+    if (appointment.patient.dni) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('DNI:', pageWidth / 2, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(appointment.patient.dni, pageWidth / 2 + 18, y);
+    }
+
     y += 7;
     doc.setFont('helvetica', 'bold');
     doc.text('Edad:', margin, y);
@@ -176,8 +189,26 @@ const AppointmentPage = () => {
 
     // Firma y sello digital
     const pageHeight = doc.internal.pageSize.getHeight();
-    const signY = pageHeight - 35;
     const signX = pageWidth - margin - 70;
+
+    // Check if user has a signature image
+    const userEmail = user?.email || '';
+    const signatureImgSrc = SIGNATURE_IMAGES[userEmail];
+    let signY = pageHeight - 40;
+
+    if (signatureImgSrc) {
+      // Render signature image
+      try {
+        const sigImg = new Image();
+        sigImg.src = signatureImgSrc;
+        await new Promise((resolve) => { sigImg.onload = resolve; });
+        doc.addImage(signatureImgSrc, 'PNG', signX + 10, signY - 15, 50, 20);
+        signY = signY + 6;
+      } catch {
+        // fallback to text
+      }
+    }
+
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
     doc.line(signX, signY, signX + 70, signY);
@@ -340,6 +371,7 @@ const AppointmentPage = () => {
             </Badge>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
             <span>Edad: {appointment.patient.age} años</span>
             <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
             <span className="flex items-center gap-1">

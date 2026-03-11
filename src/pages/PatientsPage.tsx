@@ -42,7 +42,10 @@ const PatientsPage = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-semibold">{patient.name}</p>
-                      <p className="text-sm text-muted-foreground">{patient.age} años — {patient.phone}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {patient.dni && <span>DNI: {patient.dni} — </span>}
+                        {patient.age} años — {patient.phone}
+                      </p>
                     </div>
                     <span className="text-xs text-muted-foreground">{appointments.length} estudio(s)</span>
                   </div>
