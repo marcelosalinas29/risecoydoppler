@@ -92,7 +92,7 @@ export const useClinicStore = create<ClinicStore>()(
       searchPatients: (query) => {
         const q = query.toLowerCase();
         return get().patients.filter(
-          (p) => p.name.toLowerCase().includes(q) || p.phone.includes(q)
+          (p) => p.name.toLowerCase().includes(q) || p.phone.includes(q) || (p.dni && p.dni.includes(q))
         );
       },
 

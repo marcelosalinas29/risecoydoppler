@@ -4,6 +4,7 @@ export type StudyType = string;
 
 export interface Patient {
   id: string;
+  dni: string;
   name: string;
   age: number;
   phone: string;
