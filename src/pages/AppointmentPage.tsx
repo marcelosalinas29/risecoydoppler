@@ -189,8 +189,26 @@ const AppointmentPage = () => {
 
     // Firma y sello digital
     const pageHeight = doc.internal.pageSize.getHeight();
-    const signY = pageHeight - 35;
     const signX = pageWidth - margin - 70;
+
+    // Check if user has a signature image
+    const userEmail = user?.email || '';
+    const signatureImgSrc = SIGNATURE_IMAGES[userEmail];
+    let signY = pageHeight - 40;
+
+    if (signatureImgSrc) {
+      // Render signature image
+      try {
+        const sigImg = new Image();
+        sigImg.src = signatureImgSrc;
+        await new Promise((resolve) => { sigImg.onload = resolve; });
+        doc.addImage(signatureImgSrc, 'PNG', signX + 10, signY - 15, 50, 20);
+        signY = signY + 6;
+      } catch {
+        // fallback to text
+      }
+    }
+
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
     doc.line(signX, signY, signX + 70, signY);
