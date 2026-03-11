@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import clinicLogo from '@/assets/clinic-logo.png';
+import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
 import { supabase } from '@/integrations/supabase/client';
 
 const statusClass: Record<StudyStatus, string> = {
