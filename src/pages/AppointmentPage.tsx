@@ -20,6 +20,11 @@ import clinicLogo from '@/assets/clinic-logo.png';
 import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
 import { supabase } from '@/integrations/supabase/client';
 
+// Map user emails to signature images
+const SIGNATURE_IMAGES: Record<string, string> = {
+  'marcelosalinas29@gmail.com': signatureMarceloSalinas,
+};
+
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
   'in-study': 'status-badge-in-study',
