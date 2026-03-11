@@ -340,6 +340,7 @@ const AppointmentPage = () => {
             </Badge>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
             <span>Edad: {appointment.patient.age} años</span>
             <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
             <span className="flex items-center gap-1">
