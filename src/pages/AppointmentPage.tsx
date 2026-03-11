@@ -142,6 +142,13 @@ const AppointmentPage = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(appointment.patient.name, margin + 30, y);
 
+    if (appointment.patient.dni) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('DNI:', pageWidth / 2, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(appointment.patient.dni, pageWidth / 2 + 18, y);
+    }
+
     y += 7;
     doc.setFont('helvetica', 'bold');
     doc.text('Edad:', margin, y);
