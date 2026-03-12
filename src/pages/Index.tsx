@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -19,7 +19,15 @@ const Index = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [selectedDate] = useState(today);
   const allAppointments = useClinicStore((s) => s.appointments);
+  const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
+  const fetchPatients = useClinicStore((s) => s.fetchPatients);
+  const loading = useClinicStore((s) => s.loading);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchPatients();
+    fetchAppointments();
+  }, []);
 
   const sorted = useMemo(() => 
     allAppointments
@@ -31,7 +39,11 @@ const Index = () => {
   return (
     <AppLayout title={`Citas — ${format(new Date(selectedDate), "d 'de' MMMM", { locale: es })}`}>
       <div className="p-4 space-y-3">
-        {sorted.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            <p className="text-base font-medium">Cargando citas...</p>
+          </div>
+        ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <CalendarDays className="w-12 h-12 mb-3 opacity-40" />
             <p className="text-base font-medium">No hay citas para hoy</p>

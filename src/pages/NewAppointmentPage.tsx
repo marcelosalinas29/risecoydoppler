@@ -23,6 +23,7 @@ const NewAppointmentPage = () => {
   const [time, setTime] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const suggestions = name.length >= 2 ? searchPatients(name) : [];
 
@@ -46,22 +47,30 @@ const NewAppointmentPage = () => {
     return parts.join(' + ');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const studyType = getStudyTypeString();
     if (!name || !age || !phone || !time || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
     }
 
-    let patientId = selectedPatientId;
-    if (!patientId) {
-      const patient = addPatient({ dni: dni.trim(), name, age: parseInt(age), phone });
-      patientId = patient.id;
-    }
+    setSubmitting(true);
+    try {
+      let patientId = selectedPatientId;
+      if (!patientId) {
+        const patient = await addPatient({ dni: dni.trim(), name, age: parseInt(age), phone });
+        patientId = patient.id;
+      }
 
-    addAppointment({ patientId, studyType, date, time });
-    toast.success('Cita creada exitosamente');
-    navigate('/');
+      await addAppointment({ patientId, studyType, date, time });
+      toast.success('Cita creada exitosamente');
+      navigate('/');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al crear la cita');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -151,8 +160,8 @@ const NewAppointmentPage = () => {
           </div>
         </div>
 
-        <Button onClick={handleSubmit} className="w-full btn-action-primary" size="lg">
-          Crear Cita
+        <Button onClick={handleSubmit} className="w-full btn-action-primary" size="lg" disabled={submitting}>
+          {submitting ? 'Creando...' : 'Crear Cita'}
         </Button>
       </div>
     </AppLayout>
