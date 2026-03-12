@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          images: Json | null
+          patient_id: string
+          report: string | null
+          status: string
+          study_type: string
+          time: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          images?: Json | null
+          patient_id: string
+          report?: string | null
+          status?: string
+          study_type?: string
+          time: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          images?: Json | null
+          patient_id?: string
+          report?: string | null
+          status?: string
+          study_type?: string
+          time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          age: number
+          created_at: string
+          created_by: string | null
+          dni: string | null
+          id: string
+          name: string
+          phone: string
+        }
+        Insert: {
+          age: number
+          created_at?: string
+          created_by?: string | null
+          dni?: string | null
+          id?: string
+          name: string
+          phone: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          created_by?: string | null
+          dni?: string | null
+          id?: string
+          name?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
