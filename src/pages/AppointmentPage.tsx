@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -20,7 +20,6 @@ import clinicLogo from '@/assets/clinic-logo.png';
 import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
 import { supabase } from '@/integrations/supabase/client';
 
-// Map user emails to signature images
 const SIGNATURE_IMAGES: Record<string, string> = {
   'marcelosalinas29@gmail.com': signatureMarceloSalinas,
 };
@@ -42,28 +41,41 @@ const AppointmentPage = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
   const [isEditing, setIsEditing] = useState(!appointment?.report);
-
   const [report, setReport] = useState(appointment?.report || '');
 
+  // Fetch data if not loaded yet
+  useEffect(() => {
+    if (!appointment && id) {
+      store.fetchAppointments().then(() => store.fetchPatients());
+    }
+  }, [id]);
 
-  const handleSaveReport = useCallback(() => {
+  // Sync report when appointment loads
+  useEffect(() => {
+    if (appointment && !report && appointment.report) {
+      setReport(appointment.report);
+      setIsEditing(false);
+    }
+  }, [appointment?.report]);
+
+  const handleSaveReport = useCallback(async () => {
     if (!id) return;
-    store.updateAppointmentReport(id, report);
+    await store.updateAppointmentReport(id, report);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
-      store.updateAppointmentStatus(id, 'reported');
+      await store.updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
   }, [id, report, store, appointment?.status]);
 
-  const handleStatusChange = (status: StudyStatus) => {
+  const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
-    store.updateAppointmentStatus(id, status);
+    await store.updateAppointmentStatus(id, status);
     toast.success(`Estado actualizado a: ${STATUS_LABELS[status]}`);
   };
 
-  const handleStudyTypeChange = (studyType: string) => {
+  const handleStudyTypeChange = async (studyType: string) => {
     if (!id) return;
-    store.updateAppointmentStudyType(id, studyType);
+    await store.updateAppointmentStudyType(id, studyType);
     toast.success('Tipo de estudio actualizado');
   };
 
@@ -90,9 +102,8 @@ const AppointmentPage = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !id) return;
-
     const images = await Promise.all(Array.from(files).map((f) => compressImage(f)));
-    store.addImagesToAppointment(id, images);
+    await store.addImagesToAppointment(id, images);
     toast.success(`${images.length} imagen(es) cargada(s)`);
   };
 
@@ -101,85 +112,129 @@ const AppointmentPage = () => {
     setIsEditing(true);
   };
 
+  // Helper to load image and get natural dimensions
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
   const buildPdfDoc = async (): Promise<jsPDF> => {
     if (!appointment) throw new Error('No appointment');
+    const currentAppointment = store.getAppointment(id || '') || appointment;
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 22;
     const contentWidth = pageWidth - margin * 2;
 
-    // Logo
+    // Footer helper
+    const drawFooter = () => {
+      const footerY = pageHeight - 14;
+      doc.setDrawColor(37, 99, 235);
+      doc.setLineWidth(0.3);
+      doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Rivadavia N° 465 — Reconquista (Santa Fe) — Tel: 03482-437948', pageWidth / 2, footerY, { align: 'center' });
+      doc.text('dmrimagenes@gmail.com — dmrimagenes.com.ar', pageWidth / 2, footerY + 3.5, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+    };
+
+    // ====== HEADER ======
+    // Logo - maintain aspect ratio
     try {
-      const img = new Image();
-      img.src = clinicLogo;
-      await new Promise((resolve) => { img.onload = resolve; });
-      doc.addImage(clinicLogo, 'PNG', margin, 10, 30, 30);
+      const logoImg = await loadImage(clinicLogo);
+      const logoMaxH = 22;
+      const logoRatio = logoImg.naturalWidth / logoImg.naturalHeight;
+      const logoW = logoMaxH * logoRatio;
+      doc.addImage(clinicLogo, 'PNG', margin, 10, logoW, logoMaxH);
     } catch {
       // skip logo
     }
 
-    // Header
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Diagnóstico Médico Reconquista', margin + 35, 20);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ECOGRAFÍA Y DOPPLER', margin + 35, 28);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Informe de Estudio', margin + 35, 35);
-
-    doc.setDrawColor(59, 130, 246);
-    doc.setLineWidth(0.5);
-    doc.line(margin, 45, pageWidth - margin, 45);
-
-    // Patient info
-    let y = 55;
+    doc.text('Diagnóstico Médico Reconquista', margin + 28, 18);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Paciente:', margin, y);
+    doc.text('ECOGRAFÍA Y DOPPLER', margin + 28, 25);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(appointment.patient.name, margin + 30, y);
+    doc.text('Informe de Estudio', margin + 28, 31);
+
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 37, pageWidth - margin, 37);
+
+    // ====== PATIENT INFO - Calibri-like (helvetica bold) size 14 with underline ======
+    let y = 47;
+    const fontSize = 11;
+    doc.setFontSize(fontSize);
+
+    // PACIENTE:
+    doc.setFont('helvetica', 'bold');
+    doc.text('PACIENTE:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    const patNameX = margin + 32;
+    doc.text(appointment.patient.name, patNameX, y);
+    // Underline patient name
+    const nameWidth = doc.getTextWidth(appointment.patient.name);
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(patNameX, y + 1, patNameX + nameWidth, y + 1);
+
+    y += 8;
+    // FECHA:
+    doc.setFont('helvetica', 'bold');
+    doc.text('FECHA:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    const dateStr = format(new Date(appointment.date), "d 'de' MMMM yyyy", { locale: es });
+    doc.text(dateStr, margin + 22, y);
+
+    y += 8;
+    // EDAD: ... DNI:
+    doc.setFont('helvetica', 'bold');
+    doc.text('EDAD:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${appointment.patient.age} AÑOS`, margin + 20, y);
 
     if (appointment.patient.dni) {
+      const dniX = pageWidth / 2 + 10;
       doc.setFont('helvetica', 'bold');
-      doc.text('DNI:', pageWidth / 2, y);
+      doc.text('DNI:', dniX, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(appointment.patient.dni, pageWidth / 2 + 18, y);
+      doc.text(appointment.patient.dni, dniX + 16, y);
     }
 
-    y += 7;
+    y += 8;
+    // ESTUDIO:
     doc.setFont('helvetica', 'bold');
-    doc.text('Edad:', margin, y);
+    doc.text('ESTUDIO:', margin, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${appointment.patient.age} años`, margin + 30, y);
+    const studyText = currentAppointment.studyType || appointment.studyType;
+    const studyLines = doc.splitTextToSize(studyText, contentWidth - 30);
+    doc.text(studyLines, margin + 28, y);
+    y += studyLines.length * 5;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Teléfono:', pageWidth / 2, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(appointment.patient.phone, pageWidth / 2 + 30, y);
+    y += 3;
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, pageWidth - margin, y);
 
-    y += 7;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Estudio:', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(currentAppointment.studyType || appointment.studyType, margin + 30, y);
-
-    y += 7;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Fecha:', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(appointment.date), "d 'de' MMMM yyyy", { locale: es }), margin + 30, y);
-
-    doc.line(margin, y + 5, pageWidth - margin, y + 5);
-
-    // Report
-    y += 15;
+    // ====== REPORT BODY ======
+    y += 10;
     doc.setFontSize(10);
-    const lines = doc.splitTextToSize(report || 'Sin informe', contentWidth);
-    for (const line of lines) {
-      if (y > 270) {
+    doc.setFont('helvetica', 'normal');
+    const reportLines = doc.splitTextToSize(report || 'Sin informe', contentWidth);
+    for (const line of reportLines) {
+      if (y > pageHeight - 50) {
+        drawFooter();
         doc.addPage();
         y = 20;
       }
@@ -187,80 +242,107 @@ const AppointmentPage = () => {
       y += 5;
     }
 
-    // Firma y sello digital
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const signX = pageWidth - margin - 70;
+    // ====== SIGNATURE - right-aligned, below report ======
+    y += 10;
+    if (y > pageHeight - 55) {
+      drawFooter();
+      doc.addPage();
+      y = 20;
+    }
 
-    // Check if user has a signature image
+    const signBlockWidth = 70;
+    const signX = pageWidth - margin - signBlockWidth;
+
+    // Signature image
     const userEmail = user?.email || '';
     const signatureImgSrc = SIGNATURE_IMAGES[userEmail];
-    let signY = pageHeight - 40;
 
     if (signatureImgSrc) {
-      // Render signature image
       try {
-        const sigImg = new Image();
-        sigImg.src = signatureImgSrc;
-        await new Promise((resolve) => { sigImg.onload = resolve; });
-        doc.addImage(signatureImgSrc, 'PNG', signX + 10, signY - 15, 50, 20);
-        signY = signY + 6;
+        const sigImg = await loadImage(signatureImgSrc);
+        const sigRatio = sigImg.naturalWidth / sigImg.naturalHeight;
+        const sigW = 50;
+        const sigH = sigW / sigRatio;
+        doc.addImage(signatureImgSrc, 'PNG', signX + (signBlockWidth - sigW) / 2, y, sigW, sigH);
+        y += sigH + 2;
       } catch {
-        // fallback to text
+        // fallback
       }
     }
 
+    // Line
     doc.setDrawColor(30, 58, 95);
     doc.setLineWidth(0.4);
-    doc.line(signX, signY, signX + 70, signY);
-    
-    // Signature text (stylized)
+    doc.line(signX, y, signX + signBlockWidth, y);
+
+    // Name
     const sigText = profile?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('times', 'bolditalic');
-    doc.text(sigText, signX + 35, signY + 7, { align: 'center' });
-    
+    doc.text(sigText, signX + signBlockWidth / 2, y + 6, { align: 'center' });
+
+    // Specialty
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
     specialtyLines.forEach((line, idx) => {
-      doc.text(line, signX + 35, signY + 13 + idx * 4, { align: 'center' });
+      doc.text(line, signX + signBlockWidth / 2, y + 12 + idx * 4, { align: 'center' });
     });
-    doc.setFontSize(7);
-    const licenseY = signY + 13 + specialtyLines.length * 4;
-    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + 35, licenseY + 4, { align: 'center' });
 
-    // Images
+    // License
+    doc.setFontSize(7);
+    const licenseY = y + 12 + specialtyLines.length * 4;
+    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
+
+    drawFooter();
+
+    // ====== IMAGES - maintain aspect ratio ======
     const currentApp = store.getAppointment(id || '');
     if (currentApp && currentApp.images.length > 0) {
-      const imgWidth = (contentWidth - 5) / 2;
-      const imgHeight = 75;
-      const rowGap = 5;
-      const imagesPerPage = 6;
+      const maxImgW = (contentWidth - 8) / 2;
+      const maxImgH = 80;
       let imgIndex = 0;
 
       while (imgIndex < currentApp.images.length) {
         doc.addPage();
-        y = 20;
+        let iy = 20;
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Imágenes del Estudio', margin, y);
-        y += 10;
+        doc.text('Imágenes del Estudio', margin, iy);
+        iy += 10;
 
         let countOnPage = 0;
+        const imagesPerPage = 6;
+
         while (imgIndex < currentApp.images.length && countOnPage < imagesPerPage) {
           const col = countOnPage % 2;
-          const x = margin + col * (imgWidth + 5);
+
           try {
-            doc.addImage(currentApp.images[imgIndex], 'JPEG', x, y, imgWidth, imgHeight);
+            const imgEl = await loadImage(currentApp.images[imgIndex]);
+            const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+
+            let drawW = maxImgW;
+            let drawH = drawW / imgRatio;
+            if (drawH > maxImgH) {
+              drawH = maxImgH;
+              drawW = drawH * imgRatio;
+            }
+
+            const x = margin + col * (maxImgW + 8) + (maxImgW - drawW) / 2;
+            doc.addImage(currentApp.images[imgIndex], 'JPEG', x, iy, drawW, drawH);
+
+            imgIndex++;
+            countOnPage++;
+            if (col === 1 || imgIndex >= currentApp.images.length || countOnPage >= imagesPerPage) {
+              iy += maxImgH + 5;
+            }
           } catch {
-            // skip
-          }
-          imgIndex++;
-          countOnPage++;
-          if (col === 1 || imgIndex >= currentApp.images.length || countOnPage >= imagesPerPage) {
-            y += imgHeight + rowGap;
+            imgIndex++;
+            countOnPage++;
           }
         }
+
+        drawFooter();
       }
     }
 
@@ -269,7 +351,7 @@ const AppointmentPage = () => {
 
   const generatePDF = async () => {
     if (!appointment) return;
-    handleSaveReport();
+    await handleSaveReport();
     const doc = await buildPdfDoc();
     doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
     toast.success('PDF generado exitosamente');
@@ -277,31 +359,26 @@ const AppointmentPage = () => {
 
   const sendWhatsApp = async () => {
     if (!appointment || !id) return;
-    handleSaveReport();
+    await handleSaveReport();
 
     toast.info('Generando PDF y subiendo...');
 
     try {
-      // 1. Generate PDF as blob
       const doc = await buildPdfDoc();
       const pdfBlob = doc.output('blob');
       const fileName = `informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}_${Date.now()}.pdf`;
 
-      // 2. Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('reports')
         .upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // 3. Get public URL
       const { data: urlData } = supabase.storage.from('reports').getPublicUrl(fileName);
       const publicUrl = urlData.publicUrl;
 
-      // 4. Generate QR code as data URL
       const qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 256, margin: 1 });
 
-      // 5. Show QR in a new window for the patient
       const qrWindow = window.open('', '_blank');
       if (qrWindow) {
         qrWindow.document.write(`
@@ -317,7 +394,6 @@ const AppointmentPage = () => {
         `);
       }
 
-      // 6. Send WhatsApp with link
       let phone = appointment.patient.phone.replace(/[\s\-\(\)]/g, '');
       if (phone.startsWith('+')) {
         phone = phone.substring(1);
@@ -333,7 +409,7 @@ const AppointmentPage = () => {
       );
       window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
 
-      store.updateAppointmentStatus(id, 'sent');
+      await store.updateAppointmentStatus(id, 'sent');
       toast.success('PDF subido y WhatsApp abierto');
     } catch (err) {
       console.error('Error al enviar:', err);
@@ -381,14 +457,14 @@ const AppointmentPage = () => {
               </button>
             </span>
             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
-        </div>
+          </div>
 
-        <StudyTypeSelector
-          open={showStudySelector}
-          onOpenChange={setShowStudySelector}
-          onApply={handleStudyTypeChange}
-          currentValue={currentAppointment.studyType}
-        />
+          <StudyTypeSelector
+            open={showStudySelector}
+            onOpenChange={setShowStudySelector}
+            onApply={handleStudyTypeChange}
+            currentValue={currentAppointment.studyType}
+          />
 
           <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
             <SelectTrigger className="w-full">
@@ -413,19 +489,11 @@ const AppointmentPage = () => {
             <div className="flex gap-2">
               {!isSecretary && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowTemplates(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
                     Plantillas <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
                   {report && !isEditing && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                       Editar
                     </Button>
                   )}
@@ -451,7 +519,7 @@ const AppointmentPage = () => {
                 disabled={isSecretary}
               />
               {!isSecretary && (
-                <Button onClick={() => { handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
+                <Button onClick={async () => { await handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
                   Guardar Informe
                 </Button>
               )}
@@ -480,11 +548,7 @@ const AppointmentPage = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full"
-              >
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
                 <ImagePlus className="w-4 h-4 mr-2" />
                 Cargar Imágenes
               </Button>
@@ -498,7 +562,7 @@ const AppointmentPage = () => {
                   <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
                   {!isSecretary && (
                     <button
-                      onClick={() => { if (id) store.removeImageFromAppointment(id, i); }}
+                      onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -516,11 +580,7 @@ const AppointmentPage = () => {
             <Download className="w-4 h-4 mr-2" />
             Generar Informe PDF
           </Button>
-          <Button
-            onClick={sendWhatsApp}
-            className="w-full btn-whatsapp"
-            size="lg"
-          >
+          <Button onClick={sendWhatsApp} className="w-full btn-whatsapp" size="lg">
             <Send className="w-4 h-4 mr-2" />
             Enviar por WhatsApp
           </Button>
