@@ -1,18 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, getDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { STUDY_TYPES, calcularEdad } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 
 const NewAppointmentPage = () => {
   const navigate = useNavigate();
   const { addPatient, addAppointment, searchPatients, patients, findPatientByDni, getAppointmentsByDate } = useClinicStore();
+  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, schedules } = useScheduleStore();
 
   const [dni, setDni] = useState('');
   const [name, setName] = useState('');
@@ -22,12 +30,41 @@ const NewAppointmentPage = () => {
   const [selectedStudies, setSelectedStudies] = useState<string[]>([]);
   const [customStudy, setCustomStudy] = useState('');
   const [time, setTime] = useState('');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
+  const [showOverride, setShowOverride] = useState(false);
+  const [overrideTime, setOverrideTime] = useState('');
 
   const calculatedAge = fechaNacimiento ? calcularEdad(fechaNacimiento) : null;
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dayOfWeek = getDay(selectedDate);
+
+  useEffect(() => {
+    fetchDoctors();
+    fetchAllSchedules();
+  }, []);
+
+  // Auto-select first doctor
+  useEffect(() => {
+    if (doctors.length > 0 && !selectedDoctorId) {
+      setSelectedDoctorId(doctors[0].userId);
+    }
+  }, [doctors]);
+
+  // Available slots based on doctor schedule
+  const availableSlots = useMemo(() => {
+    if (!selectedDoctorId) return [];
+    return generateAvailableSlots(selectedDoctorId, dayOfWeek);
+  }, [selectedDoctorId, dayOfWeek, schedules]);
+
+  // Occupied slots for the selected date
+  const occupiedSlots = useMemo(() => {
+    const existing = getAppointmentsByDate(dateStr);
+    return new Set(existing.map(a => a.time));
+  }, [dateStr, getAppointmentsByDate]);
 
   const suggestions = name.length >= 2 && !selectedPatientId ? searchPatients(name) : [];
 
@@ -68,15 +105,11 @@ const NewAppointmentPage = () => {
     return parts.join(' + ');
   };
 
-  // Check for time slot conflicts
-  const isSlotOccupied = useCallback((checkDate: string, checkTime: string) => {
-    const existing = getAppointmentsByDate(checkDate);
-    return existing.some(a => a.time === checkTime);
-  }, [getAppointmentsByDate]);
+  const finalTime = showOverride ? overrideTime : time;
 
   const handleSubmit = async () => {
     const studyType = getStudyTypeString();
-    if (!name || !phone || !time || !studyType) {
+    if (!name || !phone || !finalTime || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
     }
@@ -86,8 +119,7 @@ const NewAppointmentPage = () => {
       return;
     }
 
-    // Check for slot conflict
-    if (isSlotOccupied(date, time)) {
+    if (occupiedSlots.has(finalTime)) {
       toast.warning('⚠️ Ya existe una cita en ese horario. Se creará de todas formas.');
     }
 
@@ -105,7 +137,7 @@ const NewAppointmentPage = () => {
         patientId = patient.id;
       }
 
-      await addAppointment({ patientId, studyType, date, time });
+      await addAppointment({ patientId, studyType, date: dateStr, time: finalTime });
       toast.success('Cita creada exitosamente');
       navigate('/');
     } catch (err) {
@@ -119,7 +151,7 @@ const NewAppointmentPage = () => {
   return (
     <AppLayout title="Nueva Cita">
       <div className="p-4 space-y-5 max-w-lg mx-auto">
-        {/* DNI field with onBlur lookup */}
+        {/* DNI field */}
         <div className="space-y-2">
           <Label>DNI / ID</Label>
           <Input
@@ -216,18 +248,105 @@ const NewAppointmentPage = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Doctor selector */}
+        {doctors.length > 1 && (
           <div className="space-y-2">
-            <Label>Fecha</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Label>Médico</Label>
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
+              <SelectContent>
+                {doctors.map(d => (
+                  <SelectItem key={d.userId} value={d.userId}>{d.fullName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Hora</Label>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step="600" />
-            {time && isSlotOccupied(date, time) && (
-              <p className="text-xs text-destructive font-medium">⚠ Ya hay una cita en este horario</p>
-            )}
+        )}
+
+        {/* Date picker (calendar) */}
+        <div className="space-y-2">
+          <Label>Fecha de la cita</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => { if (d) { setSelectedDate(d); setTime(''); } }}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Time slots */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Horario disponible
+          </Label>
+          {availableSlots.length > 0 ? (
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+              {availableSlots.map(slot => {
+                const isOccupied = occupiedSlots.has(slot);
+                const isSelected = time === slot && !showOverride;
+                return (
+                  <button
+                    key={slot}
+                    onClick={() => { setTime(slot); setShowOverride(false); }}
+                    disabled={isOccupied}
+                    className={cn(
+                      "text-xs font-mono py-2 px-1 rounded-lg border transition-all",
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : isOccupied
+                          ? "bg-muted/60 text-muted-foreground/50 border-border cursor-not-allowed line-through"
+                          : "bg-card border-border hover:border-primary/50 hover:bg-primary/5"
+                    )}
+                  >
+                    {slot}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-3 bg-muted/30 rounded-lg">
+              {selectedDoctorId
+                ? 'No hay bloques horarios configurados para este día.'
+                : 'Seleccione un médico para ver los horarios disponibles.'}
+            </p>
+          )}
+
+          {/* Override / Sobreturno */}
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() => setShowOverride(!showOverride)}
+            >
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {showOverride ? 'Cancelar sobreturno' : 'Agregar sobreturno'}
+            </Button>
           </div>
+          {showOverride && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Hora manual (sobreturno)</Label>
+              <Input type="time" value={overrideTime} onChange={(e) => setOverrideTime(e.target.value)} step="600" />
+              {overrideTime && occupiedSlots.has(overrideTime) && (
+                <p className="text-xs text-destructive font-medium">⚠ Ya hay una cita en este horario</p>
+              )}
+            </div>
+          )}
         </div>
 
         <Button onClick={handleSubmit} className="w-full btn-action-primary" size="lg" disabled={submitting}>

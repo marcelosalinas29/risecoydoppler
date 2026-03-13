@@ -1,9 +1,10 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, PlusCircle, LogOut, UserCircle, Search, X } from 'lucide-react';
+import { Calendar, Users, PlusCircle, LogOut, Search, X } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicStore } from '@/store/useClinicStore';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -32,6 +33,8 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
     navigate('/login');
   };
 
+  const initials = (profile?.full_name || 'U').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
@@ -55,7 +58,14 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
                 onClick={() => navigate('/profile')}
                 className="flex items-center gap-1.5 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors"
               >
-                <UserCircle className="w-4 h-4" />
+                <Avatar className="w-6 h-6">
+                  {profile.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
+                  ) : null}
+                  <AvatarFallback className="text-[10px] font-bold bg-primary-foreground/20 text-primary-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="hidden sm:inline">
                   {role === 'secretary' ? 'Secretaria' : profile.full_name.split(' ')[0]}
                 </span>

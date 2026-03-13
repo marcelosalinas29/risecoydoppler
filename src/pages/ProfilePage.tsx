@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { UserCircle, Save, PenLine } from 'lucide-react';
+import { Save, PenLine, Camera, Clock } from 'lucide-react';
 
 const ProfilePage = () => {
-  const { profile, role, isDoctor, refreshProfile } = useAuth();
+  const { profile, role, isDoctor, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
@@ -19,6 +20,34 @@ const ProfilePage = () => {
   const [licenseNumbers, setLicenseNumbers] = useState(profile?.license_numbers ?? '');
   const [signatureText, setSignatureText] = useState(profile?.signature_text ?? '');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      await supabase.from('profiles').update({ avatar_url: avatarUrl } as any).eq('user_id', user.id);
+      await refreshProfile();
+      toast.success('Foto actualizada');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al subir la foto');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!profile) return;
@@ -42,13 +71,33 @@ const ProfilePage = () => {
     setSaving(false);
   };
 
+  const initials = (profile?.full_name || 'U').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
   return (
     <AppLayout title="Mi Perfil">
       <div className="p-4 max-w-lg mx-auto space-y-4">
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <UserCircle className="w-8 h-8 text-primary" />
-            <div>
+          {/* Avatar section */}
+          <div className="flex flex-col items-center gap-3 mb-4">
+            <div className="relative">
+              <Avatar className="w-20 h-20">
+                {profile?.avatar_url ? (
+                  <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
+                ) : null}
+                <AvatarFallback className="text-lg font-bold bg-primary text-primary-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow-md hover:bg-primary/90 transition-colors"
+                disabled={uploading}
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </div>
+            <div className="text-center">
               <p className="font-semibold">{profile?.full_name}</p>
               <p className="text-xs text-muted-foreground capitalize">
                 {role === 'doctor' ? 'Médico / Doctor' : 'Secretaria'}
@@ -110,6 +159,12 @@ const ProfilePage = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Link to schedule config */}
+                <Button variant="outline" className="w-full" onClick={() => navigate('/schedule')}>
+                  <Clock className="w-4 h-4 mr-2" />
+                  Configurar Horarios de Atención
+                </Button>
               </>
             )}
 
