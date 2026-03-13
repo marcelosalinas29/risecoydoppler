@@ -325,14 +325,14 @@ const AppointmentPage = () => {
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
+    const specialtyLines = (pdfProfile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
     specialtyLines.forEach((line, idx) => {
       doc.text(line, signX + signBlockWidth / 2, y + 12 + idx * 4, { align: 'center' });
     });
 
     doc.setFontSize(7);
     const licenseY = y + 12 + specialtyLines.length * 4;
-    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
+    doc.text(pdfProfile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
 
     drawFooter();
 
