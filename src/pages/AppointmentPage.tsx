@@ -435,7 +435,7 @@ const AppointmentPage = () => {
       const message = encodeURIComponent(
         `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${formatStudyType(appointment.studyType)}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n📄 *Descargá tu informe PDF aquí:*\n${publicUrl}`
       );
-      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+      window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${message}`, '_blank');
 
       await store.updateAppointmentStatus(id, 'sent');
       toast.success('WhatsApp abierto con enlace al PDF');
