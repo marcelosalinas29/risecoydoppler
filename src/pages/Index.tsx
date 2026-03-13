@@ -32,9 +32,26 @@ const Index = () => {
             <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => subDays(d, 1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-sm font-semibold capitalize">
-              {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <CalendarDays className="w-4 h-4" />
+                  <span className="capitalize">
+                    {format(selectedDate, "EEE d MMM yyyy", { locale: es })}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  initialFocus
+                  locale={es}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => addDays(d, 1))}>
               <ChevronRight className="w-4 h-4" />
             </Button>
