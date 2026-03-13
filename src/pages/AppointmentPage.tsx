@@ -76,12 +76,14 @@ const AppointmentPage = () => {
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
-    await store.updateAppointmentReport(id, report);
+    // Store who reported (doctor's user_id)
+    const reportedBy = !isSecretary && user ? user.id : undefined;
+    await store.updateAppointmentReport(id, report, reportedBy);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
       await store.updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
-  }, [id, report, store, appointment?.status]);
+  }, [id, report, store, appointment?.status, isSecretary, user]);
 
   const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
