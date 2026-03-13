@@ -150,15 +150,16 @@ const AppointmentPage = () => {
     const contentWidth = pageWidth - margin * 2;
 
     const drawFooter = () => {
-      const footerY = pageHeight - 14;
-      doc.setDrawColor(37, 99, 235);
+      const footerY = pageHeight - 18;
+      doc.setDrawColor(37, 99, 135);
       doc.setLineWidth(0.3);
       doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
-      doc.setFontSize(7);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text('Rivadavia N° 465 — Reconquista (Santa Fe) — Tel: 03482-437948', pageWidth / 2, footerY, { align: 'center' });
-      doc.text('dmrimagenes@gmail.com — dmrimagenes.com.ar', pageWidth / 2, footerY + 3.5, { align: 'center' });
+      doc.setTextColor(37, 99, 135);
+      doc.text('Rivadavia 465, reconquista Santa Fe', pageWidth / 2, footerY, { align: 'center' });
+      doc.text('Tel.: 3482437948- WhatsApp: 3482244516', pageWidth / 2, footerY + 3.5, { align: 'center' });
+      doc.text('www.dmrimagenes.com.ar', pageWidth / 2, footerY + 7, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     };
 
@@ -171,21 +172,25 @@ const AppointmentPage = () => {
       doc.addImage(clinicLogo, 'PNG', margin, 10, logoW, logoMaxH);
     } catch { /* skip logo */ }
 
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Diagnóstico Médico Reconquista', margin + 28, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ECOGRAFÍA Y DOPPLER', margin + 28, 25);
+    doc.setTextColor(37, 99, 135);
+    doc.text('DIAGNOSTICO', margin + 30, 17);
+    doc.setFontSize(14);
+    doc.text('MEDICO RECONQUISTA', margin + 30, 24);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('S E R V I C I O   D E   E C O G R A F I A   Y   D O P P L E R', margin, 31);
+    doc.setTextColor(0, 0, 0);
 
-    doc.setDrawColor(37, 99, 235);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.5);
-    doc.line(margin, 33, pageWidth - margin, 33);
+    doc.line(margin, 34, pageWidth - margin, 34);
 
     // ====== PATIENT INFO ======
     // Labels: UPPERCASE, BOLD, UNDERLINE
     // Values: UPPERCASE, BOLD (no underline)
-    let y = 43;
+    let y = 44;
     const fontSize = 11;
     doc.setFontSize(fontSize);
 
@@ -234,17 +239,12 @@ const AppointmentPage = () => {
     y += studyLines.length * 5;
 
     y += 3;
-    doc.setDrawColor(37, 99, 235);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.3);
     doc.line(margin, y, pageWidth - margin, y);
 
-    // ====== "INFORME DE ESTUDIO" title - below patient data ======
+    // ====== REPORT BODY (directly after patient data) ======
     y += 8;
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INFORME DE ESTUDIO', pageWidth / 2, y, { align: 'center' });
-    y += 8;
-
     // ====== REPORT BODY ======
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -314,7 +314,7 @@ const AppointmentPage = () => {
       } catch { /* fallback */ }
     }
 
-    doc.setDrawColor(30, 58, 95);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.4);
     doc.line(signX, y, signX + signBlockWidth, y);
 
