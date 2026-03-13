@@ -112,8 +112,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         time: data.time,
         report: '',
         images: [],
-        observations: '',
-      })
+      } as any)
       .select('*, patients(*)')
       .single();
     if (error) throw error;
