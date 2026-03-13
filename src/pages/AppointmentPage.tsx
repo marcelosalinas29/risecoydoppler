@@ -314,7 +314,7 @@ const AppointmentPage = () => {
       } catch { /* fallback */ }
     }
 
-    doc.setDrawColor(30, 58, 95);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.4);
     doc.line(signX, y, signX + signBlockWidth, y);
 
