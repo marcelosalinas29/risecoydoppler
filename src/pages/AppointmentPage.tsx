@@ -32,11 +32,21 @@ const statusClass: Record<StudyStatus, string> = {
   'sent': 'status-badge-sent',
 };
 
-/** Strip HTML tags for PDF plain text rendering */
-function stripHtml(html: string): string {
+/** Convert HTML to plain text preserving paragraph breaks */
+function htmlToPlainText(html: string): string {
+  // Replace closing block tags with newlines before stripping
+  let text = html
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n');
+  // Strip remaining HTML tags
   const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent || div.innerText || '';
+  div.innerHTML = text;
+  text = div.textContent || div.innerText || '';
+  // Clean up multiple newlines but preserve paragraph spacing
+  return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 const AppointmentPage = () => {
