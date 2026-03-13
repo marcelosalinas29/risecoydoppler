@@ -12,8 +12,10 @@ interface ClinicStore {
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
   addAppointment: (data: { patientId: string; studyType: string; date: string; time: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
-  updateAppointmentReport: (id: string, report: string) => Promise<void>;
+  updateAppointmentReport: (id: string, report: string, reportedBy?: string) => Promise<void>;
   updateAppointmentStudyType: (id: string, studyType: string) => Promise<void>;
+  updateAppointmentTime: (id: string, time: string) => Promise<void>;
+  updateAppointmentObservations: (id: string, observations: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
   removeImageFromAppointment: (id: string, index: number) => Promise<void>;
   getAppointmentsByDate: (date: string) => Appointment[];
@@ -24,6 +26,35 @@ interface ClinicStore {
   findPatientByDni: (dni: string) => Promise<Patient | null>;
 }
 
+function mapPatient(p: any): Patient {
+  return {
+    id: p.id,
+    dni: p.dni || '',
+    name: p.name,
+    age: p.fecha_nacimiento ? calcularEdad(p.fecha_nacimiento) : p.age,
+    phone: p.phone,
+    fechaNacimiento: p.fecha_nacimiento || undefined,
+    obraSocial: p.obra_social || '',
+  };
+}
+
+function mapAppointment(a: any): Appointment {
+  return {
+    id: a.id,
+    patientId: a.patient_id,
+    patient: mapPatient(a.patients),
+    studyType: a.study_type,
+    status: a.status as StudyStatus,
+    date: a.date,
+    time: a.time,
+    report: a.report || '',
+    images: (a.images as string[]) || [],
+    observations: a.observations || '',
+    reportedBy: a.reported_by || null,
+    createdAt: a.created_at,
+  };
+}
+
 export const useClinicStore = create<ClinicStore>()((set, get) => ({
   patients: [],
   appointments: [],
@@ -32,17 +63,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   fetchPatients: async () => {
     const { data } = await supabase.from('patients').select('*').order('name');
     if (data) {
-      set({
-        patients: data.map((p: any) => ({
-          id: p.id,
-          dni: p.dni || '',
-          name: p.name,
-          age: p.fecha_nacimiento ? calcularEdad(p.fecha_nacimiento) : p.age,
-          phone: p.phone,
-          fechaNacimiento: p.fecha_nacimiento || undefined,
-          obraSocial: p.obra_social || '',
-        })),
-      });
+      set({ patients: data.map(mapPatient) });
     }
   },
 
@@ -53,28 +74,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       .select('*, patients(*)')
       .order('created_at', { ascending: false });
     if (data) {
-      set({
-        appointments: data.map((a: any) => ({
-          id: a.id,
-          patientId: a.patient_id,
-          patient: {
-            id: a.patients.id,
-            dni: a.patients.dni || '',
-            name: a.patients.name,
-            age: a.patients.fecha_nacimiento ? calcularEdad(a.patients.fecha_nacimiento) : a.patients.age,
-            phone: a.patients.phone,
-            fechaNacimiento: a.patients.fecha_nacimiento || undefined,
-            obraSocial: a.patients.obra_social || '',
-          },
-          studyType: a.study_type,
-          status: a.status as StudyStatus,
-          date: a.date,
-          time: a.time,
-          report: a.report || '',
-          images: (a.images as string[]) || [],
-          createdAt: a.created_at,
-        })),
-      });
+      set({ appointments: data.map(mapAppointment) });
     }
     set({ loading: false });
   },
@@ -94,15 +94,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       .select()
       .single();
     if (error) throw error;
-    const patient: Patient = {
-      id: inserted.id,
-      dni: inserted.dni || '',
-      name: inserted.name,
-      age,
-      phone: inserted.phone,
-      fechaNacimiento: (inserted as any).fecha_nacimiento || undefined,
-      obraSocial: (inserted as any).obra_social || '',
-    };
+    const patient = mapPatient(inserted);
     set((s) => ({ patients: [...s.patients, patient] }));
     return patient;
   },
@@ -120,22 +112,12 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         time: data.time,
         report: '',
         images: [],
+        observations: '',
       })
-      .select()
+      .select('*, patients(*)')
       .single();
     if (error) throw error;
-    const appointment: Appointment = {
-      id: inserted.id,
-      patientId: data.patientId,
-      patient,
-      studyType: data.studyType,
-      status: 'pending',
-      date: data.date,
-      time: data.time,
-      report: '',
-      images: [],
-      createdAt: inserted.created_at,
-    };
+    const appointment = mapAppointment(inserted);
     set((s) => ({ appointments: [appointment, ...s.appointments] }));
     return appointment;
   },
@@ -147,10 +129,12 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
-  updateAppointmentReport: async (id, report) => {
-    await supabase.from('appointments').update({ report }).eq('id', id);
+  updateAppointmentReport: async (id, report, reportedBy) => {
+    const updateData: any = { report };
+    if (reportedBy) updateData.reported_by = reportedBy;
+    await supabase.from('appointments').update(updateData).eq('id', id);
     set((s) => ({
-      appointments: s.appointments.map((a) => (a.id === id ? { ...a, report } : a)),
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, report, ...(reportedBy ? { reportedBy } : {}) } : a)),
     }));
   },
 
@@ -161,15 +145,27 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  updateAppointmentTime: async (id, time) => {
+    await supabase.from('appointments').update({ time }).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, time } : a)),
+    }));
+  },
+
+  updateAppointmentObservations: async (id, observations) => {
+    await supabase.from('appointments').update({ observations } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, observations } : a)),
+    }));
+  },
+
   addImagesToAppointment: async (id, images) => {
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = [...current.images, ...images];
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, images: updated } : a
-      ),
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
     }));
   },
 
@@ -179,9 +175,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const updated = current.images.filter((_, i) => i !== index);
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, images: updated } : a
-      ),
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
     }));
   },
 
@@ -213,14 +207,6 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       .limit(1)
       .maybeSingle();
     if (!data) return null;
-    return {
-      id: data.id,
-      dni: data.dni || '',
-      name: data.name,
-      age: (data as any).fecha_nacimiento ? calcularEdad((data as any).fecha_nacimiento) : data.age,
-      phone: data.phone,
-      fechaNacimiento: (data as any).fecha_nacimiento || undefined,
-      obraSocial: (data as any).obra_social || '',
-    };
+    return mapPatient(data);
   },
 }));
