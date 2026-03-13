@@ -6,6 +6,29 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { FileText, Plus } from 'lucide-react';
 
+/** Convert plain text template to proper HTML with <p> tags per line */
+function textToHtml(text: string): string {
+  return text
+    .split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (trimmed === '' || trimmed === '---') return '';
+      // Detect lines that look like section headers (ALL CAPS or ending with colon at start)
+      const isHeader = /^[A-ZÁÉÍÓÚÑÜ\s\-()\/]+:?$/.test(trimmed) && trimmed.length < 60;
+      if (isHeader) {
+        return `<p><strong>${trimmed}</strong></p>`;
+      }
+      // Detect label: value pattern (e.g. "Hígado: texto...")
+      const labelMatch = trimmed.match(/^([A-Za-záéíóúñüÁÉÍÓÚÑÜ\s\-()\/]+:)\s*(.*)/);
+      if (labelMatch) {
+        return `<p><strong>${labelMatch[1]}</strong> ${labelMatch[2]}</p>`;
+      }
+      return `<p>${trimmed}</p>`;
+    })
+    .filter(Boolean)
+    .join('');
+}
+
 interface TemplateSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,26 +47,26 @@ const TemplateSelector = ({ open, onOpenChange, onApply, currentReport }: Templa
   };
 
   const handleApply = () => {
-    const parts: string[] = [];
+    const htmlParts: string[] = [];
 
     if (customTitle.trim()) {
-      parts.push(customTitle.trim().toUpperCase() + '\n');
+      htmlParts.push(`<p><strong>${customTitle.trim().toUpperCase()}</strong></p>`);
     }
 
     const sortedSelected = [...selected].sort((a, b) => a - b);
     sortedSelected.forEach((idx, i) => {
       const template = REPORT_TEMPLATES[idx];
-      parts.push(template.content);
+      htmlParts.push(textToHtml(template.content));
       if (i < sortedSelected.length - 1) {
-        parts.push('\n---\n');
+        htmlParts.push('<p>---</p>');
       }
     });
 
-    if (parts.length === 0) return;
+    if (htmlParts.length === 0) return;
 
-    const combined = parts.join('\n');
+    const combined = htmlParts.join('');
     const newReport = currentReport.trim()
-      ? currentReport.trim() + '\n\n---\n\n' + combined
+      ? currentReport.trim() + '<p>---</p>' + combined
       : combined;
 
     onApply(newReport);
