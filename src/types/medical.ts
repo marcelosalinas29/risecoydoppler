@@ -22,6 +22,8 @@ export interface Appointment {
   time: string; // HH:mm
   report: string;
   images: string[]; // base64 data URLs
+  observations?: string;
+  reportedBy?: string | null;
   createdAt: string;
 }
 
