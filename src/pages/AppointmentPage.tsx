@@ -18,10 +18,12 @@ import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import clinicLogo from '@/assets/clinic-logo.png';
 import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
+import signatureMarimar from '@/assets/signatures/marimarschreiber.png';
 import { supabase } from '@/integrations/supabase/client';
 
 const SIGNATURE_IMAGES: Record<string, string> = {
   'marcelosalinas29@gmail.com': signatureMarceloSalinas,
+  'marimarschreiber@gmail.com': signatureMarimar,
 };
 
 const statusClass: Record<StudyStatus, string> = {
