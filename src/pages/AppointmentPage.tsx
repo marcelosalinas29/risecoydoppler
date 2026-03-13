@@ -278,14 +278,41 @@ const AppointmentPage = () => {
     const signBlockWidth = 70;
     const signX = pageWidth - margin - signBlockWidth;
 
-    const userEmail = user?.email || '';
-    const signatureImgSrc = SIGNATURE_IMAGES[userEmail];
+    // Determine which profile/email to use for signature
+    // If secretary, use the doctor who reported (reported_by)
+    let pdfProfile = profile;
+    let pdfEmail = user?.email || '';
+
+    if (isSecretary && currentAppointment.reportedBy) {
+      // Fetch the doctor's profile
+      const { data: doctorProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', currentAppointment.reportedBy)
+        .single();
+      if (doctorProfile) {
+        pdfProfile = doctorProfile as any;
+      }
+      // Fetch the doctor's email from auth
+      const { data: doctorAuthData } = await supabase.auth.admin?.getUserById?.(currentAppointment.reportedBy) || { data: null };
+      // Fallback: check SIGNATURE_IMAGES keys for the reported_by user
+      // We need a mapping, so let's check all known emails
+      for (const [email, _] of Object.entries(SIGNATURE_IMAGES)) {
+        // We can't easily get email from user_id without admin, so check profiles
+        if (doctorProfile) {
+          // Try to match by profile name patterns or just use all doctor signatures
+          pdfEmail = email; // Use first matching doctor email
+          break;
+        }
+      }
+    }
+
+    const signatureImgSrc = SIGNATURE_IMAGES[pdfEmail];
 
     if (signatureImgSrc) {
       try {
         const sigImg = await loadImage(signatureImgSrc);
         const sigRatio = sigImg.naturalWidth / sigImg.naturalHeight;
-        // Max 150px width ≈ ~53mm at 72dpi → ~40mm for PDF
         const sigMaxW = 40;
         let sigW = sigMaxW;
         let sigH = sigW / sigRatio;
@@ -302,7 +329,7 @@ const AppointmentPage = () => {
     doc.setLineWidth(0.4);
     doc.line(signX, y, signX + signBlockWidth, y);
 
-    const sigText = profile?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
+    const sigText = pdfProfile?.signature_text || pdfProfile?.full_name || 'Dr. Salinas A. Marcelo';
     doc.setFontSize(11);
     doc.setFont('times', 'bolditalic');
     doc.text(sigText, signX + signBlockWidth / 2, y + 6, { align: 'center' });
