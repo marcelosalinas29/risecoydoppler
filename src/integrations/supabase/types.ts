@@ -67,6 +67,36 @@ export type Database = {
           },
         ]
       }
+      doctor_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          doctor_id: string
+          end_time: string
+          id: string
+          start_time: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week: number
+          doctor_id: string
+          end_time: string
+          id?: string
+          start_time: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          doctor_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           age: number
@@ -105,6 +135,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -116,6 +147,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name: string
@@ -127,6 +159,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
