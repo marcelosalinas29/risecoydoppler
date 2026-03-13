@@ -190,7 +190,7 @@ const AppointmentPage = () => {
     // ====== PATIENT INFO ======
     // Labels: UPPERCASE, BOLD, UNDERLINE
     // Values: UPPERCASE, BOLD (no underline)
-    let y = 43;
+    let y = 44;
     const fontSize = 11;
     doc.setFontSize(fontSize);
 
