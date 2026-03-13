@@ -32,11 +32,21 @@ const statusClass: Record<StudyStatus, string> = {
   'sent': 'status-badge-sent',
 };
 
-/** Strip HTML tags for PDF plain text rendering */
-function stripHtml(html: string): string {
+/** Convert HTML to plain text preserving paragraph breaks */
+function htmlToPlainText(html: string): string {
+  // Replace closing block tags with newlines before stripping
+  let text = html
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n');
+  // Strip remaining HTML tags
   const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent || div.innerText || '';
+  div.innerHTML = text;
+  text = div.textContent || div.innerText || '';
+  // Clean up multiple newlines but preserve paragraph spacing
+  return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 const AppointmentPage = () => {
@@ -66,12 +76,14 @@ const AppointmentPage = () => {
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
-    await store.updateAppointmentReport(id, report);
+    // Store who reported (doctor's user_id)
+    const reportedBy = !isSecretary && user ? user.id : undefined;
+    await store.updateAppointmentReport(id, report, reportedBy);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
       await store.updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
-  }, [id, report, store, appointment?.status]);
+  }, [id, report, store, appointment?.status, isSecretary, user]);
 
   const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
@@ -236,16 +248,23 @@ const AppointmentPage = () => {
     // ====== REPORT BODY ======
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const plainReport = stripHtml(report || 'Sin informe');
-    const reportLines = doc.splitTextToSize(plainReport, contentWidth);
-    for (const line of reportLines) {
-      if (y > pageHeight - 50) {
-        drawFooter();
-        doc.addPage();
-        y = 20;
+    const plainReport = htmlToPlainText(report || 'Sin informe');
+    const paragraphs = plainReport.split('\n');
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === '') {
+        y += 3; // paragraph spacing
+        continue;
       }
-      doc.text(line, margin, y);
-      y += 5;
+      const pLines = doc.splitTextToSize(paragraph.trim(), contentWidth);
+      for (const line of pLines) {
+        if (y > pageHeight - 50) {
+          drawFooter();
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, margin, y);
+        y += 5;
+      }
     }
 
     // ====== SIGNATURE - right-aligned, below report ======
@@ -259,14 +278,30 @@ const AppointmentPage = () => {
     const signBlockWidth = 70;
     const signX = pageWidth - margin - signBlockWidth;
 
-    const userEmail = user?.email || '';
-    const signatureImgSrc = SIGNATURE_IMAGES[userEmail];
+    // Determine which profile/email to use for signature
+    // If secretary, use the doctor who reported (reported_by)
+    let pdfProfile = profile;
+    let pdfEmail = user?.email || '';
+
+    if (isSecretary && currentAppointment.reportedBy) {
+      // Fetch the doctor's profile (which now includes email)
+      const { data: doctorProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', currentAppointment.reportedBy)
+        .single();
+      if (doctorProfile) {
+        pdfProfile = doctorProfile as any;
+        pdfEmail = (doctorProfile as any).email || '';
+      }
+    }
+
+    const signatureImgSrc = SIGNATURE_IMAGES[pdfEmail];
 
     if (signatureImgSrc) {
       try {
         const sigImg = await loadImage(signatureImgSrc);
         const sigRatio = sigImg.naturalWidth / sigImg.naturalHeight;
-        // Max 150px width ≈ ~53mm at 72dpi → ~40mm for PDF
         const sigMaxW = 40;
         let sigW = sigMaxW;
         let sigH = sigW / sigRatio;
@@ -283,21 +318,21 @@ const AppointmentPage = () => {
     doc.setLineWidth(0.4);
     doc.line(signX, y, signX + signBlockWidth, y);
 
-    const sigText = profile?.signature_text || profile?.full_name || 'Dr. Salinas A. Marcelo';
+    const sigText = pdfProfile?.signature_text || pdfProfile?.full_name || 'Dr. Salinas A. Marcelo';
     doc.setFontSize(11);
     doc.setFont('times', 'bolditalic');
     doc.text(sigText, signX + signBlockWidth / 2, y + 6, { align: 'center' });
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    const specialtyLines = (profile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
+    const specialtyLines = (pdfProfile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
     specialtyLines.forEach((line, idx) => {
       doc.text(line, signX + signBlockWidth / 2, y + 12 + idx * 4, { align: 'center' });
     });
 
     doc.setFontSize(7);
     const licenseY = y + 12 + specialtyLines.length * 4;
-    doc.text(profile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
+    doc.text(pdfProfile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
 
     drawFooter();
 

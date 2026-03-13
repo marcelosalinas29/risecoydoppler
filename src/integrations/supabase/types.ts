@@ -21,8 +21,10 @@ export type Database = {
           date: string
           id: string
           images: Json | null
+          observations: string | null
           patient_id: string
           report: string | null
+          reported_by: string | null
           status: string
           study_type: string
           time: string
@@ -33,8 +35,10 @@ export type Database = {
           date: string
           id?: string
           images?: Json | null
+          observations?: string | null
           patient_id: string
           report?: string | null
+          reported_by?: string | null
           status?: string
           study_type?: string
           time: string
@@ -45,8 +49,10 @@ export type Database = {
           date?: string
           id?: string
           images?: Json | null
+          observations?: string | null
           patient_id?: string
           report?: string | null
+          reported_by?: string | null
           status?: string
           study_type?: string
           time?: string
@@ -100,6 +106,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           full_name: string
           id: string
           license_numbers: string | null
@@ -110,6 +117,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string | null
           full_name: string
           id?: string
           license_numbers?: string | null
@@ -120,6 +128,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string | null
           full_name?: string
           id?: string
           license_numbers?: string | null
