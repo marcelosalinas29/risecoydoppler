@@ -11,6 +11,7 @@ interface Profile {
   specialty: string | null;
   license_numbers: string | null;
   signature_text: string | null;
+  avatar_url: string | null;
 }
 
 interface AuthContextType {
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from('profiles').select('*').eq('user_id', userId).single(),
       supabase.from('user_roles').select('role').eq('user_id', userId).single(),
     ]);
-    setProfile(profileData ?? null);
+    setProfile(profileData ? { ...profileData, avatar_url: (profileData as any).avatar_url || null } : null);
     setRole((roleData?.role as AppRole) ?? null);
   };
 

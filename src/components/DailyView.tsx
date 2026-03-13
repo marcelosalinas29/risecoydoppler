@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
-import { Save, Edit2, X } from 'lucide-react';
+import { Save, Edit2, X, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PatientHistoryModal from '@/components/PatientHistoryModal';
 
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
@@ -22,13 +23,11 @@ const statusClass: Record<StudyStatus, string> = {
 // Generate all 10-minute time slots for the day
 function generateTimeSlots(): string[] {
   const slots: string[] = [];
-  // Morning: 8:00 - 12:50
   for (let h = 8; h < 13; h++) {
     for (let m = 0; m < 60; m += 10) {
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
     }
   }
-  // Afternoon: 15:00 - 20:50
   for (let h = 15; h < 21; h++) {
     for (let m = 0; m < 60; m += 10) {
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
@@ -55,9 +54,12 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
     observations: string;
   }>({ time: '', studyType: '', status: 'pending', observations: '' });
 
+  // History modal state
+  const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
+  const [historyPatientName, setHistoryPatientName] = useState('');
+
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  // Map appointments by time slot
   const appointmentMap = useMemo(() => {
     const map = new Map<string, Appointment>();
     for (const a of appointments) {
@@ -67,6 +69,15 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
     }
     return map;
   }, [appointments, dateStr]);
+
+  // Track which patients have multiple appointments (history)
+  const patientAppointmentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of appointments) {
+      counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
+    }
+    return counts;
+  }, [appointments]);
 
   const occupiedCount = appointmentMap.size;
 
@@ -117,12 +128,13 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
             </tr>
           </thead>
           <tbody>
-            {TIME_SLOTS.map((slot, idx) => {
+            {TIME_SLOTS.map((slot) => {
               const apt = appointmentMap.get(slot);
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
               const isMorningStart = slot === '08:00';
               const isAfternoonStart = slot === '15:00';
+              const hasHistory = apt && (patientAppointmentCounts.get(apt.patientId) || 0) > 1;
 
               return (
                 <>
@@ -144,27 +156,38 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                     key={slot}
                     className={`transition-colors ${isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
-                    {/* Hora */}
                     <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
                       {slot}
                     </td>
 
                     {isOccupied && apt ? (
                       <>
-                        {/* Paciente */}
                         <td
                           className="p-1.5 border border-border font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
                           onClick={() => navigate(`/appointment/${apt.id}`)}
                         >
                           {apt.patient.name}
                         </td>
-                        {/* DNI */}
-                        <td className="p-1.5 border border-border text-muted-foreground">{apt.patient.dni || '-'}</td>
-                        {/* Teléfono */}
+                        <td className="p-1.5 border border-border text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            {apt.patient.dni || '-'}
+                            {hasHistory && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setHistoryPatientId(apt.patientId);
+                                  setHistoryPatientName(apt.patient.name);
+                                }}
+                                className="text-primary hover:text-primary/80 transition-colors"
+                                title="Ver historial de estudios"
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </span>
+                        </td>
                         <td className="p-1.5 border border-border text-muted-foreground">{apt.patient.phone}</td>
-                        {/* Obra Social */}
                         <td className="p-1.5 border border-border text-muted-foreground">{apt.patient.obraSocial || '-'}</td>
-                        {/* Estudio */}
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
                             <Input value={editData.studyType} onChange={(e) => setEditData(d => ({ ...d, studyType: e.target.value }))} className="h-7 text-xs" />
@@ -172,7 +195,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                             <span className="uppercase font-bold">{formatStudyType(apt.studyType)}</span>
                           )}
                         </td>
-                        {/* Estado */}
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
                             <Select value={editData.status} onValueChange={(v) => setEditData(d => ({ ...d, status: v as StudyStatus }))}>
@@ -190,7 +212,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                             </Badge>
                           )}
                         </td>
-                        {/* Observaciones */}
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
                             <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value }))} className="h-7 text-xs" placeholder="Observaciones..." />
@@ -198,7 +219,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                             <span className="text-muted-foreground">{apt.observations || '-'}</span>
                           )}
                         </td>
-                        {/* Acciones */}
                         <td className="p-1.5 border border-border text-center">
                           {isEditing ? (
                             <div className="flex items-center justify-center gap-0.5">
@@ -217,7 +237,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                         </td>
                       </>
                     ) : (
-                      /* Empty slot */
                       <td colSpan={8} className="p-1.5 border border-border text-center text-muted-foreground/60 italic">
                         Disponible
                       </td>
@@ -229,6 +248,16 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
           </tbody>
         </table>
       </div>
+
+      {/* Patient History Modal */}
+      {historyPatientId && (
+        <PatientHistoryModal
+          patientId={historyPatientId}
+          patientName={historyPatientName}
+          open={!!historyPatientId}
+          onOpenChange={(open) => { if (!open) setHistoryPatientId(null); }}
+        />
+      )}
     </div>
   );
 };
