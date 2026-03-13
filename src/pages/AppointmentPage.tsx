@@ -150,15 +150,16 @@ const AppointmentPage = () => {
     const contentWidth = pageWidth - margin * 2;
 
     const drawFooter = () => {
-      const footerY = pageHeight - 14;
-      doc.setDrawColor(37, 99, 235);
+      const footerY = pageHeight - 18;
+      doc.setDrawColor(37, 99, 135);
       doc.setLineWidth(0.3);
       doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
-      doc.setFontSize(7);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text('Rivadavia N° 465 — Reconquista (Santa Fe) — Tel: 03482-437948', pageWidth / 2, footerY, { align: 'center' });
-      doc.text('dmrimagenes@gmail.com — dmrimagenes.com.ar', pageWidth / 2, footerY + 3.5, { align: 'center' });
+      doc.setTextColor(37, 99, 135);
+      doc.text('Rivadavia 465, reconquista Santa Fe', pageWidth / 2, footerY, { align: 'center' });
+      doc.text('Tel.: 3482437948- WhatsApp: 3482244516', pageWidth / 2, footerY + 3.5, { align: 'center' });
+      doc.text('www.dmrimagenes.com.ar', pageWidth / 2, footerY + 7, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     };
 
