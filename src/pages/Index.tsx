@@ -5,6 +5,9 @@ import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
 
 const Index = () => {
