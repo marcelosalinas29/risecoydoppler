@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
-import { STUDY_TYPES } from '@/types/medical';
+import { STUDY_TYPES, calcularEdad } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,28 +12,49 @@ import { toast } from 'sonner';
 
 const NewAppointmentPage = () => {
   const navigate = useNavigate();
-  const { addPatient, addAppointment, searchPatients, patients } = useClinicStore();
-  
+  const { addPatient, addAppointment, searchPatients, patients, findPatientByDni, getAppointmentsByDate } = useClinicStore();
+
   const [dni, setDni] = useState('');
   const [name, setName] = useState('');
-  const [age, setAge] = useState('');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [phone, setPhone] = useState('');
+  const [obraSocial, setObraSocial] = useState('');
   const [selectedStudies, setSelectedStudies] = useState<string[]>([]);
   const [customStudy, setCustomStudy] = useState('');
   const [time, setTime] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
 
-  const suggestions = name.length >= 2 ? searchPatients(name) : [];
+  const calculatedAge = fechaNacimiento ? calcularEdad(fechaNacimiento) : null;
+
+  const suggestions = name.length >= 2 && !selectedPatientId ? searchPatients(name) : [];
 
   const selectExistingPatient = (p: typeof patients[0]) => {
     setSelectedPatientId(p.id);
     setName(p.name);
     setDni(p.dni || '');
-    setAge(String(p.age));
+    setFechaNacimiento(p.fechaNacimiento || '');
     setPhone(p.phone);
+    setObraSocial(p.obraSocial || '');
   };
+
+  const handleDniBlur = useCallback(async () => {
+    if (!dni.trim() || selectedPatientId) return;
+    setLookingUp(true);
+    try {
+      const patient = await findPatientByDni(dni.trim());
+      if (patient) {
+        selectExistingPatient(patient);
+        toast.info('Paciente encontrado por DNI');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLookingUp(false);
+    }
+  }, [dni, selectedPatientId, findPatientByDni]);
 
   const toggleStudy = (study: string) => {
     setSelectedStudies(prev =>
@@ -47,18 +68,40 @@ const NewAppointmentPage = () => {
     return parts.join(' + ');
   };
 
+  // Check for time slot conflicts
+  const isSlotOccupied = useCallback((checkDate: string, checkTime: string) => {
+    const existing = getAppointmentsByDate(checkDate);
+    return existing.some(a => a.time === checkTime);
+  }, [getAppointmentsByDate]);
+
   const handleSubmit = async () => {
     const studyType = getStudyTypeString();
-    if (!name || !age || !phone || !time || !studyType) {
+    if (!name || !phone || !time || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
+    }
+
+    if (!fechaNacimiento) {
+      toast.error('La fecha de nacimiento es obligatoria');
+      return;
+    }
+
+    // Check for slot conflict
+    if (isSlotOccupied(date, time)) {
+      toast.warning('⚠️ Ya existe una cita en ese horario. Se creará de todas formas.');
     }
 
     setSubmitting(true);
     try {
       let patientId = selectedPatientId;
       if (!patientId) {
-        const patient = await addPatient({ dni: dni.trim(), name, age: parseInt(age), phone });
+        const patient = await addPatient({
+          dni: dni.trim(),
+          name,
+          phone,
+          fechaNacimiento,
+          obraSocial,
+        });
         patientId = patient.id;
       }
 
@@ -76,6 +119,18 @@ const NewAppointmentPage = () => {
   return (
     <AppLayout title="Nueva Cita">
       <div className="p-4 space-y-5 max-w-lg mx-auto">
+        {/* DNI field with onBlur lookup */}
+        <div className="space-y-2">
+          <Label>DNI / ID</Label>
+          <Input
+            value={dni}
+            onChange={(e) => { setDni(e.target.value); setSelectedPatientId(null); }}
+            onBlur={handleDniBlur}
+            placeholder="Número de documento"
+          />
+          {lookingUp && <p className="text-xs text-muted-foreground">Buscando paciente...</p>}
+        </div>
+
         <div className="space-y-2">
           <Label>Nombre del paciente</Label>
           <Input
@@ -83,7 +138,7 @@ const NewAppointmentPage = () => {
             onChange={(e) => { setName(e.target.value); setSelectedPatientId(null); }}
             placeholder="Nombre completo"
           />
-          {suggestions.length > 0 && !selectedPatientId && (
+          {suggestions.length > 0 && (
             <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
               {suggestions.slice(0, 5).map((p) => (
                 <button
@@ -100,23 +155,35 @@ const NewAppointmentPage = () => {
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>DNI / ID</Label>
-          <Input
-            value={dni}
-            onChange={(e) => setDni(e.target.value)}
-            placeholder="Número de documento"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Fecha de Nacimiento *</Label>
+            <Input
+              type="date"
+              value={fechaNacimiento}
+              onChange={(e) => setFechaNacimiento(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Edad</Label>
+            <Input
+              type="text"
+              value={calculatedAge !== null ? `${calculatedAge} años` : ''}
+              readOnly
+              className="bg-muted/50"
+              placeholder="Automático"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Edad</Label>
-            <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="30" />
+            <Label>Teléfono *</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54..." />
           </div>
           <div className="space-y-2">
-            <Label>Teléfono</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54..." />
+            <Label>Obra Social</Label>
+            <Input value={obraSocial} onChange={(e) => setObraSocial(e.target.value)} placeholder="OSDE, IOSFA, etc." />
           </div>
         </div>
 
@@ -144,7 +211,7 @@ const NewAppointmentPage = () => {
           {getStudyTypeString() && (
             <div className="bg-muted/50 rounded-lg p-2">
               <p className="text-xs text-muted-foreground">Estudios seleccionados:</p>
-              <p className="text-sm font-medium">{getStudyTypeString()}</p>
+              <p className="text-sm font-medium uppercase">{getStudyTypeString()}</p>
             </div>
           )}
         </div>
@@ -156,7 +223,10 @@ const NewAppointmentPage = () => {
           </div>
           <div className="space-y-2">
             <Label>Hora</Label>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step="600" />
+            {time && isSlotOccupied(date, time) && (
+              <p className="text-xs text-destructive font-medium">⚠ Ya hay una cita en este horario</p>
+            )}
           </div>
         </div>
 

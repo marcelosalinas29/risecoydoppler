@@ -67,8 +67,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           dni: string | null
+          fecha_nacimiento: string | null
           id: string
           name: string
+          obra_social: string | null
           phone: string
         }
         Insert: {
@@ -76,8 +78,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dni?: string | null
+          fecha_nacimiento?: string | null
           id?: string
           name: string
+          obra_social?: string | null
           phone: string
         }
         Update: {
@@ -85,8 +89,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dni?: string | null
+          fecha_nacimiento?: string | null
           id?: string
           name?: string
+          obra_social?: string | null
           phone?: string
         }
         Relationships: []
