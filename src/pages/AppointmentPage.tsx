@@ -172,16 +172,20 @@ const AppointmentPage = () => {
       doc.addImage(clinicLogo, 'PNG', margin, 10, logoW, logoMaxH);
     } catch { /* skip logo */ }
 
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Diagnóstico Médico Reconquista', margin + 28, 18);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ECOGRAFÍA Y DOPPLER', margin + 28, 25);
+    doc.setTextColor(37, 99, 135);
+    doc.text('DIAGNOSTICO', margin + 30, 17);
+    doc.setFontSize(14);
+    doc.text('MEDICO RECONQUISTA', margin + 30, 24);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('S E R V I C I O   D E   E C O G R A F I A   Y   D O P P L E R', margin, 31);
+    doc.setTextColor(0, 0, 0);
 
-    doc.setDrawColor(37, 99, 235);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.5);
-    doc.line(margin, 33, pageWidth - margin, 33);
+    doc.line(margin, 34, pageWidth - margin, 34);
 
     // ====== PATIENT INFO ======
     // Labels: UPPERCASE, BOLD, UNDERLINE
