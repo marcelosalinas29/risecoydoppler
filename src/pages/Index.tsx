@@ -1,33 +1,44 @@
 import { useState, useEffect } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
 
 const Index = () => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
   const allAppointments = useClinicStore((s) => s.appointments);
   const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
   const fetchPatients = useClinicStore((s) => s.fetchPatients);
   const loading = useClinicStore((s) => s.loading);
+  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots } = useScheduleStore();
 
   useEffect(() => {
     fetchPatients();
     fetchAppointments();
+    fetchDoctors();
+    fetchAllSchedules();
   }, []);
+
+  const dayOfWeek = getDay(selectedDate);
+  const doctorSlots = selectedDoctorId !== 'all'
+    ? generateAvailableSlots(selectedDoctorId, dayOfWeek)
+    : null;
 
   return (
     <AppLayout title="Agenda">
       <div className="p-4 space-y-4">
-        {/* Day navigation */}
-        <div className="flex items-center justify-between">
+        {/* Top bar: date nav + doctor filter */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => subDays(d, 1))}>
               <ChevronLeft className="w-4 h-4" />
@@ -56,9 +67,25 @@ const Index = () => {
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setSelectedDate(today)}>
-            Hoy
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+              <SelectTrigger className="h-8 text-xs w-[180px]">
+                <SelectValue placeholder="Todos los médicos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los médicos</SelectItem>
+                {doctors.map(doc => (
+                  <SelectItem key={doc.userId} value={doc.userId}>
+                    {doc.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedDate(today)}>
+              Hoy
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -66,7 +93,11 @@ const Index = () => {
             <p className="text-base font-medium">Cargando citas...</p>
           </div>
         ) : (
-          <DailyView appointments={allAppointments} selectedDate={selectedDate} />
+          <DailyView
+            appointments={allAppointments}
+            selectedDate={selectedDate}
+            doctorSlots={doctorSlots}
+          />
         )}
       </div>
     </AppLayout>
