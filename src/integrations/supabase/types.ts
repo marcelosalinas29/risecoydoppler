@@ -21,8 +21,10 @@ export type Database = {
           date: string
           id: string
           images: Json | null
+          observations: string | null
           patient_id: string
           report: string | null
+          reported_by: string | null
           status: string
           study_type: string
           time: string
@@ -33,8 +35,10 @@ export type Database = {
           date: string
           id?: string
           images?: Json | null
+          observations?: string | null
           patient_id: string
           report?: string | null
+          reported_by?: string | null
           status?: string
           study_type?: string
           time: string
@@ -45,8 +49,10 @@ export type Database = {
           date?: string
           id?: string
           images?: Json | null
+          observations?: string | null
           patient_id?: string
           report?: string | null
+          reported_by?: string | null
           status?: string
           study_type?: string
           time?: string
