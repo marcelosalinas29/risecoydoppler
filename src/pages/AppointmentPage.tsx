@@ -239,16 +239,14 @@ const AppointmentPage = () => {
     y += studyLines.length * 5;
 
     y += 3;
-    doc.setDrawColor(37, 99, 235);
+    doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.3);
     doc.line(margin, y, pageWidth - margin, y);
 
-    // ====== "INFORME DE ESTUDIO" title - below patient data ======
+    // ====== REPORT BODY (directly after patient data) ======
     y += 8;
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INFORME DE ESTUDIO', pageWidth / 2, y, { align: 'center' });
-    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
 
     // ====== REPORT BODY ======
     doc.setFontSize(10);
