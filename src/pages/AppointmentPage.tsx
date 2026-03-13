@@ -246,16 +246,23 @@ const AppointmentPage = () => {
     // ====== REPORT BODY ======
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const plainReport = stripHtml(report || 'Sin informe');
-    const reportLines = doc.splitTextToSize(plainReport, contentWidth);
-    for (const line of reportLines) {
-      if (y > pageHeight - 50) {
-        drawFooter();
-        doc.addPage();
-        y = 20;
+    const plainReport = htmlToPlainText(report || 'Sin informe');
+    const paragraphs = plainReport.split('\n');
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === '') {
+        y += 3; // paragraph spacing
+        continue;
       }
-      doc.text(line, margin, y);
-      y += 5;
+      const pLines = doc.splitTextToSize(paragraph.trim(), contentWidth);
+      for (const line of pLines) {
+        if (y > pageHeight - 50) {
+          drawFooter();
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, margin, y);
+        y += 5;
+      }
     }
 
     // ====== SIGNATURE - right-aligned, below report ======
