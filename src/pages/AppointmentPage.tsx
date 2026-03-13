@@ -284,7 +284,7 @@ const AppointmentPage = () => {
     let pdfEmail = user?.email || '';
 
     if (isSecretary && currentAppointment.reportedBy) {
-      // Fetch the doctor's profile
+      // Fetch the doctor's profile (which now includes email)
       const { data: doctorProfile } = await supabase
         .from('profiles')
         .select('*')
@@ -292,18 +292,7 @@ const AppointmentPage = () => {
         .single();
       if (doctorProfile) {
         pdfProfile = doctorProfile as any;
-      }
-      // Fetch the doctor's email from auth
-      const { data: doctorAuthData } = await supabase.auth.admin?.getUserById?.(currentAppointment.reportedBy) || { data: null };
-      // Fallback: check SIGNATURE_IMAGES keys for the reported_by user
-      // We need a mapping, so let's check all known emails
-      for (const [email, _] of Object.entries(SIGNATURE_IMAGES)) {
-        // We can't easily get email from user_id without admin, so check profiles
-        if (doctorProfile) {
-          // Try to match by profile name patterns or just use all doctor signatures
-          pdfEmail = email; // Use first matching doctor email
-          break;
-        }
+        pdfEmail = (doctorProfile as any).email || '';
       }
     }
 
