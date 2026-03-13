@@ -180,11 +180,10 @@ const AppointmentPage = () => {
     doc.line(margin, 36, pageWidth - margin, 36);
 
     // ====== PATIENT INFO ======
-    // Labels: UPPERCASE, BOLD, UNDERLINE
-    // Values: UPPERCASE, BOLD (no underline)
     let y = 44;
     const fontSize = 11;
     doc.setFontSize(fontSize);
+    const valueX = margin + 30; // Fixed X position for all values
 
     const drawLabel = (label: string, x: number, yPos: number) => {
       doc.setFont('helvetica', 'bold');
@@ -200,34 +199,30 @@ const AppointmentPage = () => {
       doc.text(value.toUpperCase(), x, yPos);
     };
 
-    // PACIENTE:
     drawLabel('PACIENTE:', margin, y);
-    drawValue(appointment.patient.name, margin + 32, y);
+    drawValue(appointment.patient.name, valueX, y);
 
-    y += 8;
-    // FECHA:
+    y += 7;
     drawLabel('FECHA:', margin, y);
     const dateStr = format(new Date(appointment.date), "d 'de' MMMM yyyy", { locale: es });
-    drawValue(dateStr, margin + 22, y);
+    drawValue(dateStr, valueX, y);
 
-    y += 8;
-    // EDAD: ... DNI:
+    y += 7;
     drawLabel('EDAD:', margin, y);
-    drawValue(`${appointment.patient.age} AÑOS`, margin + 20, y);
-
+    const ageText = `${appointment.patient.age} AÑOS`;
+    drawValue(ageText, valueX, y);
     if (appointment.patient.dni) {
-      const dniX = pageWidth / 2 + 10;
-      drawLabel('DNI:', dniX, y);
-      drawValue(appointment.patient.dni, dniX + 16, y);
+      const dniLabelX = valueX + doc.getTextWidth(ageText + '   ') + 10;
+      drawLabel('DNI:', dniLabelX, y);
+      drawValue(appointment.patient.dni, dniLabelX + 16, y);
     }
 
-    y += 8;
-    // ESTUDIO:
+    y += 7;
     drawLabel('ESTUDIO:', margin, y);
     const studyText = formatStudyType(currentAppointment.studyType || appointment.studyType);
-    const studyLines = doc.splitTextToSize(studyText, contentWidth - 30);
+    const studyLines = doc.splitTextToSize(studyText, contentWidth - (valueX - margin));
     doc.setFont('helvetica', 'bold');
-    doc.text(studyLines, margin + 28, y);
+    doc.text(studyLines, valueX, y);
     y += studyLines.length * 5;
 
     y += 3;
