@@ -15,22 +15,46 @@ const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 
 const ScheduleConfigPage = () => {
   const navigate = useNavigate();
-  const { user, isDoctor } = useAuth();
-  const { schedules, fetchSchedules, addBlock, updateBlock, deleteBlock } = useScheduleStore();
+  const { user, isDoctor, isSecretary } = useAuth();
+  const { schedules, doctors, fetchSchedules, fetchAllSchedules, fetchDoctors, addBlock, updateBlock, deleteBlock } = useScheduleStore();
 
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const [newDay, setNewDay] = useState('1');
   const [newStart, setNewStart] = useState('09:00');
   const [newEnd, setNewEnd] = useState('12:00');
 
   useEffect(() => {
-    if (user) fetchSchedules(user.id);
-  }, [user]);
+    if (isSecretary) {
+      fetchDoctors();
+      fetchAllSchedules();
+    } else if (user && isDoctor) {
+      setSelectedDoctorId(user.id);
+      fetchSchedules(user.id);
+    }
+  }, [user, isDoctor, isSecretary]);
+
+  // When secretary selects a doctor, filter schedules
+  const handleDoctorChange = (doctorId: string) => {
+    setSelectedDoctorId(doctorId);
+    fetchSchedules(doctorId);
+  };
+
+  // Auto-select first doctor for secretary
+  useEffect(() => {
+    if (isSecretary && doctors.length > 0 && !selectedDoctorId) {
+      setSelectedDoctorId(doctors[0].userId);
+      fetchSchedules(doctors[0].userId);
+    }
+  }, [doctors, isSecretary, selectedDoctorId]);
 
   const handleAdd = async () => {
-    if (!user) return;
+    if (!selectedDoctorId) {
+      toast.error('Seleccioná un médico primero');
+      return;
+    }
     try {
       await addBlock({
-        doctorId: user.id,
+        doctorId: selectedDoctorId,
         dayOfWeek: parseInt(newDay),
         startTime: newStart,
         endTime: newEnd,
@@ -52,21 +76,46 @@ const ScheduleConfigPage = () => {
     toast.success(active ? 'Bloque activado' : 'Bloque desactivado');
   };
 
-  // Group schedules by day
+  const filteredSchedules = schedules.filter(b => b.doctorId === selectedDoctorId);
+
   const byDay = DAYS.map((dayName, dayIdx) => ({
     dayName,
     dayIdx,
-    blocks: schedules.filter(b => b.dayOfWeek === dayIdx),
+    blocks: filteredSchedules.filter(b => b.dayOfWeek === dayIdx),
   })).filter(d => d.blocks.length > 0);
+
+  const selectedDoctorName = doctors.find(d => d.userId === selectedDoctorId)?.fullName;
 
   return (
     <AppLayout title="Configurar Horarios">
       <div className="p-4 max-w-lg mx-auto space-y-5">
+        {/* Doctor selector for secretaries */}
+        {isSecretary && (
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Médico</Label>
+            <Select value={selectedDoctorId} onValueChange={handleDoctorChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar médico" />
+              </SelectTrigger>
+              <SelectContent>
+                {doctors.map(doc => (
+                  <SelectItem key={doc.userId} value={doc.userId}>
+                    {doc.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Add new block */}
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-primary" />
             Agregar Bloque Horario
+            {isSecretary && selectedDoctorName && (
+              <span className="text-muted-foreground font-normal">— {selectedDoctorName}</span>
+            )}
           </h2>
           <div className="space-y-2">
             <Label className="text-xs">Día</Label>
@@ -89,7 +138,7 @@ const ScheduleConfigPage = () => {
               <Input type="time" value={newEnd} onChange={e => setNewEnd(e.target.value)} step="600" />
             </div>
           </div>
-          <Button onClick={handleAdd} className="w-full" size="sm">
+          <Button onClick={handleAdd} className="w-full" size="sm" disabled={!selectedDoctorId}>
             <Plus className="w-4 h-4 mr-1" /> Agregar
           </Button>
         </div>
@@ -99,7 +148,7 @@ const ScheduleConfigPage = () => {
           <h2 className="font-semibold text-sm text-muted-foreground">Bloques Configurados</h2>
           {byDay.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No hay bloques configurados. Agregá tus horarios de atención.
+              No hay bloques configurados. Agregá horarios de atención.
             </p>
           )}
           {byDay.map(({ dayName, blocks }) => (

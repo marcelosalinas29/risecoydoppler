@@ -20,8 +20,8 @@ const statusClass: Record<StudyStatus, string> = {
   'sent': 'status-badge-sent',
 };
 
-// Generate all 10-minute time slots for the day
-function generateTimeSlots(): string[] {
+// Default fallback slots (morning + afternoon)
+function generateDefaultTimeSlots(): string[] {
   const slots: string[] = [];
   for (let h = 8; h < 13; h++) {
     for (let m = 0; m < 60; m += 10) {
@@ -36,14 +36,15 @@ function generateTimeSlots(): string[] {
   return slots;
 }
 
-const TIME_SLOTS = generateTimeSlots();
+const DEFAULT_TIME_SLOTS = generateDefaultTimeSlots();
 
 interface DailyViewProps {
   appointments: Appointment[];
   selectedDate: Date;
+  doctorSlots?: string[] | null; // filtered slots from doctor schedule
 }
 
-const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
+const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
   const navigate = useNavigate();
   const store = useClinicStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -54,7 +55,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
     observations: string;
   }>({ time: '', studyType: '', status: 'pending', observations: '' });
 
-  // History modal state
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
 
@@ -70,7 +70,18 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
     return map;
   }, [appointments, dateStr]);
 
-  // Track which patients have multiple appointments (history)
+  // Build final time slots: use doctor schedule if provided, otherwise defaults.
+  // Always include any appointment times that fall outside the schedule (sobreturnos).
+  const timeSlots = useMemo(() => {
+    const baseSlots = doctorSlots && doctorSlots.length > 0 ? doctorSlots : DEFAULT_TIME_SLOTS;
+    const slotSet = new Set(baseSlots);
+    // Add any occupied slots not in the schedule
+    for (const time of appointmentMap.keys()) {
+      slotSet.add(time);
+    }
+    return [...slotSet].sort();
+  }, [doctorSlots, appointmentMap]);
+
   const patientAppointmentCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of appointments) {
@@ -106,6 +117,12 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
     }
   };
 
+  // Determine if a slot is a "sobreturno" (outside doctor schedule)
+  const isOverbook = (slot: string) => {
+    if (!doctorSlots || doctorSlots.length === 0) return false;
+    return !doctorSlots.includes(slot) && appointmentMap.has(slot);
+  };
+
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold text-muted-foreground">
@@ -128,24 +145,30 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
             </tr>
           </thead>
           <tbody>
-            {TIME_SLOTS.map((slot) => {
+            {timeSlots.map((slot, idx) => {
               const apt = appointmentMap.get(slot);
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
-              const isMorningStart = slot === '08:00';
-              const isAfternoonStart = slot === '15:00';
               const hasHistory = apt && (patientAppointmentCounts.get(apt.patientId) || 0) > 1;
+              const overbook = isOverbook(slot);
+
+              // Show morning/afternoon separators
+              const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
+              const slotHour = parseInt(slot.split(':')[0]);
+              const prevHour = prevSlot ? parseInt(prevSlot.split(':')[0]) : null;
+              const showMorningSep = slot === '08:00' || (idx === 0 && slotHour < 13);
+              const showAfternoonSep = prevHour !== null && prevHour < 13 && slotHour >= 13;
 
               return (
                 <>
-                  {isMorningStart && (
+                  {showMorningSep && (
                     <tr key="morning-sep">
                       <td colSpan={9} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
                         — MAÑANA —
                       </td>
                     </tr>
                   )}
-                  {isAfternoonStart && (
+                  {showAfternoonSep && (
                     <tr key="afternoon-sep">
                       <td colSpan={9} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
                         — TARDE —
@@ -154,10 +177,11 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
                   )}
                   <tr
                     key={slot}
-                    className={`transition-colors ${isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
+                    className={`transition-colors ${overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
                     <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
                       {slot}
+                      {overbook && <span className="ml-1 text-[9px] text-accent-foreground font-bold">ST</span>}
                     </td>
 
                     {isOccupied && apt ? (
@@ -249,7 +273,6 @@ const DailyView = ({ appointments, selectedDate }: DailyViewProps) => {
         </table>
       </div>
 
-      {/* Patient History Modal */}
       {historyPatientId && (
         <PatientHistoryModal
           patientId={historyPatientId}
