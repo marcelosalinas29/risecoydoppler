@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Patient, StudyStatus } from '@/types/medical';
+import { calcularEdad } from '@/types/medical';
 
 interface ClinicStore {
   patients: Patient[];
@@ -8,7 +9,7 @@ interface ClinicStore {
   loading: boolean;
   fetchPatients: () => Promise<void>;
   fetchAppointments: () => Promise<void>;
-  addPatient: (patient: Omit<Patient, 'id'>) => Promise<Patient>;
+  addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
   addAppointment: (data: { patientId: string; studyType: string; date: string; time: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
   updateAppointmentReport: (id: string, report: string) => Promise<void>;
@@ -20,6 +21,7 @@ interface ClinicStore {
   searchPatients: (query: string) => Patient[];
   getAppointment: (id: string) => Appointment | undefined;
   getPatient: (id: string) => Patient | undefined;
+  findPatientByDni: (dni: string) => Promise<Patient | null>;
 }
 
 export const useClinicStore = create<ClinicStore>()((set, get) => ({
@@ -35,8 +37,10 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
           id: p.id,
           dni: p.dni || '',
           name: p.name,
-          age: p.age,
+          age: p.fecha_nacimiento ? calcularEdad(p.fecha_nacimiento) : p.age,
           phone: p.phone,
+          fechaNacimiento: p.fecha_nacimiento || undefined,
+          obraSocial: p.obra_social || '',
         })),
       });
     }
@@ -57,8 +61,10 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
             id: a.patients.id,
             dni: a.patients.dni || '',
             name: a.patients.name,
-            age: a.patients.age,
+            age: a.patients.fecha_nacimiento ? calcularEdad(a.patients.fecha_nacimiento) : a.patients.age,
             phone: a.patients.phone,
+            fechaNacimiento: a.patients.fecha_nacimiento || undefined,
+            obraSocial: a.patients.obra_social || '',
           },
           studyType: a.study_type,
           status: a.status as StudyStatus,
@@ -74,9 +80,17 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   addPatient: async (data) => {
+    const age = data.fechaNacimiento ? calcularEdad(data.fechaNacimiento) : (data.age || 0);
     const { data: inserted, error } = await supabase
       .from('patients')
-      .insert({ dni: data.dni, name: data.name, age: data.age, phone: data.phone })
+      .insert({
+        dni: data.dni,
+        name: data.name,
+        age,
+        phone: data.phone,
+        fecha_nacimiento: data.fechaNacimiento || null,
+        obra_social: data.obraSocial || '',
+      } as any)
       .select()
       .single();
     if (error) throw error;
@@ -84,8 +98,10 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       id: inserted.id,
       dni: inserted.dni || '',
       name: inserted.name,
-      age: inserted.age,
+      age,
       phone: inserted.phone,
+      fechaNacimiento: (inserted as any).fecha_nacimiento || undefined,
+      obraSocial: (inserted as any).obra_social || '',
     };
     set((s) => ({ patients: [...s.patients, patient] }));
     return patient;
@@ -188,4 +204,23 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
 
   getAppointment: (id) => get().appointments.find((a) => a.id === id),
   getPatient: (id) => get().patients.find((p) => p.id === id),
+
+  findPatientByDni: async (dni: string) => {
+    const { data } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('dni', dni)
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      id: data.id,
+      dni: data.dni || '',
+      name: data.name,
+      age: (data as any).fecha_nacimiento ? calcularEdad((data as any).fecha_nacimiento) : data.age,
+      phone: data.phone,
+      fechaNacimiento: (data as any).fecha_nacimiento || undefined,
+      obraSocial: (data as any).obra_social || '',
+    };
+  },
 }));
