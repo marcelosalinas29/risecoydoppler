@@ -245,9 +245,6 @@ const AppointmentPage = () => {
 
     // ====== REPORT BODY (directly after patient data) ======
     y += 8;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-
     // ====== REPORT BODY ======
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
