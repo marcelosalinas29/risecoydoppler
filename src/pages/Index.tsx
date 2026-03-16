@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const today = new Date();
@@ -28,6 +29,25 @@ const Index = () => {
     fetchDoctors();
     fetchAllSchedules();
   }, []);
+
+  // Realtime subscription for appointments
+  useEffect(() => {
+    const channel = supabase
+      .channel('appointments-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments' },
+        () => {
+          // Re-fetch all appointments on any change
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAppointments]);
 
   const dayOfWeek = getDay(selectedDate);
   const doctorSlots = selectedDoctorId !== 'all'

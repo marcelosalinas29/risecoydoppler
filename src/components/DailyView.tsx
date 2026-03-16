@@ -9,9 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
-import { Save, Edit2, X, ClipboardList } from 'lucide-react';
+import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
@@ -20,7 +29,6 @@ const statusClass: Record<StudyStatus, string> = {
   'sent': 'status-badge-sent',
 };
 
-// Default fallback slots (morning + afternoon)
 function generateDefaultTimeSlots(): string[] {
   const slots: string[] = [];
   for (let h = 8; h < 13; h++) {
@@ -38,10 +46,21 @@ function generateDefaultTimeSlots(): string[] {
 
 const DEFAULT_TIME_SLOTS = generateDefaultTimeSlots();
 
+function generateAllTimeSlots(): string[] {
+  const slots: string[] = [];
+  for (let h = 7; h < 22; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+  }
+  return slots;
+}
+const ALL_TIME_SLOTS = generateAllTimeSlots();
+
 interface DailyViewProps {
   appointments: Appointment[];
   selectedDate: Date;
-  doctorSlots?: string[] | null; // filtered slots from doctor schedule
+  doctorSlots?: string[] | null;
 }
 
 const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
@@ -58,6 +77,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
 
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
+
+  // Reschedule state
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date>(new Date());
+  const [rescheduleTime, setRescheduleTime] = useState('');
+
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
   const appointmentMap = useMemo(() => {
@@ -70,12 +97,9 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
     return map;
   }, [appointments, dateStr]);
 
-  // Build final time slots: use doctor schedule if provided, otherwise defaults.
-  // Always include any appointment times that fall outside the schedule (sobreturnos).
   const timeSlots = useMemo(() => {
     const baseSlots = doctorSlots && doctorSlots.length > 0 ? doctorSlots : DEFAULT_TIME_SLOTS;
     const slotSet = new Set(baseSlots);
-    // Add any occupied slots not in the schedule
     for (const time of appointmentMap.keys()) {
       slotSet.add(time);
     }
@@ -117,7 +141,38 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
     }
   };
 
-  // Determine if a slot is a "sobreturno" (outside doctor schedule)
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await store.deleteAppointment(deleteTarget.id);
+      toast.success('Cita eliminada correctamente');
+    } catch {
+      toast.error('Error al eliminar la cita');
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleTarget || !rescheduleTime) return;
+    try {
+      const newDate = format(rescheduleDate, 'yyyy-MM-dd');
+      await store.rescheduleAppointment(rescheduleTarget.id, newDate, rescheduleTime);
+      toast.success(`Cita trasladada al ${format(rescheduleDate, "d 'de' MMMM", { locale: es })} a las ${rescheduleTime}`);
+    } catch {
+      toast.error('Error al trasladar la cita');
+    } finally {
+      setRescheduleTarget(null);
+      setRescheduleTime('');
+    }
+  };
+
+  const openReschedule = (apt: Appointment) => {
+    setRescheduleTarget(apt);
+    setRescheduleDate(selectedDate);
+    setRescheduleTime(apt.time);
+  };
+
   const isOverbook = (slot: string) => {
     if (!doctorSlots || doctorSlots.length === 0) return false;
     return !doctorSlots.includes(slot) && appointmentMap.has(slot);
@@ -141,7 +196,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Estudio</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground w-24">Estado</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Observaciones</th>
-              <th className="p-2 border border-border text-center font-semibold text-muted-foreground w-16">Acc.</th>
+              <th className="p-2 border border-border text-center font-semibold text-muted-foreground w-24">Acc.</th>
             </tr>
           </thead>
           <tbody>
@@ -152,7 +207,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
               const hasHistory = apt && (patientAppointmentCounts.get(apt.patientId) || 0) > 1;
               const overbook = isOverbook(slot);
 
-              // Show morning/afternoon separators
               const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
               const slotHour = parseInt(slot.split(':')[0]);
               const prevHour = prevSlot ? parseInt(prevSlot.split(':')[0]) : null;
@@ -254,9 +308,17 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                               </Button>
                             </div>
                           ) : (
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)}>
-                              <Edit2 className="w-3 h-3 text-muted-foreground" />
-                            </Button>
+                            <div className="flex items-center justify-center gap-0.5">
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
+                                <Edit2 className="w-3 h-3 text-muted-foreground" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
+                                <CalendarDays className="w-3 h-3 text-muted-foreground" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
                           )}
                         </td>
                       </>
@@ -281,6 +343,79 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
           onOpenChange={(open) => { if (!open) setHistoryPatientId(null); }}
         />
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar esta cita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>Se eliminará la cita de <strong>{deleteTarget.patient.name}</strong> del {format(selectedDate, "d 'de' MMMM yyyy", { locale: es })} a las {deleteTarget.time}. Esta acción no se puede deshacer.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reschedule dialog */}
+      <Dialog open={!!rescheduleTarget} onOpenChange={(open) => { if (!open) { setRescheduleTarget(null); setRescheduleTime(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trasladar cita</DialogTitle>
+            <DialogDescription>
+              {rescheduleTarget && (
+                <>Trasladar la cita de <strong>{rescheduleTarget.patient.name}</strong> a una nueva fecha y horario.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Nueva fecha</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {format(rescheduleDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={rescheduleDate}
+                    onSelect={(d) => d && setRescheduleDate(d)}
+                    locale={es}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Nuevo horario</label>
+              <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar horario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_TIME_SLOTS.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRescheduleTarget(null); setRescheduleTime(''); }}>Cancelar</Button>
+            <Button onClick={handleReschedule} disabled={!rescheduleTime}>Trasladar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
