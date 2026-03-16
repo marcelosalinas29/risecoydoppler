@@ -163,21 +163,30 @@ const AppointmentPage = () => {
       doc.setTextColor(0, 0, 0);
     };
 
-    // ====== HEADER (centered, no corner logo) ======
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(37, 99, 135);
-    doc.text('DIAGNOSTICO', pageWidth / 2, 18, { align: 'center' });
-    doc.setFontSize(16);
-    doc.text('MEDICO RECONQUISTA', pageWidth / 2, 26, { align: 'center' });
+    // ====== HEADER (logo + subtitle) ======
+    try {
+      const logoImg = await loadImage(clinicLogo);
+      const logoHeight = 28;
+      const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+      doc.addImage(clinicLogo, 'PNG', (pageWidth - logoWidth) / 2, 6, logoWidth, logoHeight);
+    } catch {
+      // Fallback text if logo fails to load
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(37, 99, 135);
+      doc.text('DIAGNOSTICO', pageWidth / 2, 18, { align: 'center' });
+      doc.setFontSize(16);
+      doc.text('MEDICO RECONQUISTA', pageWidth / 2, 26, { align: 'center' });
+    }
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('S E R V I C I O   D E   E C O G R A F I A   Y   D O P P L E R', pageWidth / 2, 33, { align: 'center' });
+    doc.setTextColor(37, 99, 135);
+    doc.text('S E R V I C I O   D E   E C O G R A F I A   Y   D O P P L E R', pageWidth / 2, 36, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
     doc.setDrawColor(37, 99, 135);
     doc.setLineWidth(0.5);
-    doc.line(margin, 36, pageWidth - margin, 36);
+    doc.line(margin, 39, pageWidth - margin, 39);
 
     // ====== PATIENT INFO ======
     let y = 44;
