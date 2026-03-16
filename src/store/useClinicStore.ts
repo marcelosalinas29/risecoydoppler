@@ -154,6 +154,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  updateAppointmentDate: async (id, date) => {
+    await supabase.from('appointments').update({ date }).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, date } : a)),
+    }));
+  },
+
   updateAppointmentObservations: async (id, observations) => {
     await supabase.from('appointments').update({ observations } as any).eq('id', id);
     set((s) => ({
