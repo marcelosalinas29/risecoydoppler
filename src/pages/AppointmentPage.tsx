@@ -189,7 +189,7 @@ const AppointmentPage = () => {
     doc.line(margin, 39, pageWidth - margin, 39);
 
     // ====== PATIENT INFO ======
-    let y = 44;
+    let y = 47;
     const fontSize = 11;
     doc.setFontSize(fontSize);
     const valueX = margin + 30; // Fixed X position for all values
