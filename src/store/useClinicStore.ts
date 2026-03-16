@@ -205,6 +205,22 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     );
   },
 
+  deleteAppointment: async (id) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      appointments: s.appointments.filter((a) => a.id !== id),
+    }));
+  },
+
+  rescheduleAppointment: async (id, date, time) => {
+    const { error } = await supabase.from('appointments').update({ date, time }).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, date, time } : a)),
+    }));
+  },
+
   getAppointment: (id) => get().appointments.find((a) => a.id === id),
   getPatient: (id) => get().patients.find((p) => p.id === id),
 
