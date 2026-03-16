@@ -15,7 +15,10 @@ interface ClinicStore {
   updateAppointmentReport: (id: string, report: string, reportedBy?: string) => Promise<void>;
   updateAppointmentStudyType: (id: string, studyType: string) => Promise<void>;
   updateAppointmentTime: (id: string, time: string) => Promise<void>;
+  updateAppointmentDate: (id: string, date: string) => Promise<void>;
   updateAppointmentObservations: (id: string, observations: string) => Promise<void>;
+  deleteAppointment: (id: string) => Promise<void>;
+  rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
   removeImageFromAppointment: (id: string, index: number) => Promise<void>;
   getAppointmentsByDate: (date: string) => Appointment[];
@@ -151,6 +154,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  updateAppointmentDate: async (id, date) => {
+    await supabase.from('appointments').update({ date }).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, date } : a)),
+    }));
+  },
+
   updateAppointmentObservations: async (id, observations) => {
     await supabase.from('appointments').update({ observations } as any).eq('id', id);
     set((s) => ({
@@ -193,6 +203,22 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         p.phone.includes(q) ||
         (p.dni && p.dni.includes(q))
     );
+  },
+
+  deleteAppointment: async (id) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      appointments: s.appointments.filter((a) => a.id !== id),
+    }));
+  },
+
+  rescheduleAppointment: async (id, date, time) => {
+    const { error } = await supabase.from('appointments').update({ date, time }).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, date, time } : a)),
+    }));
   },
 
   getAppointment: (id) => get().appointments.find((a) => a.id === id),
