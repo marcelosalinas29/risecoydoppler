@@ -231,7 +231,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                   )}
                   <tr
                     key={slot}
-                    className={`transition-colors ${overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
+                    className={`transition-colors ${apt?.asistio ? 'bg-green-100 dark:bg-green-900/30' : overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
                     <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
                       {slot}
