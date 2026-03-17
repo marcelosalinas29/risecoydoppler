@@ -170,6 +170,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  updateAppointmentAsistio: async (id, asistio) => {
+    await supabase.from('appointments').update({ asistio } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, asistio } : a)),
+    }));
+  },
+
   addImagesToAppointment: async (id, images) => {
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
