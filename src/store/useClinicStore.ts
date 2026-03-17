@@ -17,6 +17,7 @@ interface ClinicStore {
   updateAppointmentTime: (id: string, time: string) => Promise<void>;
   updateAppointmentDate: (id: string, date: string) => Promise<void>;
   updateAppointmentObservations: (id: string, observations: string) => Promise<void>;
+  updateAppointmentAsistio: (id: string, asistio: boolean) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
