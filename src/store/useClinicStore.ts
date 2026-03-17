@@ -55,6 +55,7 @@ function mapAppointment(a: any): Appointment {
     images: (a.images as string[]) || [],
     observations: a.observations || '',
     reportedBy: a.reported_by || null,
+    asistio: a.asistio ?? false,
     createdAt: a.created_at,
   };
 }
