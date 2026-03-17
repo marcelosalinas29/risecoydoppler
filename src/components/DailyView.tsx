@@ -309,6 +309,18 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-0.5">
+                              {!apt.asistio && (
+                                <Button
+                                  variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                  onClick={async () => {
+                                    await store.updateAppointmentAsistio(apt.id, true);
+                                    toast.success(`${apt.patient.name} confirmado/a en sala`);
+                                  }}
+                                  title="Confirmar recepción"
+                                >
+                                  <UserCheck className="w-3 h-3 text-green-600" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
