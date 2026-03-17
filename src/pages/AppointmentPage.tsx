@@ -529,28 +529,7 @@ const AppointmentPage = () => {
       const pdfBlob = doc.output('blob');
       const fileName = `Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`;
 
-      // Try Web Share API first (mobile-friendly)
-      if (navigator.share && navigator.canShare) {
-        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-        const shareData = { files: [file], title: `Informe - ${appointment.patient.name}` };
-
-        if (navigator.canShare(shareData)) {
-          try {
-            await navigator.share(shareData);
-            await store.updateAppointmentStatus(id, 'sent');
-            toast.success('PDF compartido exitosamente');
-            return;
-          } catch (shareErr) {
-            // User cancelled or share failed, fallback below
-            if ((shareErr as Error).name === 'AbortError') {
-              toast.info('Compartir cancelado');
-              return;
-            }
-          }
-        }
-      }
-
-      // Fallback: Upload to storage + WhatsApp link
+      // Upload to storage + WhatsApp direct link with phone number
       const uploadName = `informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}_${Date.now()}.pdf`;
       const { error: uploadError } = await supabase.storage
         .from('reports')
