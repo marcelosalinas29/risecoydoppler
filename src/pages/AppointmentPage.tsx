@@ -561,10 +561,18 @@ const AppointmentPage = () => {
       const { data: urlData } = supabase.storage.from('reports').getPublicUrl(uploadName);
       const publicUrl = urlData.publicUrl;
 
-      let phone = appointment.patient.phone.replace(/[\s\-\(\)]/g, '');
-      if (phone.startsWith('+')) phone = phone.substring(1);
-      else if (phone.startsWith('0')) phone = '54' + phone.substring(1);
-      else if (phone.replace(/\D/g, '').length <= 10) phone = '54' + phone;
+      // Normalize Argentine phone: +54 9 [area][number]
+      let phone = appointment.patient.phone.replace(/[\s\-\(\)\.\+]/g, '');
+      if (phone.startsWith('549')) {
+        // Already correct: 549XXXXXXXXXX
+      } else if (phone.startsWith('54')) {
+        phone = '549' + phone.substring(2);
+      } else {
+        // Local: remove leading 0, then remove 15 after area code
+        if (phone.startsWith('0')) phone = phone.substring(1);
+        phone = phone.replace(/^(\d{2,4})15(\d{6,})$/, '$1$2');
+        phone = '549' + phone;
+      }
       phone = phone.replace(/\D/g, '');
 
       const message = encodeURIComponent(
