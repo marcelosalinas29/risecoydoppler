@@ -17,6 +17,7 @@ interface ClinicStore {
   updateAppointmentTime: (id: string, time: string) => Promise<void>;
   updateAppointmentDate: (id: string, date: string) => Promise<void>;
   updateAppointmentObservations: (id: string, observations: string) => Promise<void>;
+  updateAppointmentAsistio: (id: string, asistio: boolean) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
@@ -54,6 +55,7 @@ function mapAppointment(a: any): Appointment {
     images: (a.images as string[]) || [],
     observations: a.observations || '',
     reportedBy: a.reported_by || null,
+    asistio: a.asistio ?? false,
     createdAt: a.created_at,
   };
 }
@@ -165,6 +167,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     await supabase.from('appointments').update({ observations } as any).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, observations } : a)),
+    }));
+  },
+
+  updateAppointmentAsistio: async (id, asistio) => {
+    await supabase.from('appointments').update({ asistio } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, asistio } : a)),
     }));
   },
 

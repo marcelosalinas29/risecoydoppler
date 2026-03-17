@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          asistio: boolean
           created_at: string
           created_by: string | null
           date: string
@@ -30,6 +31,7 @@ export type Database = {
           time: string
         }
         Insert: {
+          asistio?: boolean
           created_at?: string
           created_by?: string | null
           date: string
@@ -44,6 +46,7 @@ export type Database = {
           time: string
         }
         Update: {
+          asistio?: boolean
           created_at?: string
           created_by?: string | null
           date?: string

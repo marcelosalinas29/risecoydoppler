@@ -24,6 +24,7 @@ export interface Appointment {
   images: string[]; // base64 data URLs
   observations?: string;
   reportedBy?: string | null;
+  asistio: boolean;
   createdAt: string;
 }
 

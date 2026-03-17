@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
-import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays } from 'lucide-react';
+import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
 import {
@@ -231,7 +231,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                   )}
                   <tr
                     key={slot}
-                    className={`transition-colors ${overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
+                    className={`transition-colors ${apt?.asistio ? 'bg-green-100 dark:bg-green-900/30' : overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
                     <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
                       {slot}
@@ -309,6 +309,18 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-0.5">
+                              {!apt.asistio && (
+                                <Button
+                                  variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                  onClick={async () => {
+                                    await store.updateAppointmentAsistio(apt.id, true);
+                                    toast.success(`${apt.patient.name} confirmado/a en sala`);
+                                  }}
+                                  title="Confirmar recepción"
+                                >
+                                  <UserCheck className="w-3 h-3 text-green-600" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
