@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Patient, StudyStatus } from '@/types/medical';
 import { calcularEdad } from '@/types/medical';
+import { format, subDays } from 'date-fns';
 
 interface ClinicStore {
   patients: Patient[];
