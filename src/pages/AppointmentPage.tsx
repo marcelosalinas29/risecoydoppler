@@ -213,7 +213,9 @@ const AppointmentPage = () => {
 
     y += 7;
     drawLabel('FECHA:', margin, y);
-    const dateStr = format(new Date(appointment.date), "d 'de' MMMM yyyy", { locale: es });
+    // Parse date parts to avoid timezone offset (new Date('YYYY-MM-DD') is UTC, shifts day in AR)
+    const [yy, mm, dd] = appointment.date.split('-').map(Number);
+    const dateStr = format(new Date(yy, mm - 1, dd), "d 'de' MMMM yyyy", { locale: es });
     drawValue(dateStr, valueX, y);
 
     y += 7;

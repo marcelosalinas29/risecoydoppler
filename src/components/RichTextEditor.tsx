@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -6,11 +6,12 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
+import Paragraph from '@tiptap/extension-paragraph';
 import { useEffect, useCallback, useState } from 'react';
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Type, List, ListOrdered, Undo2, Redo2, Minus, Highlighter, Strikethrough, Subscript, Superscript,
-  IndentDecrease, IndentIncrease, BookOpen, Plus, X
+  IndentDecrease, IndentIncrease, BookOpen, Plus, X, ChevronsUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,6 +31,15 @@ const FONTS = [
 
 const FONT_SIZES = ['8px', '9px', '10px', '11px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '36px'];
 
+const LINE_SPACINGS = [
+  { label: '1.0', value: '1' },
+  { label: '1.15', value: '1.15' },
+  { label: '1.5', value: '1.5' },
+  { label: '2.0', value: '2' },
+  { label: '2.5', value: '2.5' },
+  { label: '3.0', value: '3' },
+];
+
 // Custom FontSize extension
 const FontSize = TextStyle.extend({
   addAttributes() {
@@ -41,6 +51,23 @@ const FontSize = TextStyle.extend({
         renderHTML: attributes => {
           if (!attributes.fontSize) return {};
           return { style: `font-size: ${attributes.fontSize}` };
+        },
+      },
+    };
+  },
+});
+
+// Custom LineHeight extension on Paragraph
+const LineHeightParagraph = Paragraph.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      lineHeight: {
+        default: null,
+        parseHTML: element => element.style.lineHeight || null,
+        renderHTML: attributes => {
+          if (!attributes.lineHeight) return {};
+          return { style: `line-height: ${attributes.lineHeight}` };
         },
       },
     };
@@ -87,9 +114,11 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
     extensions: [
       StarterKit.configure({
         heading: false,
+        paragraph: false,
         bulletList: { keepMarks: true },
         orderedList: { keepMarks: true },
       }),
+      LineHeightParagraph,
       Underline,
       TextAlign.configure({ types: ['paragraph'] }),
       FontSize,
@@ -189,6 +218,22 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
             <SelectContent>
               {FONT_SIZES.map(s => (
                 <SelectItem key={s} value={s}>{s.replace('px', '')}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Line spacing */}
+          <Select
+            value={editor.getAttributes('paragraph').lineHeight || '1.5'}
+            onValueChange={(v) => editor.chain().focus().updateAttributes('paragraph', { lineHeight: v }).run()}
+          >
+            <SelectTrigger className="w-[60px] h-7 text-xs" title="Interlineado">
+              <ChevronsUpDown className="w-3 h-3 mr-0.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LINE_SPACINGS.map(ls => (
+                <SelectItem key={ls.value} value={ls.value}>{ls.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
