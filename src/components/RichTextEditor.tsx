@@ -10,7 +10,7 @@ import { useEffect, useCallback, useState } from 'react';
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Type, List, ListOrdered, Undo2, Redo2, Minus, Highlighter, Strikethrough, Subscript, Superscript,
-  IndentDecrease, IndentIncrease, BookOpen, Plus, X
+  IndentDecrease, IndentIncrease, BookOpen, Plus, X, ChevronsUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
