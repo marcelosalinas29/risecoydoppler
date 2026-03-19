@@ -439,4 +439,6 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
   );
 };
 
+const DailyView = memo(DailyViewInner);
+
 export default DailyView;
