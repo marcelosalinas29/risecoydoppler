@@ -110,9 +110,7 @@ const Index = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            <p className="text-base font-medium">Cargando citas...</p>
-          </div>
+          <DailyViewSkeleton />
         ) : (
           <DailyView
             appointments={allAppointments}
