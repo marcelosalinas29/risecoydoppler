@@ -57,6 +57,23 @@ const FontSize = TextStyle.extend({
   },
 });
 
+// Custom LineHeight extension on Paragraph
+const LineHeightParagraph = Paragraph.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      lineHeight: {
+        default: null,
+        parseHTML: element => element.style.lineHeight || null,
+        renderHTML: attributes => {
+          if (!attributes.lineHeight) return {};
+          return { style: `line-height: ${attributes.lineHeight}` };
+        },
+      },
+    };
+  },
+});
+
 // ---- Custom Dictionary (localStorage) ----
 const CUSTOM_DICT_KEY = 'custom-dictionary-es';
 
