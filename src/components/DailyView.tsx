@@ -63,9 +63,15 @@ interface DailyViewProps {
   doctorSlots?: string[] | null;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
+const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
   const navigate = useNavigate();
-  const store = useClinicStore();
+  const updateAppointmentAsistio = useClinicStore((s) => s.updateAppointmentAsistio);
+  const updateAppointmentTime = useClinicStore((s) => s.updateAppointmentTime);
+  const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
+  const updateAppointmentStatus = useClinicStore((s) => s.updateAppointmentStatus);
+  const updateAppointmentObservations = useClinicStore((s) => s.updateAppointmentObservations);
+  const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
+  const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     time: string;
