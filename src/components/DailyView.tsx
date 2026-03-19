@@ -318,9 +318,9 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
                               {!apt.asistio && (
                                 <Button
                                   variant="ghost" size="sm" className="h-6 w-6 p-0"
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.stopPropagation();
-                                    store.updateAppointmentAsistio(apt.id, true);
+                                    updateAppointmentAsistio(apt.id, true);
                                     toast.success(`${apt.patient.name} confirmado/a en sala`);
                                   }}
                                   title="Confirmar recepción"
