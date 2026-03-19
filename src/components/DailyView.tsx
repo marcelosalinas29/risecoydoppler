@@ -147,17 +147,17 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
     }
   }, [editData, updateAppointmentTime, updateAppointmentStudyType, updateAppointmentStatus, updateAppointmentObservations]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
-      await store.deleteAppointment(deleteTarget.id);
+      await deleteAppointment(deleteTarget.id);
       toast.success('Cita eliminada correctamente');
     } catch {
       toast.error('Error al eliminar la cita');
     } finally {
       setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget, deleteAppointment]);
 
   const handleReschedule = async () => {
     if (!rescheduleTarget || !rescheduleTime) return;
