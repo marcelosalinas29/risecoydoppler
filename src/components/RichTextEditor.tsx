@@ -222,6 +222,22 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
             </SelectContent>
           </Select>
 
+          {/* Line spacing */}
+          <Select
+            value={editor.getAttributes('paragraph').lineHeight || '1.5'}
+            onValueChange={(v) => editor.chain().focus().updateAttributes('paragraph', { lineHeight: v }).run()}
+          >
+            <SelectTrigger className="w-[60px] h-7 text-xs" title="Interlineado">
+              <ChevronsUpDown className="w-3 h-3 mr-0.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LINE_SPACINGS.map(ls => (
+                <SelectItem key={ls.value} value={ls.value}>{ls.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="w-px h-5 bg-border mx-0.5" />
 
           {/* Bold/Italic/Underline/Strikethrough */}
