@@ -552,6 +552,13 @@ const AppointmentPage = () => {
   };
 
   if (!appointment) {
+    if (store.loading) {
+      return (
+        <AppLayout title="Cargando...">
+          <AppointmentSkeleton />
+        </AppLayout>
+      );
+    }
     return (
       <AppLayout title="No encontrado">
         <div className="p-8 text-center text-muted-foreground">
