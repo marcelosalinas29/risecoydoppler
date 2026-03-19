@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -63,9 +63,15 @@ interface DailyViewProps {
   doctorSlots?: string[] | null;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
+const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
   const navigate = useNavigate();
-  const store = useClinicStore();
+  const updateAppointmentAsistio = useClinicStore((s) => s.updateAppointmentAsistio);
+  const updateAppointmentTime = useClinicStore((s) => s.updateAppointmentTime);
+  const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
+  const updateAppointmentStatus = useClinicStore((s) => s.updateAppointmentStatus);
+  const updateAppointmentObservations = useClinicStore((s) => s.updateAppointmentObservations);
+  const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
+  const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     time: string;
@@ -128,36 +134,36 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
 
   const cancelEdit = () => setEditingId(null);
 
-  const saveEdit = async (apt: Appointment) => {
+  const saveEdit = useCallback(async (apt: Appointment) => {
     try {
-      if (editData.time !== apt.time) await store.updateAppointmentTime(apt.id, editData.time);
-      if (editData.studyType !== apt.studyType) await store.updateAppointmentStudyType(apt.id, editData.studyType);
-      if (editData.status !== apt.status) await store.updateAppointmentStatus(apt.id, editData.status);
-      if (editData.observations !== (apt.observations || '')) await store.updateAppointmentObservations(apt.id, editData.observations);
+      if (editData.time !== apt.time) await updateAppointmentTime(apt.id, editData.time);
+      if (editData.studyType !== apt.studyType) await updateAppointmentStudyType(apt.id, editData.studyType);
+      if (editData.status !== apt.status) await updateAppointmentStatus(apt.id, editData.status);
+      if (editData.observations !== (apt.observations || '')) await updateAppointmentObservations(apt.id, editData.observations);
       setEditingId(null);
       toast.success('Cita actualizada');
     } catch {
       toast.error('Error al actualizar');
     }
-  };
+  }, [editData, updateAppointmentTime, updateAppointmentStudyType, updateAppointmentStatus, updateAppointmentObservations]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
-      await store.deleteAppointment(deleteTarget.id);
+      await deleteAppointment(deleteTarget.id);
       toast.success('Cita eliminada correctamente');
     } catch {
       toast.error('Error al eliminar la cita');
     } finally {
       setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget, deleteAppointment]);
 
-  const handleReschedule = async () => {
+  const handleReschedule = useCallback(async () => {
     if (!rescheduleTarget || !rescheduleTime) return;
     try {
       const newDate = format(rescheduleDate, 'yyyy-MM-dd');
-      await store.rescheduleAppointment(rescheduleTarget.id, newDate, rescheduleTime);
+      await rescheduleAppointment(rescheduleTarget.id, newDate, rescheduleTime);
       toast.success(`Cita trasladada al ${format(rescheduleDate, "d 'de' MMMM", { locale: es })} a las ${rescheduleTime}`);
     } catch {
       toast.error('Error al trasladar la cita');
@@ -165,7 +171,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
       setRescheduleTarget(null);
       setRescheduleTime('');
     }
-  };
+  }, [rescheduleTarget, rescheduleTime, rescheduleDate, rescheduleAppointment]);
 
   const openReschedule = (apt: Appointment) => {
     setRescheduleTarget(apt);
@@ -312,9 +318,9 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                               {!apt.asistio && (
                                 <Button
                                   variant="ghost" size="sm" className="h-6 w-6 p-0"
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.stopPropagation();
-                                    store.updateAppointmentAsistio(apt.id, true);
+                                    updateAppointmentAsistio(apt.id, true);
                                     toast.success(`${apt.patient.name} confirmado/a en sala`);
                                   }}
                                   title="Confirmar recepción"
@@ -432,5 +438,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
     </div>
   );
 };
+
+const DailyView = memo(DailyViewInner);
 
 export default DailyView;

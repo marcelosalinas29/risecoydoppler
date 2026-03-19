@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Patient, StudyStatus } from '@/types/medical';
 import { calcularEdad } from '@/types/medical';
+import { format, subDays } from 'date-fns';
 
 interface ClinicStore {
   patients: Patient[];
@@ -74,9 +75,12 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
 
   fetchAppointments: async () => {
     set({ loading: true });
+    // Only fetch appointments from the last 90 days to avoid loading thousands of records
+    const sinceDate = format(subDays(new Date(), 90), 'yyyy-MM-dd');
     const { data } = await supabase
       .from('appointments')
       .select('*, patients(*)')
+      .gte('date', sinceDate)
       .order('created_at', { ascending: false });
     if (data) {
       set({ appointments: data.map(mapAppointment) });
