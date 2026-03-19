@@ -705,12 +705,12 @@ const AppointmentPage = () => {
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
-                  <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
+                <div key={i} className="relative group rounded-lg overflow-hidden border border-border h-32">
+                  <LazyImage src={img} alt={`Ecografía ${i + 1}`} className="relative w-full h-full" />
                   {!isSecretary && (
                     <button
                       onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
