@@ -30,6 +30,15 @@ const FONTS = [
 
 const FONT_SIZES = ['8px', '9px', '10px', '11px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '36px'];
 
+const LINE_SPACINGS = [
+  { label: '1.0', value: '1' },
+  { label: '1.15', value: '1.15' },
+  { label: '1.5', value: '1.5' },
+  { label: '2.0', value: '2' },
+  { label: '2.5', value: '2.5' },
+  { label: '3.0', value: '3' },
+];
+
 // Custom FontSize extension
 const FontSize = TextStyle.extend({
   addAttributes() {

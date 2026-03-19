@@ -171,10 +171,11 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentAsistio: async (id, asistio) => {
-    await supabase.from('appointments').update({ asistio } as any).eq('id', id);
+    // Optimistic update: set state first for instant UI response
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, asistio } : a)),
     }));
+    await supabase.from('appointments').update({ asistio } as any).eq('id', id);
   },
 
   addImagesToAppointment: async (id, images) => {
