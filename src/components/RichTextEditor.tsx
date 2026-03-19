@@ -114,9 +114,11 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
     extensions: [
       StarterKit.configure({
         heading: false,
+        paragraph: false,
         bulletList: { keepMarks: true },
         orderedList: { keepMarks: true },
       }),
+      LineHeightParagraph,
       Underline,
       TextAlign.configure({ types: ['paragraph'] }),
       FontSize,
