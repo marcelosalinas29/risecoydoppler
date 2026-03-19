@@ -159,11 +159,11 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
     }
   }, [deleteTarget, deleteAppointment]);
 
-  const handleReschedule = async () => {
+  const handleReschedule = useCallback(async () => {
     if (!rescheduleTarget || !rescheduleTime) return;
     try {
       const newDate = format(rescheduleDate, 'yyyy-MM-dd');
-      await store.rescheduleAppointment(rescheduleTarget.id, newDate, rescheduleTime);
+      await rescheduleAppointment(rescheduleTarget.id, newDate, rescheduleTime);
       toast.success(`Cita trasladada al ${format(rescheduleDate, "d 'de' MMMM", { locale: es })} a las ${rescheduleTime}`);
     } catch {
       toast.error('Error al trasladar la cita');
@@ -171,7 +171,7 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
       setRescheduleTarget(null);
       setRescheduleTime('');
     }
-  };
+  }, [rescheduleTarget, rescheduleTime, rescheduleDate, rescheduleAppointment]);
 
   const openReschedule = (apt: Appointment) => {
     setRescheduleTarget(apt);
