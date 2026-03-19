@@ -134,18 +134,18 @@ const DailyViewInner = ({ appointments, selectedDate, doctorSlots }: DailyViewPr
 
   const cancelEdit = () => setEditingId(null);
 
-  const saveEdit = async (apt: Appointment) => {
+  const saveEdit = useCallback(async (apt: Appointment) => {
     try {
-      if (editData.time !== apt.time) await store.updateAppointmentTime(apt.id, editData.time);
-      if (editData.studyType !== apt.studyType) await store.updateAppointmentStudyType(apt.id, editData.studyType);
-      if (editData.status !== apt.status) await store.updateAppointmentStatus(apt.id, editData.status);
-      if (editData.observations !== (apt.observations || '')) await store.updateAppointmentObservations(apt.id, editData.observations);
+      if (editData.time !== apt.time) await updateAppointmentTime(apt.id, editData.time);
+      if (editData.studyType !== apt.studyType) await updateAppointmentStudyType(apt.id, editData.studyType);
+      if (editData.status !== apt.status) await updateAppointmentStatus(apt.id, editData.status);
+      if (editData.observations !== (apt.observations || '')) await updateAppointmentObservations(apt.id, editData.observations);
       setEditingId(null);
       toast.success('Cita actualizada');
     } catch {
       toast.error('Error al actualizar');
     }
-  };
+  }, [editData, updateAppointmentTime, updateAppointmentStudyType, updateAppointmentStatus, updateAppointmentObservations]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
