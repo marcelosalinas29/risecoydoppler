@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
+import DailyViewSkeleton from '@/components/DailyViewSkeleton';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
