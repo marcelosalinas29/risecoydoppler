@@ -10,6 +10,8 @@ import { STATUS_LABELS, type StudyStatus, formatStudyType } from '@/types/medica
 import TemplateSelector from '@/components/TemplateSelector';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
 import RichTextEditor from '@/components/RichTextEditor';
+import LazyImage from '@/components/LazyImage';
+import AppointmentSkeleton from '@/components/AppointmentSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
