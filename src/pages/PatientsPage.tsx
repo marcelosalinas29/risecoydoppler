@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, ChevronRight, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -7,29 +7,13 @@ import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { STATUS_LABELS } from '@/types/medical';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-
-const PAGE_SIZE = 30;
 
 const PatientsPage = () => {
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(0);
   const { searchPatients, patients, getPatientAppointments } = useClinicStore();
   const navigate = useNavigate();
 
-  const allResults = query.length >= 1 ? searchPatients(query) : patients;
-  const totalPages = Math.ceil(allResults.length / PAGE_SIZE);
-  const results = useMemo(
-    () => allResults.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [allResults, page]
-  );
-
-  // Reset page when query changes
-  const handleSearch = (val: string) => {
-    setQuery(val);
-    setPage(0);
-  };
+  const results = query.length >= 1 ? searchPatients(query) : patients;
 
   return (
     <AppLayout title="Pacientes">
@@ -38,15 +22,11 @@ const PatientsPage = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por nombre o teléfono..."
             className="pl-9"
           />
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          {allResults.length} paciente(s) {query && 'encontrado(s)'}
-        </p>
 
         {results.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -96,21 +76,6 @@ const PatientsPage = () => {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-              Anterior
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              Página {page + 1} de {totalPages}
-            </span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-              Siguiente
-            </Button>
           </div>
         )}
       </div>

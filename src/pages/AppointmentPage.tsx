@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -10,8 +10,6 @@ import { STATUS_LABELS, type StudyStatus, formatStudyType } from '@/types/medica
 import TemplateSelector from '@/components/TemplateSelector';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
 import RichTextEditor from '@/components/RichTextEditor';
-import LazyImage from '@/components/LazyImage';
-import AppointmentSkeleton from '@/components/AppointmentSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -99,11 +97,29 @@ const AppointmentPage = () => {
     toast.success('Tipo de estudio actualizado');
   };
 
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ratio = Math.min(maxWidth / img.width, 1);
+          canvas.width = img.width * ratio;
+          canvas.height = img.height * ratio;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !id) return;
-    toast.info('Comprimiendo imágenes...');
-    const { compressImage } = await import('@/lib/imageUtils');
     const images = await Promise.all(Array.from(files).map((f) => compressImage(f)));
     await store.addImagesToAppointment(id, images);
     toast.success(`${images.length} imagen(es) cargada(s)`);
@@ -554,13 +570,6 @@ const AppointmentPage = () => {
   };
 
   if (!appointment) {
-    if (store.loading) {
-      return (
-        <AppLayout title="Cargando...">
-          <AppointmentSkeleton />
-        </AppLayout>
-      );
-    }
     return (
       <AppLayout title="No encontrado">
         <div className="p-8 text-center text-muted-foreground">
@@ -705,12 +714,12 @@ const AppointmentPage = () => {
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={i} className="relative group rounded-lg overflow-hidden border border-border h-32">
-                  <LazyImage src={img} alt={`Ecografía ${i + 1}`} className="relative w-full h-full" />
+                <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
                   {!isSecretary && (
                     <button
                       onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
