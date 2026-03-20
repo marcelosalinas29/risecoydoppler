@@ -76,8 +76,6 @@ const LoginPage = () => {
       </div>
     </div>
   );
-});
-
-LoginPage.displayName = 'LoginPage';
+};
 
 export default LoginPage;
