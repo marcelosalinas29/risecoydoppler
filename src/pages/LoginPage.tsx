@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import clinicLogo from '@/assets/clinic-logo.png';
 
-const LoginPage = () => {
+const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
   const { session, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
