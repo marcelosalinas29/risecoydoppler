@@ -19,9 +19,17 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error('Credenciales incorrectas');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (error.message?.includes('fetch') || error.status === 0) {
+          toast.error('Error de conexión. Verificá tu internet e intentá de nuevo.');
+        } else {
+          toast.error('Credenciales incorrectas');
+        }
+      }
+    } catch {
+      toast.error('Error de conexión. Intentá de nuevo en unos segundos.');
     }
     setSubmitting(false);
   };
