@@ -76,6 +76,8 @@ const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
       </div>
     </div>
   );
-};
+});
+
+LoginPage.displayName = 'LoginPage';
 
 export default LoginPage;
