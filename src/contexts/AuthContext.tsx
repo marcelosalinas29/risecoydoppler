@@ -49,11 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((_event, sess) => {
+    let mounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+      if (!mounted) return;
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        fetchProfileAndRole(sess.user.id).finally(() => setLoading(false));
+        fetchProfileAndRole(sess.user.id).finally(() => { if (mounted) setLoading(false); });
       } else {
         setProfile(null);
         setRole(null);
@@ -61,15 +64,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Timeout to prevent infinite loading if token refresh hangs
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth session timeout – clearing stale session');
+        supabase.auth.signOut().catch(() => {});
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRole(null);
+        setLoading(false);
+      }
+    }, 8000);
+
     supabase.auth.getSession().then(({ data: { session: sess } }) => {
+      if (!mounted) return;
+      clearTimeout(timeout);
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        fetchProfileAndRole(sess.user.id).finally(() => setLoading(false));
+        fetchProfileAndRole(sess.user.id).finally(() => { if (mounted) setLoading(false); });
       } else {
         setLoading(false);
       }
+    }).catch(() => {
+      if (!mounted) return;
+      clearTimeout(timeout);
+      setLoading(false);
     });
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
