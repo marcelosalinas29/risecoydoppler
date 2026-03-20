@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react';
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import clinicLogo from '@/assets/clinic-logo.png';
 
-const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
+const LoginPage = () => {
   const { session, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +35,7 @@ const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
   };
 
   return (
-    <div ref={ref} className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
           <img src={clinicLogo} alt="Logo" className="w-20 h-20 object-contain" />
@@ -76,8 +76,6 @@ const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
       </div>
     </div>
   );
-});
-
-LoginPage.displayName = 'LoginPage';
+};
 
 export default LoginPage;
