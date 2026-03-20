@@ -35,7 +35,7 @@ const LoginPage = forwardRef<HTMLDivElement>((_, ref) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div ref={ref} className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
           <img src={clinicLogo} alt="Logo" className="w-20 h-20 object-contain" />
