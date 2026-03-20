@@ -8,6 +8,20 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import clinicLogo from '@/assets/clinic-logo.png';
 
+const clearLocalAuthStorage = async () => {
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // no-op
+  }
+
+  const localKeys = Object.keys(localStorage).filter((key) => key.startsWith('sb-') || key.includes('supabase'));
+  localKeys.forEach((key) => localStorage.removeItem(key));
+
+  const sessionKeys = Object.keys(sessionStorage).filter((key) => key.startsWith('sb-') || key.includes('supabase'));
+  sessionKeys.forEach((key) => sessionStorage.removeItem(key));
+};
+
 const LoginPage = () => {
   const { session, loading } = useAuth();
   const [email, setEmail] = useState('');
@@ -23,15 +37,24 @@ const LoginPage = () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         if (error.message?.includes('fetch') || error.status === 0) {
-          toast.error('Error de conexión. Verificá tu internet e intentá de nuevo.');
+          await clearLocalAuthStorage();
+          toast.error('No se pudo conectar. Limpié la sesión local: intentá ingresar nuevamente.');
         } else {
           toast.error('Credenciales incorrectas');
         }
       }
     } catch {
-      toast.error('Error de conexión. Intentá de nuevo en unos segundos.');
+      await clearLocalAuthStorage();
+      toast.error('Error de conexión. Limpié la sesión local, probá de nuevo.');
     }
     setSubmitting(false);
+  };
+
+  const handleClearStorage = async () => {
+    setSubmitting(true);
+    await clearLocalAuthStorage();
+    setSubmitting(false);
+    toast.success('Sesión local limpiada. Ya podés volver a intentar ingresar.');
   };
 
   return (
@@ -71,6 +94,9 @@ const LoginPage = () => {
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting ? 'Ingresando...' : 'Ingresar'}
+          </Button>
+          <Button type="button" variant="outline" className="w-full" disabled={submitting} onClick={handleClearStorage}>
+            Limpiar sesión local
           </Button>
         </form>
       </div>
