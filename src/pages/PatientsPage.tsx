@@ -59,7 +59,7 @@ const PatientsPage = () => {
                         >
                           <div className="flex items-center gap-2">
                             <Calendar className="w-3 h-3 text-muted-foreground" />
-                            <span>{format(new Date(apt.date), "d MMM yyyy", { locale: es })}</span>
+                            <span>{(() => { const [y, m, d] = apt.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d MMM yyyy", { locale: es }); })()}</span>
                             <span className="text-muted-foreground">— {apt.studyType}</span>
                           </div>
                           <div className="flex items-center gap-2">
