@@ -611,7 +611,7 @@ const AppointmentPage = () => {
                 <Edit2 className="w-3 h-3" />
               </button>
             </span>
-            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(appointment.date), "d/MM/yyyy")}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{(() => { const [y, m, d] = appointment.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d/MM/yyyy"); })()}</span>
             {appointment.patient.obraSocial && (
               <span>Obra Social: {appointment.patient.obraSocial}</span>
             )}
