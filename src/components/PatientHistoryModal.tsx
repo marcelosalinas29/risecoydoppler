@@ -57,7 +57,7 @@ const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: Pat
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="w-3 h-3" />
-                  {format(new Date(apt.date), "d 'de' MMMM yyyy", { locale: es })}
+                  {(() => { const [y, m, d] = apt.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d 'de' MMMM yyyy", { locale: es }); })()}
                   <span>— {apt.time}</span>
                 </div>
                 {apt.report && (
