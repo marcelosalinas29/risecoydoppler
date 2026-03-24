@@ -556,8 +556,10 @@ const AppointmentPage = () => {
       }
       phone = phone.replace(/\D/g, '');
 
+      const [wy, wm, wd] = appointment.date.split('-').map(Number);
+      const whatsappDate = format(new Date(wy, wm - 1, wd), "d/MM/yyyy");
       const message = encodeURIComponent(
-        `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${formatStudyType(appointment.studyType)}\nFecha: ${format(new Date(appointment.date), "d/MM/yyyy")}\n\n📄 *Descargá tu informe PDF aquí:*\n${publicUrl}`
+        `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${formatStudyType(appointment.studyType)}\nFecha: ${whatsappDate}\n\n📄 *Descargá tu informe PDF aquí:*\n${publicUrl}`
       );
       window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
 
