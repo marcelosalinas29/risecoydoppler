@@ -177,19 +177,19 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
         {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })} — {occupiedCount} cita(s)
       </h2>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse min-w-[900px]">
+      <div>
+        <table className="w-full text-xs border-collapse table-auto">
           <thead>
             <tr className="bg-muted/50">
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground w-16">Hora</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Paciente</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground w-24">DNI</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground w-28">Teléfono</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Obra Social</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Estudio</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground w-24">Estado</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground">Observaciones</th>
-              <th className="p-2 border border-border text-center font-semibold text-muted-foreground w-24">Acc.</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Paciente</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">DNI</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Teléfono</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Obra Social</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estado</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Observaciones</th>
+              <th className="p-2 border border-border text-center font-semibold text-muted-foreground whitespace-nowrap">Acc.</th>
             </tr>
           </thead>
           <tbody>
