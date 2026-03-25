@@ -197,7 +197,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
               const apt = appointmentMap.get(slot);
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
-              const hasHistory = apt && (patientAppointmentCounts.get(apt.patientId) || 0) > 1;
+              const hasHistory = apt && patientsWithHistory?.has(apt.patientId);
               const overbook = isOverbook(slot);
 
               const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
