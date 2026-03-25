@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
@@ -22,6 +22,19 @@ const Index = () => {
   const fetchPatients = useClinicStore((s) => s.fetchPatients);
   const loading = useClinicStore((s) => s.loading);
   const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots } = useScheduleStore();
+
+  const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
+  const dayAppointments = useMemo(
+    () => allAppointments.filter(a => a.date === dateStr),
+    [allAppointments, dateStr]
+  );
+  const patientsWithHistory = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of allAppointments) {
+      counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
+    }
+    return new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
+  }, [allAppointments]);
 
   useEffect(() => {
     fetchPatients();
@@ -114,9 +127,10 @@ const Index = () => {
           </div>
         ) : (
           <DailyView
-            appointments={allAppointments}
+            appointments={dayAppointments}
             selectedDate={selectedDate}
             doctorSlots={doctorSlots}
+            patientsWithHistory={patientsWithHistory}
           />
         )}
       </div>

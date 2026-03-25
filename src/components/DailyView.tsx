@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
+import InlineAppointmentForm from '@/components/InlineAppointmentForm';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -61,9 +62,10 @@ interface DailyViewProps {
   appointments: Appointment[];
   selectedDate: Date;
   doctorSlots?: string[] | null;
+  patientsWithHistory?: Set<string>;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
+const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory }: DailyViewProps) => {
   const navigate = useNavigate();
   const store = useClinicStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +78,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
+  const [preAppointmentSlot, setPreAppointmentSlot] = useState<string | null>(null);
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
@@ -90,12 +93,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
   const appointmentMap = useMemo(() => {
     const map = new Map<string, Appointment>();
     for (const a of appointments) {
-      if (a.date === dateStr) {
-        map.set(a.time, a);
-      }
+      map.set(a.time, a);
     }
     return map;
-  }, [appointments, dateStr]);
+  }, [appointments]);
 
   const timeSlots = useMemo(() => {
     const baseSlots = doctorSlots && doctorSlots.length > 0 ? doctorSlots : DEFAULT_TIME_SLOTS;
@@ -105,14 +106,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
     }
     return [...slotSet].sort();
   }, [doctorSlots, appointmentMap]);
-
-  const patientAppointmentCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const a of appointments) {
-      counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
-    }
-    return counts;
-  }, [appointments]);
 
   const occupiedCount = appointmentMap.size;
 
@@ -204,7 +197,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
               const apt = appointmentMap.get(slot);
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
-              const hasHistory = apt && (patientAppointmentCounts.get(apt.patientId) || 0) > 1;
+              const hasHistory = apt && patientsWithHistory?.has(apt.patientId);
               const overbook = isOverbook(slot);
 
               const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
@@ -335,9 +328,23 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
                           )}
                         </td>
                       </>
+                    ) : preAppointmentSlot === slot ? (
+                      <InlineAppointmentForm
+                        slot={slot}
+                        date={dateStr}
+                        onCancel={() => setPreAppointmentSlot(null)}
+                        onSaved={() => {
+                          setPreAppointmentSlot(null);
+                          store.fetchAppointments();
+                        }}
+                      />
                     ) : (
-                      <td colSpan={8} className="p-1.5 border border-border text-center text-muted-foreground/60 italic">
-                        Disponible
+                      <td
+                        colSpan={8}
+                        className="p-1.5 border border-border text-center text-muted-foreground/60 italic cursor-pointer hover:bg-primary/5 hover:text-primary transition-colors"
+                        onClick={() => setPreAppointmentSlot(slot)}
+                      >
+                        + Nuevo turno
                       </td>
                     )}
                   </tr>
@@ -433,4 +440,4 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
   );
 };
 
-export default DailyView;
+export default memo(DailyView);

@@ -74,9 +74,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
 
   fetchAppointments: async () => {
     set({ loading: true });
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
     const { data } = await supabase
       .from('appointments')
       .select('*, patients(*)')
+      .gte('date', dateFilter)
       .order('created_at', { ascending: false });
     if (data) {
       set({ appointments: data.map(mapAppointment) });
