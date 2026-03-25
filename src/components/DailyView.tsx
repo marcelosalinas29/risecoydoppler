@@ -328,9 +328,23 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                           )}
                         </td>
                       </>
+                    ) : preAppointmentSlot === slot ? (
+                      <InlineAppointmentForm
+                        slot={slot}
+                        date={dateStr}
+                        onCancel={() => setPreAppointmentSlot(null)}
+                        onSaved={() => {
+                          setPreAppointmentSlot(null);
+                          store.fetchAppointments();
+                        }}
+                      />
                     ) : (
-                      <td colSpan={8} className="p-1.5 border border-border text-center text-muted-foreground/60 italic">
-                        Disponible
+                      <td
+                        colSpan={8}
+                        className="p-1.5 border border-border text-center text-muted-foreground/60 italic cursor-pointer hover:bg-primary/5 hover:text-primary transition-colors"
+                        onClick={() => setPreAppointmentSlot(slot)}
+                      >
+                        + Nuevo turno
                       </td>
                     )}
                   </tr>
