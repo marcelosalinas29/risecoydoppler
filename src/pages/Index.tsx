@@ -127,9 +127,10 @@ const Index = () => {
           </div>
         ) : (
           <DailyView
-            appointments={allAppointments}
+            appointments={dayAppointments}
             selectedDate={selectedDate}
             doctorSlots={doctorSlots}
+            patientsWithHistory={patientsWithHistory}
           />
         )}
       </div>

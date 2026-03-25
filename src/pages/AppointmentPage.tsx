@@ -241,155 +241,160 @@ const AppointmentPage = () => {
     doc.setLineWidth(0.3);
     doc.line(margin, y, pageWidth - margin, y);
 
-    // ====== REPORT BODY with bold support ======
+    // ====== REPORT BODY with rich formatting ======
     y += 8;
-    doc.setFontSize(10);
 
-    /** Parse HTML into segments of {text, bold} preserving line breaks */
-    const parseHtmlToSegments = (html: string): Array<Array<{ text: string; bold: boolean }>> => {
-      // Split by block-level tags into lines
-      const blockHtml = html
-        .replace(/<\/p>/gi, '\n')
-        .replace(/<\/div>/gi, '\n')
-        .replace(/<\/li>/gi, '\n')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/h[1-6]>/gi, '\n');
+    interface TextSegment { text: string; bold: boolean; italic: boolean; underline: boolean; }
+    interface PdfParagraph { segments: TextSegment[]; lineHeight: number; align: 'left' | 'center' | 'right'; }
 
-      // Process each line
-      const lines = blockHtml.split('\n');
-      const result: Array<Array<{ text: string; bold: boolean }>> = [];
+    const parseHtmlToPdfParagraphs = (html: string): PdfParagraph[] => {
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      const paragraphs: PdfParagraph[] = [];
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          result.push([]); // empty line = paragraph break
-          continue;
+      const extractSegments = (node: Node, style: { bold: boolean; italic: boolean; underline: boolean }): TextSegment[] => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent || '';
+          if (!text) return [];
+          return [{ text, ...style }];
         }
+        if (node.nodeType !== Node.ELEMENT_NODE) return [];
+        const el = node as HTMLElement;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'br') return [{ text: '\n', ...style }];
+        const newStyle = { ...style };
+        if (tag === 'strong' || tag === 'b') newStyle.bold = true;
+        if (tag === 'em' || tag === 'i') newStyle.italic = true;
+        if (tag === 'u') newStyle.underline = true;
+        if (el.style.fontWeight === 'bold' || parseInt(el.style.fontWeight) >= 700) newStyle.bold = true;
+        if (el.style.fontStyle === 'italic') newStyle.italic = true;
+        if (el.style.textDecoration?.includes('underline')) newStyle.underline = true;
+        const segs: TextSegment[] = [];
+        for (const child of Array.from(el.childNodes)) {
+          segs.push(...extractSegments(child, newStyle));
+        }
+        return segs;
+      };
 
-        // Parse inline bold tags (<strong>, <b>)
-        const segments: Array<{ text: string; bold: boolean }> = [];
-        const regex = /<(strong|b)>(.*?)<\/\1>/gi;
-        let lastIndex = 0;
-        let match: RegExpExecArray | null;
-
-        // Work on a copy stripped of non-bold tags
-        const cleanLine = trimmed.replace(/<(?!\/?(?:strong|b)>)[^>]+>/gi, '');
-
-        while ((match = regex.exec(cleanLine)) !== null) {
-          // Text before the bold tag
-          if (match.index > lastIndex) {
-            const before = cleanLine.substring(lastIndex, match.index);
-            const plain = before.replace(/<[^>]+>/g, '');
-            if (plain) segments.push({ text: plain, bold: false });
+      const processBlock = (el: HTMLElement) => {
+        const lh = parseFloat(el.style.lineHeight) || 1.5;
+        const align = (el.style.textAlign || 'left') as 'left' | 'center' | 'right';
+        const rawSegments = extractSegments(el, { bold: false, italic: false, underline: false });
+        const subParas: TextSegment[][] = [[]];
+        for (const seg of rawSegments) {
+          if (seg.text.includes('\n')) {
+            const parts = seg.text.split('\n');
+            for (let i = 0; i < parts.length; i++) {
+              if (i > 0) subParas.push([]);
+              if (parts[i]) subParas[subParas.length - 1].push({ ...seg, text: parts[i] });
+            }
+          } else {
+            subParas[subParas.length - 1].push(seg);
           }
-          // Bold text
-          const boldText = match[2].replace(/<[^>]+>/g, '');
-          if (boldText) segments.push({ text: boldText, bold: true });
-          lastIndex = match.index + match[0].length;
         }
-
-        // Remaining text after last bold tag
-        if (lastIndex < cleanLine.length) {
-          const remaining = cleanLine.substring(lastIndex).replace(/<[^>]+>/g, '');
-          if (remaining) segments.push({ text: remaining, bold: false });
+        for (const sub of subParas) {
+          paragraphs.push({ segments: sub, lineHeight: lh, align });
         }
+      };
 
-        if (segments.length === 0) {
-          // No bold tags found, strip all HTML
-          const plain = cleanLine.replace(/<[^>]+>/g, '');
-          if (plain) segments.push({ text: plain, bold: false });
+      for (const child of Array.from(container.childNodes)) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const el = child as HTMLElement;
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'ul' || tag === 'ol') {
+            el.querySelectorAll('li').forEach((li, idx) => {
+              const bullet = tag === 'ol' ? `${idx + 1}. ` : '• ';
+              const segs = extractSegments(li, { bold: false, italic: false, underline: false });
+              segs.unshift({ text: bullet, bold: false, italic: false, underline: false });
+              paragraphs.push({ segments: segs, lineHeight: parseFloat((li as HTMLElement).style.lineHeight) || 1.5, align: 'left' });
+            });
+          } else {
+            processBlock(el);
+          }
+        } else if (child.nodeType === Node.TEXT_NODE) {
+          const txt = child.textContent?.trim();
+          if (txt) paragraphs.push({ segments: [{ text: txt, bold: false, italic: false, underline: false }], lineHeight: 1.5, align: 'left' });
         }
-
-        if (segments.length > 0) result.push(segments);
       }
-      return result;
+      return paragraphs;
     };
 
-    /** Render segments into PDF with word-wrap and bold support */
-    const renderSegments = (segmentLines: Array<Array<{ text: string; bold: boolean }>>) => {
-      for (const segments of segmentLines) {
-        if (segments.length === 0) {
-          y += 3; // paragraph spacing
+    const renderPdfParagraphs = (paras: PdfParagraph[]) => {
+      const baseLine = 5;
+      for (const para of paras) {
+        if (para.segments.length === 0) {
+          y += baseLine * (para.lineHeight / 1.5) * 0.6;
           continue;
         }
-
-        // Build the full text to measure for word wrap
-        const fullText = segments.map(s => s.text).join('');
+        const lineSpacing = baseLine * (para.lineHeight / 1.5);
+        const fullText = para.segments.map(s => s.text).join('');
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
         const wrappedLines = doc.splitTextToSize(fullText, contentWidth);
+        let globalCharIdx = 0;
 
-        if (wrappedLines.length === 1) {
-          // Single line: render each segment with proper font
-          let xPos = margin;
-          for (const seg of segments) {
-            doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-            doc.text(seg.text, xPos, y);
-            xPos += doc.getTextWidth(seg.text);
+        for (const wLine of wrappedLines) {
+          if (y > pageHeight - 50) { drawFooter(); doc.addPage(); y = 20; }
+
+          // Calculate actual line width for alignment
+          let calcWidth = 0;
+          let tci = globalCharIdx, tsi = 0, tso = 0, tt = 0;
+          for (let i = 0; i < para.segments.length; i++) {
+            if (tt + para.segments[i].text.length > tci) { tsi = i; tso = tci - tt; break; }
+            tt += para.segments[i].text.length;
           }
-          y += 5;
-        } else {
-          // Multi-line: render with bold tracking across line breaks
-          let charIndex = 0;
-          for (const wLine of wrappedLines) {
-            if (y > pageHeight - 50) {
-              drawFooter();
-              doc.addPage();
-              y = 20;
-            }
-            // Map each character to bold/normal based on segments
-            let xPos = margin;
-            let segCharIdx = 0;
-            let currentSegment = 0;
-            let segOffset = 0;
-
-            // Find which segment corresponds to charIndex
-            let tempIdx = 0;
-            for (let si = 0; si < segments.length; si++) {
-              if (tempIdx + segments[si].text.length > charIndex) {
-                currentSegment = si;
-                segOffset = charIndex - tempIdx;
-                break;
-              }
-              tempIdx += segments[si].text.length;
-            }
-
-            // Render character runs with same style
-            let linePos = 0;
-            while (linePos < wLine.length) {
-              const seg = segments[currentSegment];
-              if (!seg) break;
-              const remainInSeg = seg.text.length - segOffset;
-              const remainInLine = wLine.length - linePos;
-              const runLen = Math.min(remainInSeg, remainInLine);
-              const runText = wLine.substring(linePos, linePos + runLen);
-
-              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-              doc.text(runText, xPos, y);
-              xPos += doc.getTextWidth(runText);
-
-              linePos += runLen;
-              segOffset += runLen;
-              charIndex += runLen;
-
-              if (segOffset >= seg.text.length) {
-                currentSegment++;
-                segOffset = 0;
-              }
-            }
-            y += 5;
+          let tlp = 0;
+          while (tlp < wLine.length) {
+            const seg = para.segments[tsi];
+            if (!seg) break;
+            const rl = Math.min(seg.text.length - tso, wLine.length - tlp);
+            const rt = wLine.substring(tlp, tlp + rl);
+            const fs = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+            doc.setFont('helvetica', fs);
+            calcWidth += doc.getTextWidth(rt);
+            tlp += rl; tso += rl;
+            if (tso >= seg.text.length) { tsi++; tso = 0; }
           }
-        }
 
-        if (y > pageHeight - 50) {
-          drawFooter();
-          doc.addPage();
-          y = 20;
+          let xStart = margin;
+          if (para.align === 'center') xStart = margin + (contentWidth - calcWidth) / 2;
+          else if (para.align === 'right') xStart = margin + contentWidth - calcWidth;
+
+          // Find starting segment
+          let segIdx = 0, segOff = 0;
+          tt = 0;
+          for (let i = 0; i < para.segments.length; i++) {
+            if (tt + para.segments[i].text.length > globalCharIdx) { segIdx = i; segOff = globalCharIdx - tt; break; }
+            tt += para.segments[i].text.length;
+          }
+
+          let xPos = xStart, linePos = 0;
+          while (linePos < wLine.length) {
+            const seg = para.segments[segIdx];
+            if (!seg) break;
+            const runLen = Math.min(seg.text.length - segOff, wLine.length - linePos);
+            const runText = wLine.substring(linePos, linePos + runLen);
+            const fontStyle = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+            doc.setFont('helvetica', fontStyle);
+            doc.text(runText, xPos, y);
+            const tw = doc.getTextWidth(runText);
+            if (seg.underline) {
+              doc.setLineWidth(0.3);
+              doc.setDrawColor(0, 0, 0);
+              doc.line(xPos, y + 1, xPos + tw, y + 1);
+            }
+            xPos += tw;
+            linePos += runLen; segOff += runLen; globalCharIdx += runLen;
+            if (segOff >= seg.text.length) { segIdx++; segOff = 0; }
+          }
+          y += lineSpacing;
         }
+        if (y > pageHeight - 50) { drawFooter(); doc.addPage(); y = 20; }
       }
     };
 
-    const segmentLines = parseHtmlToSegments(report || '<p>Sin informe</p>');
-    renderSegments(segmentLines);
+    const pdfParagraphs = parseHtmlToPdfParagraphs(report || '<p>Sin informe</p>');
+    renderPdfParagraphs(pdfParagraphs);
 
     // ====== SIGNATURE - right-aligned, below report ======
     y += 10;

@@ -440,4 +440,4 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   );
 };
 
-export default DailyView;
+export default memo(DailyView);
