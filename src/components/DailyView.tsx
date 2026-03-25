@@ -234,7 +234,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                     {isOccupied && apt ? (
                       <>
                         <td
-                          className="p-1.5 border border-border font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                          className="p-1.5 border border-border font-semibold text-foreground cursor-pointer hover:text-primary transition-colors whitespace-nowrap"
                           onClick={() => navigate(`/appointment/${apt.id}`)}
                         >
                           {apt.patient.name}
