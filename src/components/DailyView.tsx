@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
+import InlineAppointmentForm from '@/components/InlineAppointmentForm';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
