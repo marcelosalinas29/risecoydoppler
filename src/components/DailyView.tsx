@@ -93,12 +93,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const appointmentMap = useMemo(() => {
     const map = new Map<string, Appointment>();
     for (const a of appointments) {
-      if (a.date === dateStr) {
-        map.set(a.time, a);
-      }
+      map.set(a.time, a);
     }
     return map;
-  }, [appointments, dateStr]);
+  }, [appointments]);
 
   const timeSlots = useMemo(() => {
     const baseSlots = doctorSlots && doctorSlots.length > 0 ? doctorSlots : DEFAULT_TIME_SLOTS;
@@ -108,14 +106,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     }
     return [...slotSet].sort();
   }, [doctorSlots, appointmentMap]);
-
-  const patientAppointmentCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const a of appointments) {
-      counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
-    }
-    return counts;
-  }, [appointments]);
 
   const occupiedCount = appointmentMap.size;
 
