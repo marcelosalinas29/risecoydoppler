@@ -62,9 +62,10 @@ interface DailyViewProps {
   appointments: Appointment[];
   selectedDate: Date;
   doctorSlots?: string[] | null;
+  patientsWithHistory?: Set<string>;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) => {
+const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory }: DailyViewProps) => {
   const navigate = useNavigate();
   const store = useClinicStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,6 +78,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots }: DailyViewProps) 
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
+  const [preAppointmentSlot, setPreAppointmentSlot] = useState<string | null>(null);
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
