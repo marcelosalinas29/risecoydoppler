@@ -3,7 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
-import { Check, X, Search } from 'lucide-react';
+import { Check, X, Search, FileText } from 'lucide-react';
+import StudyTypeSelector from '@/components/StudyTypeSelector';
 
 interface Props {
   slot: string;
