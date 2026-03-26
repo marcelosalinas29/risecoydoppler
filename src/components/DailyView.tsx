@@ -249,7 +249,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       <>
                         <td className="p-1.5 border border-border whitespace-nowrap">
                           {isEditing ? (
-                            <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value }))} className="h-7 text-xs" placeholder="Nombre" />
+                            <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Nombre" />
                           ) : (
                             <span className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/appointment/${apt.id}`)}>
                               {apt.patient.name}
@@ -287,7 +287,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
-                            <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value }))} className="h-7 text-xs" placeholder="Obra Social" />
+                            <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Obra Social" />
                           ) : (
                             apt.patient.obraSocial || '-'
                           )}
@@ -318,7 +318,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         </td>
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
-                            <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value }))} className="h-7 text-xs" placeholder="Observaciones..." />
+                            <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Observaciones..." />
                           ) : (
                             <span className="text-muted-foreground">{apt.observations || '-'}</span>
                           )}
