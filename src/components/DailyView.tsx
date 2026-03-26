@@ -120,6 +120,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       studyType: apt.studyType,
       status: apt.status,
       observations: apt.observations || '',
+      patientName: apt.patient.name,
+      patientDni: apt.patient.dni || '',
+      patientPhone: apt.patient.phone,
+      patientObraSocial: apt.patient.obraSocial || '',
     });
   };
 
