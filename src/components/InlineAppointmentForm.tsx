@@ -119,9 +119,9 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       <td className="p-1 border border-border">
         <Input
           value={obraSocial}
-          onChange={(e) => setObraSocial(e.target.value)}
+          onChange={(e) => setObraSocial(e.target.value.toUpperCase())}
           placeholder="O.S."
-          className="h-6 text-xs"
+          className="h-6 text-xs uppercase"
           onKeyDown={handleKeyDown}
         />
       </td>
