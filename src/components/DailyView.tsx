@@ -249,7 +249,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       <>
                         <td className="p-1.5 border border-border whitespace-nowrap">
                           {isEditing ? (
-                            <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value }))} className="h-7 text-xs" placeholder="Nombre" />
+                            <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Nombre" />
                           ) : (
                             <span className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/appointment/${apt.id}`)}>
                               {apt.patient.name}
