@@ -318,7 +318,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         </td>
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
-                            <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value }))} className="h-7 text-xs" placeholder="Observaciones..." />
+                            <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Observaciones..." />
                           ) : (
                             <span className="text-muted-foreground">{apt.observations || '-'}</span>
                           )}
