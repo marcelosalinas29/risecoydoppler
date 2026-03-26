@@ -135,6 +135,12 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       if (editData.studyType !== apt.studyType) await store.updateAppointmentStudyType(apt.id, editData.studyType);
       if (editData.status !== apt.status) await store.updateAppointmentStatus(apt.id, editData.status);
       if (editData.observations !== (apt.observations || '')) await store.updateAppointmentObservations(apt.id, editData.observations);
+      const patientChanges: any = {};
+      if (editData.patientName !== apt.patient.name) patientChanges.name = editData.patientName;
+      if (editData.patientDni !== (apt.patient.dni || '')) patientChanges.dni = editData.patientDni;
+      if (editData.patientPhone !== apt.patient.phone) patientChanges.phone = editData.patientPhone;
+      if (editData.patientObraSocial !== (apt.patient.obraSocial || '')) patientChanges.obraSocial = editData.patientObraSocial;
+      if (Object.keys(patientChanges).length > 0) await store.updatePatient(apt.patientId, patientChanges);
       setEditingId(null);
       toast.success('Cita actualizada');
     } catch {
