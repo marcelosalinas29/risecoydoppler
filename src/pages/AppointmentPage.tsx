@@ -62,6 +62,26 @@ const AppointmentPage = () => {
   const [showStudySelector, setShowStudySelector] = useState(false);
   const [isEditing, setIsEditing] = useState(!appointment?.report);
   const [report, setReport] = useState(appointment?.report || '');
+  const [editingPatient, setEditingPatient] = useState(false);
+  const [patientForm, setPatientForm] = useState({
+    name: '',
+    dni: '',
+    phone: '',
+    obraSocial: '',
+    fechaNacimiento: '',
+  });
+
+  useEffect(() => {
+    if (appointment) {
+      setPatientForm({
+        name: appointment.patient.name,
+        dni: appointment.patient.dni || '',
+        phone: appointment.patient.phone,
+        obraSocial: appointment.patient.obraSocial || '',
+        fechaNacimiento: appointment.patient.fechaNacimiento || '',
+      });
+    }
+  }, [appointment?.patient.id]);
 
   useEffect(() => {
     if (!appointment && id) {
