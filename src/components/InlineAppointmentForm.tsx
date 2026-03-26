@@ -85,9 +85,9 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       <td className="p-1 border border-border">
         <Input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value.toUpperCase())}
           placeholder="Nombre"
-          className="h-6 text-xs"
+          className="h-6 text-xs uppercase"
           onKeyDown={handleKeyDown}
           autoFocus
         />
