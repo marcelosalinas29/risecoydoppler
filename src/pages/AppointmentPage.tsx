@@ -107,6 +107,23 @@ const AppointmentPage = () => {
     toast.success('Informe guardado');
   }, [id, report, store, appointment?.status, isSecretary, user]);
 
+  const handleSavePatient = async () => {
+    if (!appointment) return;
+    try {
+      await store.updatePatient(appointment.patient.id, {
+        name: patientForm.name.toUpperCase(),
+        dni: patientForm.dni,
+        phone: patientForm.phone,
+        obraSocial: patientForm.obraSocial.toUpperCase(),
+        fechaNacimiento: patientForm.fechaNacimiento || undefined,
+      });
+      setEditingPatient(false);
+      toast.success('Datos del paciente actualizados');
+    } catch {
+      toast.error('Error al actualizar los datos');
+    }
+  };
+
   const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
     await store.updateAppointmentStatus(id, status);
