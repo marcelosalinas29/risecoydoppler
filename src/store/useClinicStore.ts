@@ -244,12 +244,17 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.dni !== undefined) updateData.dni = data.dni;
     if (data.obraSocial !== undefined) updateData.obra_social = data.obraSocial;
-    if (data.fechaNacimiento !== undefined) updateData.fecha_nacimiento = data.fechaNacimiento;
+    if (data.fechaNacimiento !== undefined) {
+      updateData.fecha_nacimiento = data.fechaNacimiento;
+      updateData.age = calcularEdad(data.fechaNacimiento);
+    }
     const { error } = await supabase.from('patients').update(updateData).eq('id', id);
     if (error) throw error;
+    const age = data.fechaNacimiento ? calcularEdad(data.fechaNacimiento) : undefined;
+    const merged = age !== undefined ? { ...data, age } : data;
     set((s) => ({
-      patients: s.patients.map((p) => p.id === id ? { ...p, ...data } : p),
-      appointments: s.appointments.map((a) => a.patientId === id ? { ...a, patient: { ...a.patient, ...data } } : a),
+      patients: s.patients.map((p) => p.id === id ? { ...p, ...merged } : p),
+      appointments: s.appointments.map((a) => a.patientId === id ? { ...a, patient: { ...a.patient, ...merged } } : a),
     }));
   },
 
