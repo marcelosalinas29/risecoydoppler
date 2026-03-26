@@ -24,6 +24,7 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
   const [observations, setObservations] = useState('');
   const [patientId, setPatientId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showStudySelector, setShowStudySelector] = useState(false);
 
   const lookupDni = async () => {
     if (!dni.trim()) return;
