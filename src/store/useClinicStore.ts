@@ -25,6 +25,7 @@ interface ClinicStore {
   getAppointmentsByDate: (date: string) => Appointment[];
   getPatientAppointments: (patientId: string) => Appointment[];
   searchPatients: (query: string) => Patient[];
+  updatePatient: (id: string, data: Partial<Pick<Patient, 'name' | 'phone' | 'dni' | 'obraSocial' | 'fechaNacimiento'>>) => Promise<void>;
   getAppointment: (id: string) => Appointment | undefined;
   getPatient: (id: string) => Patient | undefined;
   findPatientByDni: (dni: string) => Promise<Patient | null>;
