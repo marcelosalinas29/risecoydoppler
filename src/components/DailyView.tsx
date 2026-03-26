@@ -74,7 +74,11 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     studyType: string;
     status: StudyStatus;
     observations: string;
-  }>({ time: '', studyType: '', status: 'pending', observations: '' });
+    patientName: string;
+    patientDni: string;
+    patientPhone: string;
+    patientObraSocial: string;
+  }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '' });
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
@@ -116,6 +120,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       studyType: apt.studyType,
       status: apt.status,
       observations: apt.observations || '',
+      patientName: apt.patient.name,
+      patientDni: apt.patient.dni || '',
+      patientPhone: apt.patient.phone,
+      patientObraSocial: apt.patient.obraSocial || '',
     });
   };
 
@@ -127,6 +135,12 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       if (editData.studyType !== apt.studyType) await store.updateAppointmentStudyType(apt.id, editData.studyType);
       if (editData.status !== apt.status) await store.updateAppointmentStatus(apt.id, editData.status);
       if (editData.observations !== (apt.observations || '')) await store.updateAppointmentObservations(apt.id, editData.observations);
+      const patientChanges: any = {};
+      if (editData.patientName !== apt.patient.name) patientChanges.name = editData.patientName;
+      if (editData.patientDni !== (apt.patient.dni || '')) patientChanges.dni = editData.patientDni;
+      if (editData.patientPhone !== apt.patient.phone) patientChanges.phone = editData.patientPhone;
+      if (editData.patientObraSocial !== (apt.patient.obraSocial || '')) patientChanges.obraSocial = editData.patientObraSocial;
+      if (Object.keys(patientChanges).length > 0) await store.updatePatient(apt.patientId, patientChanges);
       setEditingId(null);
       toast.success('Cita actualizada');
     } catch {
@@ -233,32 +247,51 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
 
                     {isOccupied && apt ? (
                       <>
-                        <td
-                          className="p-1.5 border border-border font-semibold text-foreground cursor-pointer hover:text-primary transition-colors whitespace-nowrap"
-                          onClick={() => navigate(`/appointment/${apt.id}`)}
-                        >
-                          {apt.patient.name}
+                        <td className="p-1.5 border border-border whitespace-nowrap">
+                          {isEditing ? (
+                            <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value }))} className="h-7 text-xs" placeholder="Nombre" />
+                          ) : (
+                            <span className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/appointment/${apt.id}`)}>
+                              {apt.patient.name}
+                            </span>
+                          )}
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            {apt.patient.dni || '-'}
-                            {hasHistory && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setHistoryPatientId(apt.patientId);
-                                  setHistoryPatientName(apt.patient.name);
-                                }}
-                                className="text-primary hover:text-primary/80 transition-colors"
-                                title="Ver historial de estudios"
-                              >
-                                <ClipboardList className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </span>
+                          {isEditing ? (
+                            <Input value={editData.patientDni} onChange={(e) => setEditData(d => ({ ...d, patientDni: e.target.value }))} className="h-7 text-xs" placeholder="DNI" />
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              {apt.patient.dni || '-'}
+                              {hasHistory && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHistoryPatientId(apt.patientId);
+                                    setHistoryPatientName(apt.patient.name);
+                                  }}
+                                  className="text-primary hover:text-primary/80 transition-colors"
+                                  title="Ver historial de estudios"
+                                >
+                                  <ClipboardList className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </span>
+                          )}
                         </td>
-                        <td className="p-1.5 border border-border text-muted-foreground">{apt.patient.phone}</td>
-                        <td className="p-1.5 border border-border text-muted-foreground">{apt.patient.obraSocial || '-'}</td>
+                        <td className="p-1.5 border border-border text-muted-foreground">
+                          {isEditing ? (
+                            <Input value={editData.patientPhone} onChange={(e) => setEditData(d => ({ ...d, patientPhone: e.target.value }))} className="h-7 text-xs" placeholder="Teléfono" />
+                          ) : (
+                            apt.patient.phone
+                          )}
+                        </td>
+                        <td className="p-1.5 border border-border text-muted-foreground">
+                          {isEditing ? (
+                            <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value }))} className="h-7 text-xs" placeholder="Obra Social" />
+                          ) : (
+                            apt.patient.obraSocial || '-'
+                          )}
+                        </td>
                         <td className="p-1.5 border border-border">
                           {isEditing ? (
                             <Input value={editData.studyType} onChange={(e) => setEditData(d => ({ ...d, studyType: e.target.value }))} className="h-7 text-xs" />
