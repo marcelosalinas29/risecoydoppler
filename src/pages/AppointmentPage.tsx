@@ -2,7 +2,9 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2 } from 'lucide-react';
+import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { calcularEdad } from '@/types/medical';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,6 +62,26 @@ const AppointmentPage = () => {
   const [showStudySelector, setShowStudySelector] = useState(false);
   const [isEditing, setIsEditing] = useState(!appointment?.report);
   const [report, setReport] = useState(appointment?.report || '');
+  const [editingPatient, setEditingPatient] = useState(false);
+  const [patientForm, setPatientForm] = useState({
+    name: '',
+    dni: '',
+    phone: '',
+    obraSocial: '',
+    fechaNacimiento: '',
+  });
+
+  useEffect(() => {
+    if (appointment) {
+      setPatientForm({
+        name: appointment.patient.name,
+        dni: appointment.patient.dni || '',
+        phone: appointment.patient.phone,
+        obraSocial: appointment.patient.obraSocial || '',
+        fechaNacimiento: appointment.patient.fechaNacimiento || '',
+      });
+    }
+  }, [appointment?.patient.id]);
 
   useEffect(() => {
     if (!appointment && id) {
@@ -84,6 +106,23 @@ const AppointmentPage = () => {
     }
     toast.success('Informe guardado');
   }, [id, report, store, appointment?.status, isSecretary, user]);
+
+  const handleSavePatient = async () => {
+    if (!appointment) return;
+    try {
+      await store.updatePatient(appointment.patient.id, {
+        name: patientForm.name.toUpperCase(),
+        dni: patientForm.dni,
+        phone: patientForm.phone,
+        obraSocial: patientForm.obraSocial.toUpperCase(),
+        fechaNacimiento: patientForm.fechaNacimiento || undefined,
+      });
+      setEditingPatient(false);
+      toast.success('Datos del paciente actualizados');
+    } catch {
+      toast.error('Error al actualizar los datos');
+    }
+  };
 
   const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
@@ -599,28 +638,73 @@ const AppointmentPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-lg">{appointment.patient.name}</span>
+              {editingPatient ? (
+                <Input
+                  value={patientForm.name}
+                  onChange={(e) => setPatientForm(f => ({ ...f, name: e.target.value.toUpperCase() }))}
+                  className="uppercase font-semibold text-lg h-8"
+                  placeholder="NOMBRE Y APELLIDO"
+                />
+              ) : (
+                <span className="font-semibold text-lg">{appointment.patient.name}</span>
+              )}
             </div>
-            <Badge variant="outline" className={statusClass[currentAppointment.status]}>
-              {STATUS_LABELS[currentAppointment.status]}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={statusClass[currentAppointment.status]}>
+                {STATUS_LABELS[currentAppointment.status]}
+              </Badge>
+              {editingPatient ? (
+                <Button variant="ghost" size="sm" onClick={handleSavePatient}>
+                  <Save className="w-4 h-4 text-primary" />
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setEditingPatient(true)}>
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
-            <span>Edad: {appointment.patient.age} años</span>
-            <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
-            <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" />
-              <span className="uppercase font-bold text-xs">{formatStudyType(currentAppointment.studyType)}</span>
-              <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
-                <Edit2 className="w-3 h-3" />
-              </button>
-            </span>
-            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{(() => { const [y, m, d] = appointment.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d/MM/yyyy"); })()}</span>
-            {appointment.patient.obraSocial && (
-              <span>Obra Social: {appointment.patient.obraSocial}</span>
-            )}
-          </div>
+
+          {editingPatient ? (
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <label className="text-xs text-muted-foreground">DNI</label>
+                <Input value={patientForm.dni} onChange={(e) => setPatientForm(f => ({ ...f, dni: e.target.value }))} className="h-8" placeholder="DNI" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Fecha Nac.</label>
+                <Input type="date" value={patientForm.fechaNacimiento} onChange={(e) => setPatientForm(f => ({ ...f, fechaNacimiento: e.target.value }))} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Teléfono</label>
+                <Input value={patientForm.phone} onChange={(e) => setPatientForm(f => ({ ...f, phone: e.target.value }))} className="h-8" placeholder="Teléfono" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Obra Social</label>
+                <Input value={patientForm.obraSocial} onChange={(e) => setPatientForm(f => ({ ...f, obraSocial: e.target.value.toUpperCase() }))} className="uppercase h-8" placeholder="Obra Social" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-muted-foreground">Edad calculada: {patientForm.fechaNacimiento ? calcularEdad(patientForm.fechaNacimiento) : appointment.patient.age} años</label>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+              {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
+              <span>Edad: {appointment.patient.age} años</span>
+              <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
+              <span className="flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                <span className="uppercase font-bold text-xs">{formatStudyType(currentAppointment.studyType)}</span>
+                <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              </span>
+              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{(() => { const [y, m, d] = appointment.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d/MM/yyyy"); })()}</span>
+              {appointment.patient.obraSocial && (
+                <span>Obra Social: {appointment.patient.obraSocial}</span>
+              )}
+            </div>
+          )}
 
           <StudyTypeSelector
             open={showStudySelector}
