@@ -237,6 +237,21 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   getAppointment: (id) => get().appointments.find((a) => a.id === id),
+  updatePatient: async (id, data) => {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.dni !== undefined) updateData.dni = data.dni;
+    if (data.obraSocial !== undefined) updateData.obra_social = data.obraSocial;
+    if (data.fechaNacimiento !== undefined) updateData.fecha_nacimiento = data.fechaNacimiento;
+    const { error } = await supabase.from('patients').update(updateData).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      patients: s.patients.map((p) => p.id === id ? { ...p, ...data } : p),
+      appointments: s.appointments.map((a) => a.patientId === id ? { ...a, patient: { ...a.patient, ...data } } : a),
+    }));
+  },
+
   getPatient: (id) => get().patients.find((p) => p.id === id),
 
   findPatientByDni: async (dni: string) => {
