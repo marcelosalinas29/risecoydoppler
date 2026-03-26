@@ -287,7 +287,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
-                            <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value }))} className="h-7 text-xs" placeholder="Obra Social" />
+                            <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Obra Social" />
                           ) : (
                             apt.patient.obraSocial || '-'
                           )}
