@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Appointment, StudyStatus } from '@/types/medical';
-import { STATUS_LABELS, formatStudyType } from '@/types/medical';
+import { STATUS_LABELS, formatStudyType, calcularEdad } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -78,7 +78,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     patientDni: string;
     patientPhone: string;
     patientObraSocial: string;
-  }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '' });
+    patientFechaNacimiento: string;
+  }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '', patientFechaNacimiento: '' });
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
@@ -124,6 +125,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       patientDni: apt.patient.dni || '',
       patientPhone: apt.patient.phone,
       patientObraSocial: apt.patient.obraSocial || '',
+      patientFechaNacimiento: apt.patient.fechaNacimiento || '',
     });
   };
 
@@ -140,6 +142,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       if (editData.patientDni !== (apt.patient.dni || '')) patientChanges.dni = editData.patientDni;
       if (editData.patientPhone !== apt.patient.phone) patientChanges.phone = editData.patientPhone;
       if (editData.patientObraSocial !== (apt.patient.obraSocial || '')) patientChanges.obraSocial = editData.patientObraSocial;
+      if (editData.patientFechaNacimiento !== (apt.patient.fechaNacimiento || '')) patientChanges.fechaNacimiento = editData.patientFechaNacimiento;
       if (Object.keys(patientChanges).length > 0) await store.updatePatient(apt.patientId, patientChanges);
       setEditingId(null);
       toast.success('Cita actualizada');
@@ -198,6 +201,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Paciente</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">DNI</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">F.Nac. / Edad</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Teléfono</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Obra Social</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
@@ -224,14 +228,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                 <>
                   {showMorningSep && (
                     <tr key="morning-sep">
-                      <td colSpan={9} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
+                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
                         — MAÑANA —
                       </td>
                     </tr>
                   )}
                   {showAfternoonSep && (
                     <tr key="afternoon-sep">
-                      <td colSpan={9} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
+                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
                         — TARDE —
                       </td>
                     </tr>
@@ -274,6 +278,24 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                 >
                                   <ClipboardList className="w-3.5 h-3.5" />
                                 </button>
+                              )}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-1.5 border border-border text-muted-foreground">
+                          {isEditing ? (
+                            <div className="flex flex-col gap-0.5">
+                              <Input type="date" value={editData.patientFechaNacimiento} onChange={(e) => setEditData(d => ({ ...d, patientFechaNacimiento: e.target.value }))} className="h-7 text-xs" />
+                              {editData.patientFechaNacimiento && (
+                                <span className="text-[10px] text-muted-foreground">{calcularEdad(editData.patientFechaNacimiento)} años</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs">
+                              {apt.patient.fechaNacimiento ? (
+                                <>{apt.patient.fechaNacimiento} <span className="font-semibold">({calcularEdad(apt.patient.fechaNacimiento)}a)</span></>
+                              ) : (
+                                apt.patient.age ? <span className="font-semibold">{apt.patient.age}a</span> : '-'
                               )}
                             </span>
                           )}
@@ -373,7 +395,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       />
                     ) : (
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="p-1.5 border border-border text-center text-muted-foreground/60 italic cursor-pointer hover:bg-primary/5 hover:text-primary transition-colors"
                         onClick={() => setPreAppointmentSlot(slot)}
                       >

@@ -5,6 +5,7 @@ import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
 import { Check, X, Search, FileText } from 'lucide-react';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
+import { calcularEdad } from '@/types/medical';
 
 interface Props {
   slot: string;
@@ -105,6 +106,20 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
           <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={lookupDni} title="Buscar por DNI">
             <Search className="w-3 h-3" />
           </Button>
+        </div>
+      </td>
+      <td className="p-1 border border-border">
+        <div className="flex flex-col gap-0.5">
+          <Input
+            type="date"
+            value={fechaNacimiento}
+            onChange={(e) => setFechaNacimiento(e.target.value)}
+            className="h-6 text-xs"
+            onKeyDown={handleKeyDown}
+          />
+          {fechaNacimiento && (
+            <span className="text-[10px] text-muted-foreground">{calcularEdad(fechaNacimiento)} años</span>
+          )}
         </div>
       </td>
       <td className="p-1 border border-border">
