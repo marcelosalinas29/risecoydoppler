@@ -142,6 +142,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       if (editData.patientDni !== (apt.patient.dni || '')) patientChanges.dni = editData.patientDni;
       if (editData.patientPhone !== apt.patient.phone) patientChanges.phone = editData.patientPhone;
       if (editData.patientObraSocial !== (apt.patient.obraSocial || '')) patientChanges.obraSocial = editData.patientObraSocial;
+      if (editData.patientFechaNacimiento !== (apt.patient.fechaNacimiento || '')) patientChanges.fechaNacimiento = editData.patientFechaNacimiento;
       if (Object.keys(patientChanges).length > 0) await store.updatePatient(apt.patientId, patientChanges);
       setEditingId(null);
       toast.success('Cita actualizada');
