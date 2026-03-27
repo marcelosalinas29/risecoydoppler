@@ -125,6 +125,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       patientDni: apt.patient.dni || '',
       patientPhone: apt.patient.phone,
       patientObraSocial: apt.patient.obraSocial || '',
+      patientFechaNacimiento: apt.patient.fechaNacimiento || '',
     });
   };
 
