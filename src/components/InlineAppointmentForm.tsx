@@ -109,6 +109,20 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
         </div>
       </td>
       <td className="p-1 border border-border">
+        <div className="flex flex-col gap-0.5">
+          <Input
+            type="date"
+            value={fechaNacimiento}
+            onChange={(e) => setFechaNacimiento(e.target.value)}
+            className="h-6 text-xs"
+            onKeyDown={handleKeyDown}
+          />
+          {fechaNacimiento && (
+            <span className="text-[10px] text-muted-foreground">{calcularEdad(fechaNacimiento)} años</span>
+          )}
+        </div>
+      </td>
+      <td className="p-1 border border-border">
         <Input
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
