@@ -78,7 +78,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     patientDni: string;
     patientPhone: string;
     patientObraSocial: string;
-  }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '' });
+    patientFechaNacimiento: string;
+  }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '', patientFechaNacimiento: '' });
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
   const [historyPatientName, setHistoryPatientName] = useState('');
