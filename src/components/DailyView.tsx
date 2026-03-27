@@ -395,7 +395,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       />
                     ) : (
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="p-1.5 border border-border text-center text-muted-foreground/60 italic cursor-pointer hover:bg-primary/5 hover:text-primary transition-colors"
                         onClick={() => setPreAppointmentSlot(slot)}
                       >
