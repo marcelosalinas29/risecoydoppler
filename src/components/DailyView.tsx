@@ -228,7 +228,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                 <>
                   {showMorningSep && (
                     <tr key="morning-sep">
-                      <td colSpan={9} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
+                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
                         — MAÑANA —
                       </td>
                     </tr>
