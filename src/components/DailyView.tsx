@@ -403,7 +403,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       </td>
                     )}
                   </tr>
-                </>
+                </React.Fragment>
               );
             })}
           </tbody>
