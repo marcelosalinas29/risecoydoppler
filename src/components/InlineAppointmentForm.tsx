@@ -5,6 +5,7 @@ import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
 import { Check, X, Search, FileText } from 'lucide-react';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
+import { calcularEdad } from '@/types/medical';
 
 interface Props {
   slot: string;
