@@ -201,6 +201,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Paciente</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">DNI</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">F.Nac. / Edad</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Teléfono</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Obra Social</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
