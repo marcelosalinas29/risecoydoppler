@@ -225,7 +225,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
               const showAfternoonSep = prevHour !== null && prevHour < 13 && slotHour >= 13;
 
               return (
-                <>
+                <React.Fragment key={`slot-${slot}`}>
                   {showMorningSep && (
                     <tr key="morning-sep">
                       <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
