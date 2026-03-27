@@ -284,6 +284,24 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
+                            <div className="flex flex-col gap-0.5">
+                              <Input type="date" value={editData.patientFechaNacimiento} onChange={(e) => setEditData(d => ({ ...d, patientFechaNacimiento: e.target.value }))} className="h-7 text-xs" />
+                              {editData.patientFechaNacimiento && (
+                                <span className="text-[10px] text-muted-foreground">{calcularEdad(editData.patientFechaNacimiento)} años</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs">
+                              {apt.patient.fechaNacimiento ? (
+                                <>{apt.patient.fechaNacimiento} <span className="font-semibold">({calcularEdad(apt.patient.fechaNacimiento)}a)</span></>
+                              ) : (
+                                apt.patient.age ? <span className="font-semibold">{apt.patient.age}a</span> : '-'
+                              )}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-1.5 border border-border text-muted-foreground">
+                          {isEditing ? (
                             <Input value={editData.patientPhone} onChange={(e) => setEditData(d => ({ ...d, patientPhone: e.target.value }))} className="h-7 text-xs" placeholder="Teléfono" />
                           ) : (
                             apt.patient.phone
