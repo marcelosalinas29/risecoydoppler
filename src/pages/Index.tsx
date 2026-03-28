@@ -43,16 +43,68 @@ const Index = () => {
     fetchAllSchedules();
   }, []);
 
-  // Realtime subscription for appointments
+  // Realtime subscription — apply changes incrementally instead of full refetch
   useEffect(() => {
     const channel = supabase
       .channel('appointments-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
-        () => {
-          // Re-fetch all appointments on any change
-          fetchAppointments();
+        (payload) => {
+          const event = payload.eventType;
+          if (event === 'DELETE') {
+            const oldId = (payload.old as any)?.id;
+            if (oldId) {
+              useClinicStore.setState((s) => ({
+                appointments: s.appointments.filter((a) => a.id !== oldId),
+              }));
+            }
+            return;
+          }
+          // For INSERT and UPDATE, refetch only that single appointment
+          const newRow = payload.new as any;
+          if (!newRow?.id) return;
+          supabase
+            .from('appointments')
+            .select('*, patients(*)')
+            .eq('id', newRow.id)
+            .single()
+            .then(({ data }) => {
+              if (!data) return;
+              useClinicStore.setState((s) => {
+                const exists = s.appointments.some((a) => a.id === data.id);
+                const mapped = {
+                  id: data.id,
+                  patientId: data.patient_id,
+                  patient: {
+                    id: data.patients.id,
+                    dni: data.patients.dni || '',
+                    name: data.patients.name,
+                    age: data.patients.fecha_nacimiento
+                      ? Math.floor((Date.now() - new Date(data.patients.fecha_nacimiento + 'T00:00:00').getTime()) / 31557600000)
+                      : data.patients.age,
+                    phone: data.patients.phone,
+                    fechaNacimiento: data.patients.fecha_nacimiento || undefined,
+                    obraSocial: data.patients.obra_social || '',
+                  },
+                  studyType: data.study_type,
+                  status: data.status as any,
+                  date: data.date,
+                  time: data.time,
+                  report: data.report || '',
+                  images: (data.images as string[]) || [],
+                  observations: data.observations || '',
+                  reportedBy: data.reported_by || null,
+                  asistio: data.asistio ?? false,
+                  createdAt: data.created_at,
+                };
+                if (exists) {
+                  return { appointments: s.appointments.map((a) => a.id === data.id ? mapped : a) };
+                } else {
+                  return { appointments: [mapped, ...s.appointments] };
+                }
+              });
+            });
         }
       )
       .subscribe();
@@ -60,7 +112,7 @@ const Index = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchAppointments]);
+  }, []);
 
   const dayOfWeek = getDay(selectedDate);
   const doctorSlots = selectedDoctorId !== 'all'
