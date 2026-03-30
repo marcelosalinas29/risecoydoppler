@@ -88,7 +88,42 @@ const LineHeightParagraph = Paragraph.extend({
   },
 });
 
-// ---- Custom Dictionary (localStorage) ----
+// Clean Word/Office HTML while preserving formatting
+function cleanWordHtml(html: string): string {
+  let cleaned = html
+    .replace(/<o:p[^>]*>[\s\S]*?<\/o:p>/gi, '')
+    .replace(/<\/?o:[^>]*>/gi, '')
+    .replace(/<\/?w:[^>]*>/gi, '')
+    .replace(/<\/?m:[^>]*>/gi, '')
+    .replace(/<\/?st1:[^>]*>/gi, '')
+    .replace(/<!--\[if[^]*?endif\]-->/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<\/?xml[^>]*>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<meta[^>]*\/?>/gi, '')
+    .replace(/<link[^>]*\/?>/gi, '')
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+    .replace(/class="[^"]*"/gi, '')
+    .replace(/lang="[^"]*"/gi, '')
+    .replace(/\bmso-[^;:"]+:[^;"]+;?/gi, '')
+    .replace(/\bmargin[^;:"]*:\s*0[^;]*;?/gi, '');
+
+  // Convert <b> to <strong>, <i> to <em>
+  cleaned = cleaned
+    .replace(/<b(\s|>)/gi, '<strong$1')
+    .replace(/<\/b>/gi, '</strong>')
+    .replace(/<i(\s|>)/gi, '<em$1')
+    .replace(/<\/i>/gi, '</em>');
+
+  // Remove empty spans without style
+  cleaned = cleaned.replace(/<span(?![^>]*style)[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+
+  // Clean empty style attributes
+  cleaned = cleaned.replace(/\sstyle="\s*"/gi, '');
+
+  return cleaned;
+}
+
 const CUSTOM_DICT_KEY = 'custom-dictionary-es';
 
 function getCustomDictionary(): string[] {
