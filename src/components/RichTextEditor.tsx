@@ -1,4 +1,4 @@
-import { useEditor, EditorContent, Extension } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -40,14 +40,27 @@ const LINE_SPACINGS = [
   { label: '3.0', value: '3' },
 ];
 
-// Custom FontSize extension
+// Helper: convert pt/em/rem to px for consistency
+function normalizeFontSize(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().toLowerCase();
+  const num = parseFloat(trimmed);
+  if (isNaN(num)) return null;
+  if (trimmed.endsWith('pt')) return `${Math.round(num * 1.333)}px`;
+  if (trimmed.endsWith('em') || trimmed.endsWith('rem')) return `${Math.round(num * 16)}px`;
+  if (trimmed.endsWith('px')) return `${Math.round(num)}px`;
+  if (!trimmed.match(/[a-z%]/)) return `${Math.round(num)}px`;
+  return value;
+}
+
+// Custom FontSize extension — parses pt/em/px from pasted content
 const FontSize = TextStyle.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
       fontSize: {
         default: null,
-        parseHTML: element => element.style.fontSize || null,
+        parseHTML: element => normalizeFontSize(element.style.fontSize),
         renderHTML: attributes => {
           if (!attributes.fontSize) return {};
           return { style: `font-size: ${attributes.fontSize}` };
@@ -74,7 +87,42 @@ const LineHeightParagraph = Paragraph.extend({
   },
 });
 
-// ---- Custom Dictionary (localStorage) ----
+// Clean Word/Office HTML while preserving formatting
+function cleanWordHtml(html: string): string {
+  let cleaned = html
+    .replace(/<o:p[^>]*>[\s\S]*?<\/o:p>/gi, '')
+    .replace(/<\/?o:[^>]*>/gi, '')
+    .replace(/<\/?w:[^>]*>/gi, '')
+    .replace(/<\/?m:[^>]*>/gi, '')
+    .replace(/<\/?st1:[^>]*>/gi, '')
+    .replace(/<!--\[if[^]*?endif\]-->/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<\/?xml[^>]*>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<meta[^>]*\/?>/gi, '')
+    .replace(/<link[^>]*\/?>/gi, '')
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+    .replace(/class="[^"]*"/gi, '')
+    .replace(/lang="[^"]*"/gi, '')
+    .replace(/\bmso-[^;:"]+:[^;"]+;?/gi, '')
+    .replace(/\bmargin[^;:"]*:\s*0[^;]*;?/gi, '');
+
+  // Convert <b> to <strong>, <i> to <em>
+  cleaned = cleaned
+    .replace(/<b(\s|>)/gi, '<strong$1')
+    .replace(/<\/b>/gi, '</strong>')
+    .replace(/<i(\s|>)/gi, '<em$1')
+    .replace(/<\/i>/gi, '</em>');
+
+  // Remove empty spans without style
+  cleaned = cleaned.replace(/<span(?![^>]*style)[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+
+  // Clean empty style attributes
+  cleaned = cleaned.replace(/\sstyle="\s*"/gi, '');
+
+  return cleaned;
+}
+
 const CUSTOM_DICT_KEY = 'custom-dictionary-es';
 
 function getCustomDictionary(): string[] {
@@ -130,6 +178,16 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
     editable: !disabled,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+    },
+    editorProps: {
+      transformPastedHTML(html) {
+        // Detect Word/Office content and clean it
+        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
+        if (isWordContent) {
+          return cleanWordHtml(html);
+        }
+        return html;
+      },
     },
   });
 
