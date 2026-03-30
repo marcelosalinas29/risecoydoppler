@@ -41,14 +41,27 @@ const LINE_SPACINGS = [
   { label: '3.0', value: '3' },
 ];
 
-// Custom FontSize extension
+// Helper: convert pt/em/rem to px for consistency
+function normalizeFontSize(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().toLowerCase();
+  const num = parseFloat(trimmed);
+  if (isNaN(num)) return null;
+  if (trimmed.endsWith('pt')) return `${Math.round(num * 1.333)}px`;
+  if (trimmed.endsWith('em') || trimmed.endsWith('rem')) return `${Math.round(num * 16)}px`;
+  if (trimmed.endsWith('px')) return `${Math.round(num)}px`;
+  if (!trimmed.match(/[a-z%]/)) return `${Math.round(num)}px`;
+  return value;
+}
+
+// Custom FontSize extension — parses pt/em/px from pasted content
 const FontSize = TextStyle.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
       fontSize: {
         default: null,
-        parseHTML: element => element.style.fontSize || null,
+        parseHTML: element => normalizeFontSize(element.style.fontSize),
         renderHTML: attributes => {
           if (!attributes.fontSize) return {};
           return { style: `font-size: ${attributes.fontSize}` };
