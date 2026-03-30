@@ -180,6 +180,16 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    editorProps: {
+      transformPastedHTML(html) {
+        // Detect Word/Office content and clean it
+        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
+        if (isWordContent) {
+          return cleanWordHtml(html);
+        }
+        return html;
+      },
+    },
   });
 
   useEffect(() => {
