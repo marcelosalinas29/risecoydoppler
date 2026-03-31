@@ -66,7 +66,7 @@ const Index = () => {
           if (!newRow?.id) return;
           supabase
             .from('appointments')
-            .select('*, patients(*)')
+            .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
             .eq('id', newRow.id)
             .single()
             .then(({ data }) => {
