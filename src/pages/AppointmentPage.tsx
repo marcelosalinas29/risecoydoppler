@@ -172,9 +172,15 @@ const AppointmentPage = () => {
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Only set crossOrigin for remote URLs, NOT for data URIs or blob URLs
+      if (src && !src.startsWith('data:') && !src.startsWith('blob:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`No se pudo cargar imagen: ${src.substring(0, 80)}`));
+      img.onerror = (e) => {
+        console.error('Image load error:', src.substring(0, 100), e);
+        reject(new Error(`No se pudo cargar imagen: ${src.substring(0, 80)}`));
+      };
       img.src = src;
     });
   };
@@ -565,9 +571,9 @@ const AppointmentPage = () => {
       const doc = await buildPdfDoc();
       doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
       toast.success('PDF generado exitosamente');
-    } catch (err) {
-      console.error('Error al generar PDF:', err);
-      toast.error('Error al crear el PDF. Intentá de nuevo.');
+    } catch (err: any) {
+      console.error('Error al generar PDF:', err?.message || err, err?.stack || '');
+      toast.error(`Error al crear el PDF: ${err?.message || 'Error desconocido'}`);
     }
   };
 
@@ -627,13 +633,12 @@ const AppointmentPage = () => {
 
       await store.updateAppointmentStatus(id, 'sent');
       toast.success('WhatsApp abierto con enlace al PDF');
-    } catch (err) {
-      console.error('Error al enviar:', err);
-      // Close the blank window if there was an error
+    } catch (err: any) {
+      console.error('Error al enviar WhatsApp:', err?.message || err, err?.stack || '');
       if (waWindow && !waWindow.closed) {
         waWindow.close();
       }
-      toast.error('Error al generar o compartir el PDF');
+      toast.error(`Error al generar o enviar PDF: ${err?.message || 'Error desconocido'}`);
     }
   };
 
