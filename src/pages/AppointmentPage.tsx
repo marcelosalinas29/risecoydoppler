@@ -172,9 +172,15 @@ const AppointmentPage = () => {
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Only set crossOrigin for remote URLs, NOT for data URIs or blob URLs
+      if (src && !src.startsWith('data:') && !src.startsWith('blob:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`No se pudo cargar imagen: ${src.substring(0, 80)}`));
+      img.onerror = (e) => {
+        console.error('Image load error:', src.substring(0, 100), e);
+        reject(new Error(`No se pudo cargar imagen: ${src.substring(0, 80)}`));
+      };
       img.src = src;
     });
   };
