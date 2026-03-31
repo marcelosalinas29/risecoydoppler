@@ -172,8 +172,9 @@ const AppointmentPage = () => {
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = reject;
+      img.onerror = () => reject(new Error(`No se pudo cargar imagen: ${src.substring(0, 80)}`));
       img.src = src;
     });
   };
@@ -559,10 +560,15 @@ const AppointmentPage = () => {
 
   const generatePDF = async () => {
     if (!appointment) return;
-    await handleSaveReport();
-    const doc = await buildPdfDoc();
-    doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
-    toast.success('PDF generado exitosamente');
+    try {
+      await handleSaveReport();
+      const doc = await buildPdfDoc();
+      doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
+      toast.success('PDF generado exitosamente');
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      toast.error('Error al crear el PDF. Intentá de nuevo.');
+    }
   };
 
   const sendWhatsApp = async () => {
