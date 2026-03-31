@@ -567,15 +567,18 @@ const AppointmentPage = () => {
 
   const sendWhatsApp = async () => {
     if (!appointment || !id) return;
+
+    // Open WhatsApp window IMMEDIATELY (synchronous) to avoid popup blocker
+    const waWindow = window.open('about:blank', '_blank');
+
     await handleSaveReport();
     toast.info('Generando PDF...');
 
     try {
       const doc = await buildPdfDoc();
       const pdfBlob = doc.output('blob');
-      const fileName = `Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`;
 
-      // Upload to storage + WhatsApp direct link with phone number
+      // Upload to storage
       const uploadName = `informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}_${Date.now()}.pdf`;
       const { error: uploadError } = await supabase.storage
         .from('reports')
@@ -605,12 +608,25 @@ const AppointmentPage = () => {
       const message = encodeURIComponent(
         `*ECOGRAFÍA Y DOPPLER*\n*Diagnóstico Médico Reconquista*\n\nPaciente: ${appointment.patient.name}\nEstudio: ${formatStudyType(appointment.studyType)}\nFecha: ${whatsappDate}\n\n📄 *Descargá tu informe PDF aquí:*\n${publicUrl}`
       );
-      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+
+      const waUrl = `https://wa.me/${phone}?text=${message}`;
+
+      // Navigate the pre-opened window to WhatsApp URL
+      if (waWindow && !waWindow.closed) {
+        waWindow.location.href = waUrl;
+      } else {
+        // Fallback: navigate current tab if popup was still blocked
+        window.location.href = waUrl;
+      }
 
       await store.updateAppointmentStatus(id, 'sent');
       toast.success('WhatsApp abierto con enlace al PDF');
     } catch (err) {
       console.error('Error al enviar:', err);
+      // Close the blank window if there was an error
+      if (waWindow && !waWindow.closed) {
+        waWindow.close();
+      }
       toast.error('Error al generar o compartir el PDF');
     }
   };
