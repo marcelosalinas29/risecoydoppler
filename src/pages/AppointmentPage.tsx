@@ -84,8 +84,12 @@ const AppointmentPage = () => {
   }, [appointment?.patient.id]);
 
   useEffect(() => {
-    if (!appointment && id) {
-      store.fetchAppointments().then(() => store.fetchPatients());
+    if (id) {
+      // Always fetch full detail (with images & report) for this appointment
+      store.fetchAppointmentDetail(id);
+      if (!appointment) {
+        store.fetchAppointments().then(() => store.fetchPatients());
+      }
     }
   }, [id]);
 

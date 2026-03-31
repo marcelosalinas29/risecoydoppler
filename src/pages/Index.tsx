@@ -66,13 +66,13 @@ const Index = () => {
           if (!newRow?.id) return;
           supabase
             .from('appointments')
-            .select('*, patients(*)')
+            .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
             .eq('id', newRow.id)
             .single()
             .then(({ data }) => {
               if (!data) return;
               useClinicStore.setState((s) => {
-                const exists = s.appointments.some((a) => a.id === data.id);
+                const existing = s.appointments.find((a) => a.id === data.id);
                 const mapped = {
                   id: data.id,
                   patientId: data.patient_id,
@@ -91,14 +91,14 @@ const Index = () => {
                   status: data.status as any,
                   date: data.date,
                   time: data.time,
-                  report: data.report || '',
-                  images: (data.images as string[]) || [],
+                  report: existing?.report || '',
+                  images: existing?.images || [],
                   observations: data.observations || '',
                   reportedBy: data.reported_by || null,
                   asistio: data.asistio ?? false,
                   createdAt: data.created_at,
                 };
-                if (exists) {
+                if (existing) {
                   return { appointments: s.appointments.map((a) => a.id === data.id ? mapped : a) };
                 } else {
                   return { appointments: [mapped, ...s.appointments] };

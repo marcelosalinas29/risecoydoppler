@@ -7,6 +7,7 @@ interface ClinicStore {
   patients: Patient[];
   appointments: Appointment[];
   loading: boolean;
+  fetchAppointmentDetail: (id: string) => Promise<Appointment | null>;
   fetchPatients: () => Promise<void>;
   fetchAppointments: () => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
@@ -66,6 +67,21 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   appointments: [],
   loading: false,
 
+  fetchAppointmentDetail: async (id: string) => {
+    const { data } = await supabase
+      .from('appointments')
+      .select('*, patients(*)')
+      .eq('id', id)
+      .single();
+    if (!data) return null;
+    const full = mapAppointment(data);
+    // Merge into store so UI picks it up
+    set((s) => ({
+      appointments: s.appointments.map((a) => a.id === id ? full : a),
+    }));
+    return full;
+  },
+
   fetchPatients: async () => {
     const { data } = await supabase.from('patients').select('*').order('name');
     if (data) {
@@ -80,11 +96,13 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
     const { data } = await supabase
       .from('appointments')
-      .select('*, patients(*)')
+      .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
       .gte('date', dateFilter)
       .order('created_at', { ascending: false });
     if (data) {
-      set({ appointments: data.map(mapAppointment) });
+      set({ appointments: data.map((a: any) => ({
+        ...mapAppointment({ ...a, report: '', images: [] }),
+      })) });
     }
     set({ loading: false });
   },
