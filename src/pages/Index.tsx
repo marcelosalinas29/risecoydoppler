@@ -98,7 +98,7 @@ const Index = () => {
                   asistio: data.asistio ?? false,
                   createdAt: data.created_at,
                 };
-                if (exists) {
+                if (existing) {
                   return { appointments: s.appointments.map((a) => a.id === data.id ? mapped : a) };
                 } else {
                   return { appointments: [mapped, ...s.appointments] };
