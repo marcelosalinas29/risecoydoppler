@@ -560,10 +560,15 @@ const AppointmentPage = () => {
 
   const generatePDF = async () => {
     if (!appointment) return;
-    await handleSaveReport();
-    const doc = await buildPdfDoc();
-    doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
-    toast.success('PDF generado exitosamente');
+    try {
+      await handleSaveReport();
+      const doc = await buildPdfDoc();
+      doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
+      toast.success('PDF generado exitosamente');
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      toast.error('Error al crear el PDF. Intentá de nuevo.');
+    }
   };
 
   const sendWhatsApp = async () => {
