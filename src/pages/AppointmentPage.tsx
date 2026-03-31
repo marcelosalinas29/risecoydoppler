@@ -633,13 +633,12 @@ const AppointmentPage = () => {
 
       await store.updateAppointmentStatus(id, 'sent');
       toast.success('WhatsApp abierto con enlace al PDF');
-    } catch (err) {
-      console.error('Error al enviar:', err);
-      // Close the blank window if there was an error
+    } catch (err: any) {
+      console.error('Error al enviar WhatsApp:', err?.message || err, err?.stack || '');
       if (waWindow && !waWindow.closed) {
         waWindow.close();
       }
-      toast.error('Error al generar o compartir el PDF');
+      toast.error(`Error al generar o enviar PDF: ${err?.message || 'Error desconocido'}`);
     }
   };
 
