@@ -72,7 +72,7 @@ const Index = () => {
             .then(({ data }) => {
               if (!data) return;
               useClinicStore.setState((s) => {
-                const exists = s.appointments.some((a) => a.id === data.id);
+                const existing = s.appointments.find((a) => a.id === data.id);
                 const mapped = {
                   id: data.id,
                   patientId: data.patient_id,
@@ -91,8 +91,8 @@ const Index = () => {
                   status: data.status as any,
                   date: data.date,
                   time: data.time,
-                  report: data.report || '',
-                  images: (data.images as string[]) || [],
+                  report: existing?.report || '',
+                  images: existing?.images || [],
                   observations: data.observations || '',
                   reportedBy: data.reported_by || null,
                   asistio: data.asistio ?? false,
