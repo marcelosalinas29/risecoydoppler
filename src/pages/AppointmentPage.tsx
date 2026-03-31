@@ -571,9 +571,9 @@ const AppointmentPage = () => {
       const doc = await buildPdfDoc();
       doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
       toast.success('PDF generado exitosamente');
-    } catch (err) {
-      console.error('Error al generar PDF:', err);
-      toast.error('Error al crear el PDF. Intentá de nuevo.');
+    } catch (err: any) {
+      console.error('Error al generar PDF:', err?.message || err, err?.stack || '');
+      toast.error(`Error al crear el PDF: ${err?.message || 'Error desconocido'}`);
     }
   };
 
