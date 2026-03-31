@@ -7,6 +7,7 @@ interface ClinicStore {
   patients: Patient[];
   appointments: Appointment[];
   loading: boolean;
+  fetchAppointmentDetail: (id: string) => Promise<Appointment | null>;
   fetchPatients: () => Promise<void>;
   fetchAppointments: () => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
