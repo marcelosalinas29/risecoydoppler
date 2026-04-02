@@ -60,8 +60,10 @@ const AppointmentPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
-  const [isEditing, setIsEditing] = useState(!appointment?.report);
+  const isReportEmpty = (r: string) => !r || r === '<p></p>' || r.replace(/<[^>]*>/g, '').trim() === '';
+  const [isEditing, setIsEditing] = useState(!appointment?.report || isReportEmpty(appointment?.report || ''));
   const [report, setReport] = useState(appointment?.report || '');
+  const [reportLoadedFromDb, setReportLoadedFromDb] = useState(false);
   const [editingPatient, setEditingPatient] = useState(false);
   const [patientForm, setPatientForm] = useState({
     name: '',
@@ -94,17 +96,23 @@ const AppointmentPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (appointment && !report && appointment.report) {
+    if (appointment && !reportLoadedFromDb && appointment.report && !isReportEmpty(appointment.report)) {
       setReport(appointment.report);
+      setReportLoadedFromDb(true);
       setIsEditing(false);
     }
-  }, [appointment?.report]);
+  }, [appointment?.report, reportLoadedFromDb]);
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
+    if (isReportEmpty(report)) {
+      console.warn('handleSaveReport: report is empty, skipping save');
+      return;
+    }
     // Store who reported (doctor's user_id)
     const reportedBy = !isSecretary && user ? user.id : undefined;
     await store.updateAppointmentReport(id, report, reportedBy);
+    setReportLoadedFromDb(true);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
       await store.updateAppointmentStatus(id, 'reported');
     }

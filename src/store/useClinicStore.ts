@@ -159,7 +159,11 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   updateAppointmentReport: async (id, report, reportedBy) => {
     const updateData: any = { report };
     if (reportedBy) updateData.reported_by = reportedBy;
-    await supabase.from('appointments').update(updateData).eq('id', id);
+    const { error } = await supabase.from('appointments').update(updateData).eq('id', id);
+    if (error) {
+      console.error('Error saving report:', error);
+      throw error;
+    }
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, report, ...(reportedBy ? { reportedBy } : {}) } : a)),
     }));
