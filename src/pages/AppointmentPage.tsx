@@ -105,9 +105,14 @@ const AppointmentPage = () => {
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
+    if (isReportEmpty(report)) {
+      console.warn('handleSaveReport: report is empty, skipping save');
+      return;
+    }
     // Store who reported (doctor's user_id)
     const reportedBy = !isSecretary && user ? user.id : undefined;
     await store.updateAppointmentReport(id, report, reportedBy);
+    setReportLoadedFromDb(true);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
       await store.updateAppointmentStatus(id, 'reported');
     }
