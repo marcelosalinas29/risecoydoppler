@@ -60,8 +60,10 @@ const AppointmentPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
-  const [isEditing, setIsEditing] = useState(!appointment?.report);
+  const isReportEmpty = (r: string) => !r || r === '<p></p>' || r.replace(/<[^>]*>/g, '').trim() === '';
+  const [isEditing, setIsEditing] = useState(!appointment?.report || isReportEmpty(appointment?.report || ''));
   const [report, setReport] = useState(appointment?.report || '');
+  const [reportLoadedFromDb, setReportLoadedFromDb] = useState(false);
   const [editingPatient, setEditingPatient] = useState(false);
   const [patientForm, setPatientForm] = useState({
     name: '',
