@@ -96,11 +96,12 @@ const AppointmentPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (appointment && !report && appointment.report) {
+    if (appointment && !reportLoadedFromDb && appointment.report && !isReportEmpty(appointment.report)) {
       setReport(appointment.report);
+      setReportLoadedFromDb(true);
       setIsEditing(false);
     }
-  }, [appointment?.report]);
+  }, [appointment?.report, reportLoadedFromDb]);
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
