@@ -882,11 +882,31 @@ const AppointmentPage = () => {
             </>
           )}
 
+          {/* Storage images (new) */}
+          {currentAppointment.imageUrls.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {currentAppointment.imageUrls.map((url, i) => (
+                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
+                  {!isSecretary && (
+                    <button
+                      onClick={async () => { if (id) await store.removeStorageImage(id, i); }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Legacy base64 images */}
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
-                  <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
+                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
                   {!isSecretary && (
                     <button
                       onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
