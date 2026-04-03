@@ -208,11 +208,11 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
             <tr className="bg-muted/50">
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Paciente</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">DNI</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">F.Nac. / Edad</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Teléfono</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Obra Social</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estado</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Observaciones</th>
               <th className="p-2 border border-border text-center font-semibold text-muted-foreground whitespace-nowrap">Acc.</th>
@@ -268,6 +268,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </span>
                           )}
                         </td>
+                        <td className="p-1.5 border border-border">
+                          {isEditing ? (
+                            <Input value={editData.studyType} onChange={(e) => setEditData(d => ({ ...d, studyType: e.target.value }))} className="h-7 text-xs" />
+                          ) : (
+                            <span className="uppercase font-bold">{formatStudyType(apt.studyType)}</span>
+                          )}
+                        </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <Input value={editData.patientDni} onChange={(e) => setEditData(d => ({ ...d, patientDni: e.target.value }))} className="h-7 text-xs" placeholder="DNI" />
@@ -320,13 +327,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Obra Social" />
                           ) : (
                             apt.patient.obraSocial || '-'
-                          )}
-                        </td>
-                        <td className="p-1.5 border border-border">
-                          {isEditing ? (
-                            <Input value={editData.studyType} onChange={(e) => setEditData(d => ({ ...d, studyType: e.target.value }))} className="h-7 text-xs" />
-                          ) : (
-                            <span className="uppercase font-bold">{formatStudyType(apt.studyType)}</span>
                           )}
                         </td>
                         <td className="p-1.5 border border-border">
