@@ -95,6 +95,22 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       </td>
       <td className="p-1 border border-border">
         <div className="flex items-center gap-0.5">
+          <span className="text-xs truncate max-w-[80px]" title={studyType || 'Estudio'}>
+            {studyType || <span className="text-muted-foreground">Estudio</span>}
+          </span>
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => setShowStudySelector(true)} title="Seleccionar estudio">
+            <FileText className="w-3 h-3" />
+          </Button>
+        </div>
+        <StudyTypeSelector
+          open={showStudySelector}
+          onOpenChange={setShowStudySelector}
+          onApply={(v) => setStudyType(v)}
+          currentValue={studyType}
+        />
+      </td>
+      <td className="p-1 border border-border">
+        <div className="flex items-center gap-0.5">
           <Input
             value={dni}
             onChange={(e) => setDni(e.target.value)}
@@ -138,22 +154,6 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
           placeholder="O.S."
           className="h-6 text-xs uppercase"
           onKeyDown={handleKeyDown}
-        />
-      </td>
-      <td className="p-1 border border-border">
-        <div className="flex items-center gap-0.5">
-          <span className="text-xs truncate max-w-[80px]" title={studyType || 'Estudio'}>
-            {studyType || <span className="text-muted-foreground">Estudio</span>}
-          </span>
-          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => setShowStudySelector(true)} title="Seleccionar estudio">
-            <FileText className="w-3 h-3" />
-          </Button>
-        </div>
-        <StudyTypeSelector
-          open={showStudySelector}
-          onOpenChange={setShowStudySelector}
-          onApply={(v) => setStudyType(v)}
-          currentValue={studyType}
         />
       </td>
       <td className="p-1 border border-border text-center">
