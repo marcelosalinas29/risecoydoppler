@@ -208,8 +208,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
             <tr className="bg-muted/50">
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Paciente</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Estudio</th>
-              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">DNI</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap min-w-[140px]">Estudio</th>
+              <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap w-[70px]">DNI</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">F.Nac. / Edad</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Teléfono</th>
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Obra Social</th>
@@ -236,15 +236,15 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                 <React.Fragment key={`slot-${slot}`}>
                   {showMorningSep && (
                     <tr key="morning-sep">
-                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
-                        — MAÑANA —
+                      <td colSpan={10} className="py-1.5 px-2 bg-primary/10 text-center text-[11px] text-primary font-bold border border-border border-t-2 border-t-primary/40 tracking-widest">
+                        ☀ MAÑANA
                       </td>
                     </tr>
                   )}
                   {showAfternoonSep && (
                     <tr key="afternoon-sep">
-                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
-                        — TARDE —
+                      <td colSpan={10} className="py-1.5 px-2 bg-amber-500/10 text-center text-[11px] text-amber-700 dark:text-amber-400 font-bold border border-border border-t-2 border-t-amber-500/40 tracking-widest">
+                        🌅 TARDE
                       </td>
                     </tr>
                   )}
@@ -306,20 +306,23 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs">
+                            <div className="flex flex-col leading-tight">
                               {apt.patient.fechaNacimiento ? (
-                                <>{apt.patient.fechaNacimiento} <span className="font-semibold">({calcularEdad(apt.patient.fechaNacimiento)}a)</span></>
+                                <>
+                                  <span className="text-xs font-bold text-foreground">{calcularEdad(apt.patient.fechaNacimiento)} años</span>
+                                  <span className="text-[10px] text-muted-foreground">{apt.patient.fechaNacimiento}</span>
+                                </>
                               ) : (
-                                apt.patient.age ? <span className="font-semibold">{apt.patient.age}a</span> : '-'
+                                apt.patient.age ? <span className="text-xs font-bold text-foreground">{apt.patient.age} años</span> : <span className="text-xs">-</span>
                               )}
-                            </span>
+                            </div>
                           )}
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <Input value={editData.patientPhone} onChange={(e) => setEditData(d => ({ ...d, patientPhone: e.target.value }))} className="h-7 text-xs" placeholder="Teléfono" />
                           ) : (
-                            apt.patient.phone
+                            apt.patient.phone?.replace(/^\+54\s?/, '') || '-'
                           )}
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
