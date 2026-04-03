@@ -39,17 +39,25 @@ const PatientsPage = () => {
             <p>{query ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {results.map((patient) => {
               const appointments = getPatientAppointments(patient.id);
+              const displayPhone = patient.phone?.replace(/^\+?549?\s?/, '') || '';
               return (
                 <div key={patient.id} className="bg-card rounded-xl border border-border p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <p className="font-semibold">{patient.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {patient.dni && <span>DNI: {patient.dni} — </span>}
-                        {patient.age} años — {patient.phone}
+                      <p className="font-bold text-foreground">{patient.name}</p>
+                      <p className="text-sm font-light text-muted-foreground flex items-center gap-0 flex-wrap">
+                        {patient.dni && (
+                          <>
+                            <span className="text-foreground/70">DNI: {patient.dni}</span>
+                            <span className="mx-2 text-border">|</span>
+                          </>
+                        )}
+                        <span>{patient.age} años</span>
+                        <span className="mx-2 text-border">|</span>
+                        <span className="text-primary">{displayPhone}</span>
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">{appointments.length} estudio(s)</span>
@@ -60,12 +68,12 @@ const PatientsPage = () => {
                         <button
                           key={apt.id}
                           onClick={() => navigate(`/appointment/${apt.id}`)}
-                          className="w-full flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-sm hover:bg-secondary transition-colors"
+                          className="w-full flex items-center justify-between bg-muted rounded-full px-3 py-1.5 text-sm hover:bg-secondary transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <Calendar className="w-3 h-3 text-muted-foreground" />
                             <span>{(() => { const [y, m, d] = apt.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d MMM yyyy", { locale: es }); })()}</span>
-                            <span className="text-muted-foreground">— {apt.studyType}</span>
+                            <span className="text-muted-foreground">{apt.studyType}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">{STATUS_LABELS[apt.status]}</span>
