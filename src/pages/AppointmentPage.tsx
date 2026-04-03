@@ -554,14 +554,18 @@ const AppointmentPage = () => {
 
     drawFooter();
 
-    // ====== IMAGES ======
+    // ====== IMAGES (hybrid: Storage URLs + legacy base64) ======
     const currentApp = store.getAppointment(id || '');
-    if (currentApp && currentApp.images.length > 0) {
+    const allImages = [
+      ...(currentApp?.imageUrls || []),
+      ...(currentApp?.images || []),
+    ];
+    if (allImages.length > 0) {
       const maxImgW = (contentWidth - 8) / 2;
       const maxImgH = 80;
       let imgIndex = 0;
 
-      while (imgIndex < currentApp.images.length) {
+      while (imgIndex < allImages.length) {
         doc.addPage();
         let iy = 20;
         doc.setFontSize(12);
@@ -572,11 +576,12 @@ const AppointmentPage = () => {
         let countOnPage = 0;
         const imagesPerPage = 6;
 
-        while (imgIndex < currentApp.images.length && countOnPage < imagesPerPage) {
+        while (imgIndex < allImages.length && countOnPage < imagesPerPage) {
           const col = countOnPage % 2;
 
           try {
-            const imgEl = await loadImage(currentApp.images[imgIndex]);
+            const imgSrc = allImages[imgIndex];
+            const imgEl = await loadImage(imgSrc);
             const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
 
             let drawW = maxImgW;
@@ -587,11 +592,11 @@ const AppointmentPage = () => {
             }
 
             const x = margin + col * (maxImgW + 8) + (maxImgW - drawW) / 2;
-            doc.addImage(currentApp.images[imgIndex], 'JPEG', x, iy, drawW, drawH);
+            doc.addImage(imgSrc, 'JPEG', x, iy, drawW, drawH);
 
             imgIndex++;
             countOnPage++;
-            if (col === 1 || imgIndex >= currentApp.images.length || countOnPage >= imagesPerPage) {
+            if (col === 1 || imgIndex >= allImages.length || countOnPage >= imagesPerPage) {
               iy += maxImgH + 5;
             }
           } catch {
