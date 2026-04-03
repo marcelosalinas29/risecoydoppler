@@ -163,7 +163,7 @@ const AppointmentPage = () => {
     toast.success('Tipo de estudio actualizado');
   };
 
-  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<Blob> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -175,7 +175,7 @@ const AppointmentPage = () => {
           canvas.height = img.height * ratio;
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', quality);
         };
         img.src = reader.result as string;
       };
@@ -186,9 +186,25 @@ const AppointmentPage = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !id) return;
-    const images = await Promise.all(Array.from(files).map((f) => compressImage(f)));
-    await store.addImagesToAppointment(id, images);
-    toast.success(`${images.length} imagen(es) cargada(s)`);
+    toast.info('Subiendo imágenes...');
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const compressed = await compressImage(file);
+        const fileName = `${id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('estudios_imagenes')
+          .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('estudios_imagenes').getPublicUrl(fileName);
+        urls.push(urlData.publicUrl);
+      }
+      await store.addStorageImagesToAppointment(id, urls);
+      toast.success(`${urls.length} imagen(es) cargada(s)`);
+    } catch (err: any) {
+      console.error('Error uploading images:', err);
+      toast.error(`Error al subir imágenes: ${err?.message || 'Error desconocido'}`);
+    }
   };
 
   const applyTemplate = (content: string) => {
