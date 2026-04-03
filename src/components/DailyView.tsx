@@ -243,8 +243,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                   )}
                   {showAfternoonSep && (
                     <tr key="afternoon-sep">
-                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
-                        — TARDE —
+                      <td colSpan={10} className="py-1.5 px-2 bg-amber-500/10 text-center text-[11px] text-amber-700 dark:text-amber-400 font-bold border border-border border-t-2 border-t-amber-500/40 tracking-widest">
+                        🌅 TARDE
                       </td>
                     </tr>
                   )}
