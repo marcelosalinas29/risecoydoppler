@@ -113,6 +113,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
             ...a,
             report: existing?.report ?? '',
             images: existing?.images ?? [],
+            image_urls: a.image_urls ?? existing?.imageUrls ?? [],
             reported_by: a.reported_by ?? existing?.reportedBy ?? null,
           });
         }),
