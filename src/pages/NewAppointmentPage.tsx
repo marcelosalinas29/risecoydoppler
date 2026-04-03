@@ -141,8 +141,13 @@ const NewAppointmentPage = () => {
       toast.success('Cita creada exitosamente');
       navigate('/');
     } catch (err) {
-      console.error(err);
-      toast.error('Error al crear la cita');
+      console.error('Error creating appointment:', err);
+      const message = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err && 'message' in err
+          ? String((err as { message?: unknown }).message)
+          : 'Error al crear la cita';
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
