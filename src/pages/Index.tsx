@@ -93,6 +93,7 @@ const Index = () => {
                   time: data.time,
                   report: existing?.report || '',
                   images: existing?.images || [],
+                  imageUrls: existing?.imageUrls || [],
                   observations: data.observations || '',
                   reportedBy: data.reported_by || null,
                   asistio: data.asistio ?? false,

@@ -241,6 +241,16 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  addStorageImagesToAppointment: async (id, urls) => {
+    const current = get().appointments.find((a) => a.id === id);
+    if (!current) return;
+    const updated = [...current.imageUrls, ...urls];
+    await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
+    }));
+  },
+
   removeImageFromAppointment: async (id, index) => {
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
@@ -248,6 +258,16 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
+    }));
+  },
+
+  removeStorageImage: async (id, index) => {
+    const current = get().appointments.find((a) => a.id === id);
+    if (!current) return;
+    const updated = current.imageUrls.filter((_, i) => i !== index);
+    await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
     }));
   },
 
