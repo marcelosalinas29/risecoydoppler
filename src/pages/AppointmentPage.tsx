@@ -64,6 +64,7 @@ const AppointmentPage = () => {
   const [isEditing, setIsEditing] = useState(!appointment?.report || isReportEmpty(appointment?.report || ''));
   const [report, setReport] = useState(appointment?.report || '');
   const [reportLoadedFromDb, setReportLoadedFromDb] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(true);
   const [editingPatient, setEditingPatient] = useState(false);
   const [patientForm, setPatientForm] = useState({
     name: '',
@@ -86,13 +87,27 @@ const AppointmentPage = () => {
   }, [appointment?.patient.id]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (id) {
-      // Always fetch full detail (with images & report) for this appointment
-      store.fetchAppointmentDetail(id);
-      if (!appointment) {
-        store.fetchAppointments().then(() => store.fetchPatients());
-      }
+      setDetailLoading(true);
+      setReportLoadedFromDb(false);
+      store.fetchAppointmentDetail(id)
+        .catch((error) => {
+          console.error('Error loading appointment detail:', error);
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setDetailLoading(false);
+          }
+        });
+    } else {
+      setDetailLoading(false);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -653,6 +668,16 @@ const AppointmentPage = () => {
       toast.error(`Error al generar o enviar PDF: ${err?.message || 'Error desconocido'}`);
     }
   };
+
+  if (detailLoading) {
+    return (
+      <AppLayout title="Cargando...">
+        <div className="p-8 text-center text-muted-foreground">
+          <p>Cargando cita...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!appointment) {
     return (

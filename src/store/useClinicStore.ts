@@ -68,16 +68,18 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   loading: false,
 
   fetchAppointmentDetail: async (id: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('appointments')
       .select('*, patients(*)')
       .eq('id', id)
-      .single();
+      .maybeSingle();
+    if (error) throw error;
     if (!data) return null;
     const full = mapAppointment(data);
-    // Merge into store so UI picks it up
     set((s) => ({
-      appointments: s.appointments.map((a) => a.id === id ? full : a),
+      appointments: s.appointments.some((a) => a.id === id)
+        ? s.appointments.map((a) => a.id === id ? full : a)
+        : [full, ...s.appointments],
     }));
     return full;
   },
@@ -94,15 +96,24 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
+    const existingAppointments = new Map(get().appointments.map((appointment) => [appointment.id, appointment]));
     const { data } = await supabase
       .from('appointments')
       .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
       .gte('date', dateFilter)
       .order('created_at', { ascending: false });
     if (data) {
-      set({ appointments: data.map((a: any) => ({
-        ...mapAppointment({ ...a, report: '', images: [] }),
-      })) });
+      set({
+        appointments: data.map((a: any) => {
+          const existing = existingAppointments.get(a.id);
+          return mapAppointment({
+            ...a,
+            report: existing?.report ?? '',
+            images: existing?.images ?? [],
+            reported_by: a.reported_by ?? existing?.reportedBy ?? null,
+          });
+        }),
+      });
     }
     set({ loading: false });
   },
@@ -159,13 +170,24 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   updateAppointmentReport: async (id, report, reportedBy) => {
     const updateData: any = { report };
     if (reportedBy) updateData.reported_by = reportedBy;
-    const { error } = await supabase.from('appointments').update(updateData).eq('id', id);
+    const { data: updated, error } = await supabase
+      .from('appointments')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, patients(*)')
+      .maybeSingle();
     if (error) {
       console.error('Error saving report:', error);
       throw error;
     }
+    if (!updated) {
+      throw new Error('No se pudo verificar el guardado del informe');
+    }
+    const updatedAppointment = mapAppointment(updated);
     set((s) => ({
-      appointments: s.appointments.map((a) => (a.id === id ? { ...a, report, ...(reportedBy ? { reportedBy } : {}) } : a)),
+      appointments: s.appointments.some((a) => a.id === id)
+        ? s.appointments.map((a) => (a.id === id ? updatedAppointment : a))
+        : [updatedAppointment, ...s.appointments],
     }));
   },
 
