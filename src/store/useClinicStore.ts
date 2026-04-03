@@ -22,7 +22,9 @@ interface ClinicStore {
   deleteAppointment: (id: string) => Promise<void>;
   rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
+  addStorageImagesToAppointment: (id: string, urls: string[]) => Promise<void>;
   removeImageFromAppointment: (id: string, index: number) => Promise<void>;
+  removeStorageImage: (id: string, index: number) => Promise<void>;
   getAppointmentsByDate: (date: string) => Appointment[];
   getPatientAppointments: (patientId: string) => Appointment[];
   searchPatients: (query: string) => Patient[];

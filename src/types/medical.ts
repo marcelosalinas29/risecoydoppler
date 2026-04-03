@@ -21,7 +21,8 @@ export interface Appointment {
   date: string; // ISO date
   time: string; // HH:mm
   report: string;
-  images: string[]; // base64 data URLs
+  images: string[]; // base64 data URLs (legacy)
+  imageUrls: string[]; // Storage URLs (new)
   observations?: string;
   reportedBy?: string | null;
   asistio: boolean;
