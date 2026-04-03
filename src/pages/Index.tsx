@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Wifi } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -12,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Index = () => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
+  const [testingConnection, setTestingConnection] = useState(false);
   const allAppointments = useClinicStore((s) => s.appointments);
   const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
   const fetchPatients = useClinicStore((s) => s.fetchPatients);
@@ -120,6 +122,58 @@ const Index = () => {
     ? generateAvailableSlots(selectedDoctorId, dayOfWeek)
     : null;
 
+  const handleConnectionTest = async () => {
+    setTestingConnection(true);
+    try {
+      const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+
+      const { data: testPatient, error: patientError } = await supabase
+        .from('patients')
+        .insert({
+          dni: `TEST-${stamp}`,
+          name: `TEST CONEXION ${stamp}`,
+          age: 1,
+          phone: `TEST-${stamp}`,
+          obra_social: 'TEST',
+        } as any)
+        .select()
+        .single();
+
+      if (patientError) throw new Error(`Paciente: ${patientError.message}`);
+
+      const { data: testAppointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: testPatient.id,
+          study_type: 'TEST DE CONEXIÓN',
+          status: 'pending',
+          date: format(new Date(), 'yyyy-MM-dd'),
+          time: '23:59',
+          report: '',
+          images: [],
+          observations: 'TEST TEMPORAL DE CONEXIÓN',
+        } as any)
+        .select('id')
+        .single();
+
+      if (appointmentError) throw new Error(`Turno: ${appointmentError.message}`);
+
+      console.log('Connection test success', {
+        patientId: testPatient.id,
+        appointmentId: testAppointment.id,
+      });
+
+      await Promise.all([fetchPatients(), fetchAppointments()]);
+      toast.success(`Conexión OK: escribió en appointments (${testAppointment.id.slice(0, 8)})`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falló el test de conexión';
+      console.error('Connection test failed:', error);
+      toast.error(message);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   return (
     <AppLayout title="Agenda">
       <div className="p-4 space-y-4">
@@ -168,6 +222,10 @@ const Index = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Button variant="outline" size="sm" onClick={handleConnectionTest} disabled={testingConnection}>
+              <Wifi className="w-4 h-4 mr-1" />
+              {testingConnection ? 'Probando...' : 'Test de conexión'}
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelectedDate(today)}>
               Hoy
             </Button>

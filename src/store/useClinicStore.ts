@@ -136,7 +136,10 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       } as any)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('Error adding patient:', error);
+      throw error;
+    }
     const patient = mapPatient(inserted);
     set((s) => ({ patients: [...s.patients, patient] }));
     return patient;
@@ -156,7 +159,10 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       } as any)
       .select('*, patients(*)')
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error('Error adding appointment:', error, data);
+      throw error;
+    }
     const appointment = mapAppointment(inserted);
     set((s) => ({
       patients: s.patients.some((p) => p.id === appointment.patientId)

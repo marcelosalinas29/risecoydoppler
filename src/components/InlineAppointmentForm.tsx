@@ -69,8 +69,14 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       });
       toast.success('Turno confirmado');
       onSaved();
-    } catch {
-      toast.error('Error al guardar el turno');
+    } catch (error) {
+      console.error('Error saving inline appointment:', error);
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: unknown }).message)
+          : 'Error al guardar el turno';
+      toast.error(message);
     } finally {
       setSaving(false);
     }
