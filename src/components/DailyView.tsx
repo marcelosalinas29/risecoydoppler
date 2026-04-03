@@ -306,13 +306,16 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs">
+                            <div className="flex flex-col leading-tight">
                               {apt.patient.fechaNacimiento ? (
-                                <>{apt.patient.fechaNacimiento} <span className="font-semibold">({calcularEdad(apt.patient.fechaNacimiento)}a)</span></>
+                                <>
+                                  <span className="text-xs font-bold text-foreground">{calcularEdad(apt.patient.fechaNacimiento)} años</span>
+                                  <span className="text-[10px] text-muted-foreground">{apt.patient.fechaNacimiento}</span>
+                                </>
                               ) : (
-                                apt.patient.age ? <span className="font-semibold">{apt.patient.age}a</span> : '-'
+                                apt.patient.age ? <span className="text-xs font-bold text-foreground">{apt.patient.age} años</span> : <span className="text-xs">-</span>
                               )}
-                            </span>
+                            </div>
                           )}
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
