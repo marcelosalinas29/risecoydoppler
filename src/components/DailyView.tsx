@@ -322,7 +322,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                           {isEditing ? (
                             <Input value={editData.patientPhone} onChange={(e) => setEditData(d => ({ ...d, patientPhone: e.target.value }))} className="h-7 text-xs" placeholder="Teléfono" />
                           ) : (
-                            apt.patient.phone
+                            apt.patient.phone?.replace(/^\+54\s?/, '') || '-'
                           )}
                         </td>
                         <td className="p-1.5 border border-border text-muted-foreground">
