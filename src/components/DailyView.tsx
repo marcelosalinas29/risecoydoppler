@@ -236,8 +236,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                 <React.Fragment key={`slot-${slot}`}>
                   {showMorningSep && (
                     <tr key="morning-sep">
-                      <td colSpan={10} className="p-1 bg-muted/40 text-center text-[10px] text-muted-foreground font-bold border border-border tracking-wider">
-                        — MAÑANA —
+                      <td colSpan={10} className="py-1.5 px-2 bg-primary/10 text-center text-[11px] text-primary font-bold border border-border border-t-2 border-t-primary/40 tracking-widest">
+                        ☀ MAÑANA
                       </td>
                     </tr>
                   )}
