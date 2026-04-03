@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, ChevronRight, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -10,8 +10,13 @@ import { Input } from '@/components/ui/input';
 
 const PatientsPage = () => {
   const [query, setQuery] = useState('');
-  const { searchPatients, patients, getPatientAppointments } = useClinicStore();
+  const { searchPatients, patients, getPatientAppointments, fetchPatients, fetchAppointments } = useClinicStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchPatients();
+    fetchAppointments();
+  }, []);
 
   const results = query.length >= 1 ? searchPatients(query) : patients;
 
