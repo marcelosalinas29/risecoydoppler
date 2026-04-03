@@ -143,8 +143,6 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   addAppointment: async (data) => {
-    const patient = get().patients.find((p) => p.id === data.patientId);
-    if (!patient) throw new Error('Patient not found');
     const { data: inserted, error } = await supabase
       .from('appointments')
       .insert({
@@ -160,7 +158,12 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       .single();
     if (error) throw error;
     const appointment = mapAppointment(inserted);
-    set((s) => ({ appointments: [appointment, ...s.appointments] }));
+    set((s) => ({
+      patients: s.patients.some((p) => p.id === appointment.patientId)
+        ? s.patients
+        : [...s.patients, appointment.patient],
+      appointments: [appointment, ...s.appointments],
+    }));
     return appointment;
   },
 
