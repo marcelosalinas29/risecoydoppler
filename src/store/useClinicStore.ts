@@ -22,7 +22,9 @@ interface ClinicStore {
   deleteAppointment: (id: string) => Promise<void>;
   rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
+  addStorageImagesToAppointment: (id: string, urls: string[]) => Promise<void>;
   removeImageFromAppointment: (id: string, index: number) => Promise<void>;
+  removeStorageImage: (id: string, index: number) => Promise<void>;
   getAppointmentsByDate: (date: string) => Appointment[];
   getPatientAppointments: (patientId: string) => Appointment[];
   searchPatients: (query: string) => Patient[];
@@ -55,6 +57,7 @@ function mapAppointment(a: any): Appointment {
     time: a.time,
     report: a.report || '',
     images: (a.images as string[]) || [],
+    imageUrls: (a.image_urls as string[]) || [],
     observations: a.observations || '',
     reportedBy: a.reported_by || null,
     asistio: a.asistio ?? false,
@@ -110,6 +113,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
             ...a,
             report: existing?.report ?? '',
             images: existing?.images ?? [],
+            image_urls: a.image_urls ?? existing?.imageUrls ?? [],
             reported_by: a.reported_by ?? existing?.reportedBy ?? null,
           });
         }),
@@ -238,6 +242,16 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }));
   },
 
+  addStorageImagesToAppointment: async (id, urls) => {
+    const current = get().appointments.find((a) => a.id === id);
+    if (!current) return;
+    const updated = [...current.imageUrls, ...urls];
+    await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
+    }));
+  },
+
   removeImageFromAppointment: async (id, index) => {
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
@@ -245,6 +259,16 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
+    }));
+  },
+
+  removeStorageImage: async (id, index) => {
+    const current = get().appointments.find((a) => a.id === id);
+    if (!current) return;
+    const updated = current.imageUrls.filter((_, i) => i !== index);
+    await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    set((s) => ({
+      appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
     }));
   },
 

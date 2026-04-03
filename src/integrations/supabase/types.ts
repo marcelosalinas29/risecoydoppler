@@ -21,6 +21,7 @@ export type Database = {
           created_by: string | null
           date: string
           id: string
+          image_urls: string[] | null
           images: Json | null
           observations: string | null
           patient_id: string
@@ -36,6 +37,7 @@ export type Database = {
           created_by?: string | null
           date: string
           id?: string
+          image_urls?: string[] | null
           images?: Json | null
           observations?: string | null
           patient_id: string
@@ -51,6 +53,7 @@ export type Database = {
           created_by?: string | null
           date?: string
           id?: string
+          image_urls?: string[] | null
           images?: Json | null
           observations?: string | null
           patient_id?: string

@@ -163,7 +163,7 @@ const AppointmentPage = () => {
     toast.success('Tipo de estudio actualizado');
   };
 
-  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<Blob> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -175,7 +175,7 @@ const AppointmentPage = () => {
           canvas.height = img.height * ratio;
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', quality);
         };
         img.src = reader.result as string;
       };
@@ -186,9 +186,25 @@ const AppointmentPage = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !id) return;
-    const images = await Promise.all(Array.from(files).map((f) => compressImage(f)));
-    await store.addImagesToAppointment(id, images);
-    toast.success(`${images.length} imagen(es) cargada(s)`);
+    toast.info('Subiendo imágenes...');
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const compressed = await compressImage(file);
+        const fileName = `${id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('estudios_imagenes')
+          .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('estudios_imagenes').getPublicUrl(fileName);
+        urls.push(urlData.publicUrl);
+      }
+      await store.addStorageImagesToAppointment(id, urls);
+      toast.success(`${urls.length} imagen(es) cargada(s)`);
+    } catch (err: any) {
+      console.error('Error uploading images:', err);
+      toast.error(`Error al subir imágenes: ${err?.message || 'Error desconocido'}`);
+    }
   };
 
   const applyTemplate = (content: string) => {
@@ -538,14 +554,18 @@ const AppointmentPage = () => {
 
     drawFooter();
 
-    // ====== IMAGES ======
+    // ====== IMAGES (hybrid: Storage URLs + legacy base64) ======
     const currentApp = store.getAppointment(id || '');
-    if (currentApp && currentApp.images.length > 0) {
+    const allImages = [
+      ...(currentApp?.imageUrls || []),
+      ...(currentApp?.images || []),
+    ];
+    if (allImages.length > 0) {
       const maxImgW = (contentWidth - 8) / 2;
       const maxImgH = 80;
       let imgIndex = 0;
 
-      while (imgIndex < currentApp.images.length) {
+      while (imgIndex < allImages.length) {
         doc.addPage();
         let iy = 20;
         doc.setFontSize(12);
@@ -556,11 +576,12 @@ const AppointmentPage = () => {
         let countOnPage = 0;
         const imagesPerPage = 6;
 
-        while (imgIndex < currentApp.images.length && countOnPage < imagesPerPage) {
+        while (imgIndex < allImages.length && countOnPage < imagesPerPage) {
           const col = countOnPage % 2;
 
           try {
-            const imgEl = await loadImage(currentApp.images[imgIndex]);
+            const imgSrc = allImages[imgIndex];
+            const imgEl = await loadImage(imgSrc);
             const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
 
             let drawW = maxImgW;
@@ -571,11 +592,11 @@ const AppointmentPage = () => {
             }
 
             const x = margin + col * (maxImgW + 8) + (maxImgW - drawW) / 2;
-            doc.addImage(currentApp.images[imgIndex], 'JPEG', x, iy, drawW, drawH);
+            doc.addImage(imgSrc, 'JPEG', x, iy, drawW, drawH);
 
             imgIndex++;
             countOnPage++;
-            if (col === 1 || imgIndex >= currentApp.images.length || countOnPage >= imagesPerPage) {
+            if (col === 1 || imgIndex >= allImages.length || countOnPage >= imagesPerPage) {
               iy += maxImgH + 5;
             }
           } catch {
@@ -866,11 +887,31 @@ const AppointmentPage = () => {
             </>
           )}
 
+          {/* Storage images (new) */}
+          {currentAppointment.imageUrls.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {currentAppointment.imageUrls.map((url, i) => (
+                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
+                  {!isSecretary && (
+                    <button
+                      onClick={async () => { if (id) await store.removeStorageImage(id, i); }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Legacy base64 images */}
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
-                  <img src={img} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" />
+                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
                   {!isSecretary && (
                     <button
                       onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
