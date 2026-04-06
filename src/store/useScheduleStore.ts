@@ -87,7 +87,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
     const ids = roles.map(r => r.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, full_name, avatar_url')
+      .select('user_id, full_name, avatar_url, slot_interval')
       .in('user_id', ids);
     if (profiles) {
       set({
@@ -95,6 +95,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
           userId: p.user_id,
           fullName: p.full_name,
           avatarUrl: (p as any).avatar_url || null,
+          slotInterval: (p as any).slot_interval ?? 10,
         })),
       });
     }
