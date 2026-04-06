@@ -248,11 +248,11 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
       },
       transformPastedHTML(html) {
         // Extract body content if full HTML document was pasted
-        const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const content = bodyMatch ? bodyMatch[1] : html;
 
         // Detect Word/Office content and clean it
-        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(content);
+        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
         if (isWordContent) {
           return cleanWordHtml(content);
         }
