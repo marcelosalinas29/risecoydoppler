@@ -12,6 +12,7 @@ interface Profile {
   license_numbers: string | null;
   signature_text: string | null;
   avatar_url: string | null;
+  slot_interval: number;
 }
 
 interface AuthContextType {
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from('profiles').select('*').eq('user_id', userId).single(),
       supabase.from('user_roles').select('role').eq('user_id', userId).single(),
     ]);
-    setProfile(profileData ? { ...profileData, avatar_url: (profileData as any).avatar_url || null } : null);
+    setProfile(profileData ? { ...profileData, avatar_url: (profileData as any).avatar_url || null, slot_interval: (profileData as any).slot_interval ?? 10 } : null);
     setRole((roleData?.role as AppRole) ?? null);
   };
 

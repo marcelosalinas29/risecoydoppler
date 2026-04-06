@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Save, PenLine, Camera, Clock } from 'lucide-react';
 
 const ProfilePage = () => {
-  const { profile, role, isDoctor, user, refreshProfile } = useAuth();
+  const { profile, role, isDoctor, isSecretary, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
@@ -166,6 +166,13 @@ const ProfilePage = () => {
                   Configurar Horarios de Atención
                 </Button>
               </>
+            )}
+
+            {isSecretary && (
+              <Button variant="outline" className="w-full" onClick={() => navigate('/schedule')}>
+                <Clock className="w-4 h-4 mr-2" />
+                Configurar Horarios de Médicos
+              </Button>
             )}
 
             <Button onClick={handleSave} className="w-full" disabled={saving}>

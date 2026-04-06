@@ -14,6 +14,7 @@ export interface DoctorInfo {
   userId: string;
   fullName: string;
   avatarUrl: string | null;
+  slotInterval: number;
 }
 
 interface ScheduleStore {
@@ -26,7 +27,7 @@ interface ScheduleStore {
   updateBlock: (id: string, data: Partial<ScheduleBlock>) => Promise<void>;
   deleteBlock: (id: string) => Promise<void>;
   getBlocksForDay: (doctorId: string, dayOfWeek: number) => ScheduleBlock[];
-  generateAvailableSlots: (doctorId: string, dayOfWeek: number) => string[];
+  generateAvailableSlots: (doctorId: string, dayOfWeek: number, intervalOverride?: number) => string[];
 }
 
 function mapBlock(b: any): ScheduleBlock {
@@ -40,13 +41,13 @@ function mapBlock(b: any): ScheduleBlock {
   };
 }
 
-function generateSlotsFromBlock(startTime: string, endTime: string): string[] {
+function generateSlotsFromBlock(startTime: string, endTime: string, interval: number = 10): string[] {
   const slots: string[] = [];
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
   const startMin = sh * 60 + sm;
   const endMin = eh * 60 + em;
-  for (let m = startMin; m < endMin; m += 10) {
+  for (let m = startMin; m < endMin; m += interval) {
     const h = Math.floor(m / 60);
     const min = m % 60;
     slots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
@@ -86,7 +87,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
     const ids = roles.map(r => r.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, full_name, avatar_url')
+      .select('user_id, full_name, avatar_url, slot_interval')
       .in('user_id', ids);
     if (profiles) {
       set({
@@ -94,6 +95,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
           userId: p.user_id,
           fullName: p.full_name,
           avatarUrl: (p as any).avatar_url || null,
+          slotInterval: (p as any).slot_interval ?? 10,
         })),
       });
     }
@@ -134,11 +136,13 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
   getBlocksForDay: (doctorId, dayOfWeek) =>
     get().schedules.filter(b => b.doctorId === doctorId && b.dayOfWeek === dayOfWeek && b.active),
 
-  generateAvailableSlots: (doctorId, dayOfWeek) => {
+  generateAvailableSlots: (doctorId, dayOfWeek, intervalOverride?) => {
     const blocks = get().getBlocksForDay(doctorId, dayOfWeek);
+    const doctor = get().doctors.find(d => d.userId === doctorId);
+    const interval = intervalOverride ?? doctor?.slotInterval ?? 10;
     const allSlots: string[] = [];
     for (const block of blocks) {
-      allSlots.push(...generateSlotsFromBlock(block.startTime, block.endTime));
+      allSlots.push(...generateSlotsFromBlock(block.startTime, block.endTime, interval));
     }
     return [...new Set(allSlots)].sort();
   },

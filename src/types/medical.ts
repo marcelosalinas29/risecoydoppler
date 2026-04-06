@@ -89,6 +89,33 @@ export function calcularEdad(fechaNacimiento: string | Date): number {
   return age;
 }
 
+/** 
+ * Calculate study duration in minutes based on study type.
+ * Doppler / Obstétrica Morfológica / Obstétrica TN / Scan Fetal → 20 min
+ * Combinados con Doppler → 20 min
+ * Otherwise → uses the doctor's base interval (default 10)
+ */
+export function getStudyDuration(studyType: string, baseInterval: number = 10): number {
+  if (!studyType) return baseInterval;
+  const upper = studyType.toUpperCase();
+  const parts = upper.split(/\s*\+\s*/).map(s => s.trim()).filter(Boolean);
+
+  const isSpecial = (s: string) =>
+    s.includes('DOPPLER') ||
+    s.includes('MORFOLÓGICA') ||
+    s.includes('MORFOLOGICA') ||
+    s.includes(' TN') ||
+    s.startsWith('TN ') ||
+    s === 'TN' ||
+    s.includes('SCAN FETAL') ||
+    s.includes('DOPPLER MATERNO') ||
+    s.includes('TEST DE FUNCIÓN ENDOTELIAL') ||
+    s.includes('TEST DE FUNCION ENDOTELIAL');
+
+  if (parts.some(isSpecial)) return 20;
+  return baseInterval;
+}
+
 /** Format study type string: replace "+" with "," and last with "y" */
 export function formatStudyType(studyType: string): string {
   const parts = studyType.split(/\s*\+\s*/).map(s => s.trim().toUpperCase()).filter(Boolean);
