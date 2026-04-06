@@ -321,9 +321,22 @@ const NewAppointmentPage = () => {
           </Label>
           {availableSlots.length > 0 ? (
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-              {availableSlots.map(slot => {
+              {availableSlots.map((slot, idx) => {
                 const isOccupied = occupiedSlots.has(slot);
+                // Check if selecting this slot would cause overlap (multi-slot)
+                const wouldOverlap = slotsNeeded > 1 && !isOccupied && (() => {
+                  for (let i = 1; i < slotsNeeded; i++) {
+                    const nextSlot = availableSlots[idx + i];
+                    if (!nextSlot || occupiedSlots.has(nextSlot)) return true;
+                  }
+                  return false;
+                })();
                 const isSelected = time === slot && !showOverride;
+                // Highlight blocked slots when a slot is selected
+                const isBlockedBySelection = !showOverride && time && slotsNeeded > 1 && (() => {
+                  const selIdx = availableSlots.indexOf(time);
+                  return selIdx >= 0 && idx > selIdx && idx < selIdx + slotsNeeded;
+                })();
                 return (
                   <button
                     key={slot}
@@ -333,10 +346,15 @@ const NewAppointmentPage = () => {
                       "text-xs font-mono py-2 px-1 rounded-lg border transition-all",
                       isSelected
                         ? "bg-primary text-primary-foreground border-primary"
-                        : isOccupied
-                          ? "bg-muted/60 text-muted-foreground/50 border-border cursor-not-allowed line-through"
-                          : "bg-card border-border hover:border-primary/50 hover:bg-primary/5"
+                        : isBlockedBySelection
+                          ? "bg-primary/20 text-primary border-primary/40"
+                          : isOccupied
+                            ? "bg-muted/60 text-muted-foreground/50 border-border cursor-not-allowed line-through"
+                            : wouldOverlap
+                              ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+                              : "bg-card border-border hover:border-primary/50 hover:bg-primary/5"
                     )}
+                    title={wouldOverlap ? 'No hay suficientes slots consecutivos' : undefined}
                   >
                     {slot}
                   </button>
