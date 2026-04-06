@@ -186,7 +186,9 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
         if (isWordContent) {
           return cleanWordHtml(html);
         }
-        return html;
+        // For PDF and other sources: preserve inline styles (font-size, font-weight, font-style, etc.)
+        // but clean up problematic attributes and tags
+        return cleanGenericHtml(html);
       },
     },
   });
