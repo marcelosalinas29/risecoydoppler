@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Save, PenLine, Camera, Clock } from 'lucide-react';
 
 const ProfilePage = () => {
-  const { profile, role, isDoctor, user, refreshProfile } = useAuth();
+  const { profile, role, isDoctor, isSecretary, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
