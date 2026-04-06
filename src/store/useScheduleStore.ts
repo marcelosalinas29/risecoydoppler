@@ -136,11 +136,13 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
   getBlocksForDay: (doctorId, dayOfWeek) =>
     get().schedules.filter(b => b.doctorId === doctorId && b.dayOfWeek === dayOfWeek && b.active),
 
-  generateAvailableSlots: (doctorId, dayOfWeek) => {
+  generateAvailableSlots: (doctorId, dayOfWeek, intervalOverride?) => {
     const blocks = get().getBlocksForDay(doctorId, dayOfWeek);
+    const doctor = get().doctors.find(d => d.userId === doctorId);
+    const interval = intervalOverride ?? doctor?.slotInterval ?? 10;
     const allSlots: string[] = [];
     for (const block of blocks) {
-      allSlots.push(...generateSlotsFromBlock(block.startTime, block.endTime));
+      allSlots.push(...generateSlotsFromBlock(block.startTime, block.endTime, interval));
     }
     return [...new Set(allSlots)].sort();
   },
