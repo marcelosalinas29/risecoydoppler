@@ -41,13 +41,13 @@ function mapBlock(b: any): ScheduleBlock {
   };
 }
 
-function generateSlotsFromBlock(startTime: string, endTime: string): string[] {
+function generateSlotsFromBlock(startTime: string, endTime: string, interval: number = 10): string[] {
   const slots: string[] = [];
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
   const startMin = sh * 60 + sm;
   const endMin = eh * 60 + em;
-  for (let m = startMin; m < endMin; m += 10) {
+  for (let m = startMin; m < endMin; m += interval) {
     const h = Math.floor(m / 60);
     const min = m % 60;
     slots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
