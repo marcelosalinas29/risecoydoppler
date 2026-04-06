@@ -3,25 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScheduleStore, ScheduleBlock } from '@/store/useScheduleStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Trash2, Clock } from 'lucide-react';
+import { Plus, Trash2, Clock, Timer } from 'lucide-react';
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const INTERVAL_OPTIONS = [5, 10, 15, 20, 30];
 
 const ScheduleConfigPage = () => {
   const navigate = useNavigate();
-  const { user, isDoctor, isSecretary } = useAuth();
+  const { user, isDoctor, isSecretary, refreshProfile } = useAuth();
   const { schedules, doctors, fetchSchedules, fetchAllSchedules, fetchDoctors, addBlock, updateBlock, deleteBlock } = useScheduleStore();
 
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const [newDay, setNewDay] = useState('1');
   const [newStart, setNewStart] = useState('09:00');
   const [newEnd, setNewEnd] = useState('12:00');
+  const [currentInterval, setCurrentInterval] = useState<number>(10);
+  const [savingInterval, setSavingInterval] = useState(false);
 
   useEffect(() => {
     if (isSecretary) {
@@ -33,10 +37,12 @@ const ScheduleConfigPage = () => {
     }
   }, [user, isDoctor, isSecretary]);
 
-  // When secretary selects a doctor, filter schedules
+  // When secretary selects a doctor, filter schedules and load interval
   const handleDoctorChange = (doctorId: string) => {
     setSelectedDoctorId(doctorId);
     fetchSchedules(doctorId);
+    const doc = doctors.find(d => d.userId === doctorId);
+    setCurrentInterval(doc?.slotInterval ?? 10);
   };
 
   // Auto-select first doctor for secretary
@@ -44,8 +50,37 @@ const ScheduleConfigPage = () => {
     if (isSecretary && doctors.length > 0 && !selectedDoctorId) {
       setSelectedDoctorId(doctors[0].userId);
       fetchSchedules(doctors[0].userId);
+      setCurrentInterval(doctors[0].slotInterval ?? 10);
     }
   }, [doctors, isSecretary, selectedDoctorId]);
+
+  // Load interval for doctor role
+  useEffect(() => {
+    if (isDoctor && user) {
+      const doc = doctors.find(d => d.userId === user.id);
+      if (doc) setCurrentInterval(doc.slotInterval ?? 10);
+    }
+  }, [doctors, isDoctor, user]);
+
+  const handleIntervalChange = async (value: string) => {
+    const interval = parseInt(value);
+    setCurrentInterval(interval);
+    setSavingInterval(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ slot_interval: interval } as any)
+        .eq('user_id', selectedDoctorId);
+      if (error) throw error;
+      await fetchDoctors();
+      if (isDoctor) await refreshProfile();
+      toast.success(`Intervalo actualizado a ${interval} minutos`);
+    } catch {
+      toast.error('Error al guardar el intervalo');
+    } finally {
+      setSavingInterval(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!selectedDoctorId) {
@@ -101,6 +136,34 @@ const ScheduleConfigPage = () => {
                 {doctors.map(doc => (
                   <SelectItem key={doc.userId} value={doc.userId}>
                     {doc.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Interval selector */}
+        {selectedDoctorId && (
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
+            <h2 className="font-semibold flex items-center gap-2 text-sm">
+              <Timer className="w-4 h-4 text-primary" />
+              Intervalo Base de Turnos
+              {isSecretary && selectedDoctorName && (
+                <span className="text-muted-foreground font-normal">— {selectedDoctorName}</span>
+              )}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Define cada cuántos minutos se genera un slot en la grilla. Los estudios especiales (Doppler, TN, etc.) ajustan automáticamente a 20 min.
+            </p>
+            <Select value={String(currentInterval)} onValueChange={handleIntervalChange} disabled={savingInterval}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INTERVAL_OPTIONS.map(opt => (
+                  <SelectItem key={opt} value={String(opt)}>
+                    {opt} minutos
                   </SelectItem>
                 ))}
               </SelectContent>

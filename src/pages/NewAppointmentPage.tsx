@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Clock, AlertTriangle, Timer } from 'lucide-react';
 
 const NewAppointmentPage = () => {
   const navigate = useNavigate();
