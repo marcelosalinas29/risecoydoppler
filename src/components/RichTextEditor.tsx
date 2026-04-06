@@ -231,15 +231,33 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
       onChange(editor.getHTML());
     },
     editorProps: {
-      transformPastedHTML(html) {
-        // Detect Word/Office content and clean it
-        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
-        if (isWordContent) {
-          return cleanWordHtml(html);
+      handlePaste(_view, event) {
+        const clipboardData = event.clipboardData;
+        if (!clipboardData) return false;
+
+        const html = clipboardData.getData('text/html');
+
+        // If HTML is available, let TipTap's transformPastedHTML handle it
+        if (html && html.trim().length > 10) {
+          return false;
         }
-        // For PDF and other sources: preserve inline styles (font-size, font-weight, font-style, etc.)
-        // but clean up problematic attributes and tags
-        return cleanGenericHtml(html);
+
+        // Plain text only (common from PDFs): no special handling needed,
+        // TipTap handles plain text paste natively
+        return false;
+      },
+      transformPastedHTML(html) {
+        // Extract body content if full HTML document was pasted
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        const content = bodyMatch ? bodyMatch[1] : html;
+
+        // Detect Word/Office content and clean it
+        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(content);
+        if (isWordContent) {
+          return cleanWordHtml(content);
+        }
+        // For PDF and other sources
+        return cleanGenericHtml(content);
       },
     },
   });
