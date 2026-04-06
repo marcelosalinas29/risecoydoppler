@@ -14,6 +14,7 @@ export interface DoctorInfo {
   userId: string;
   fullName: string;
   avatarUrl: string | null;
+  slotInterval: number;
 }
 
 interface ScheduleStore {
