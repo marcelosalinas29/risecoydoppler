@@ -7,6 +7,7 @@ import FontFamily from '@tiptap/extension-font-family';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Paragraph from '@tiptap/extension-paragraph';
+import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model';
 import { useEffect, useCallback, useState } from 'react';
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -231,33 +232,42 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
       onChange(editor.getHTML());
     },
     editorProps: {
-      handlePaste(_view, event) {
+      handlePaste(view, event) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
         const html = clipboardData.getData('text/html');
-
-        // If HTML is available, let TipTap's transformPastedHTML handle it
-        if (html && html.trim().length > 10) {
+        if (!html || html.trim().length <= 10) {
           return false;
         }
 
-        // Plain text only (common from PDFs): no special handling needed,
-        // TipTap handles plain text paste natively
-        return false;
-      },
-      transformPastedHTML(html) {
-        // Extract body content if full HTML document was pasted
         const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const content = bodyMatch ? bodyMatch[1] : html;
-
-        // Detect Word/Office content and clean it
         const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
-        if (isWordContent) {
-          return cleanWordHtml(content);
+        const cleanedHtml = isWordContent ? cleanWordHtml(content) : cleanGenericHtml(content);
+
+        if (!cleanedHtml.trim()) {
+          return false;
         }
-        // For PDF and other sources
-        return cleanGenericHtml(content);
+
+        event.preventDefault();
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = cleanedHtml;
+        const parser = ProseMirrorDOMParser.fromSchema(view.state.schema);
+        const slice = parser.parseSlice(wrapper, {
+          preserveWhitespace: 'full',
+        });
+
+        const transaction = view.state.tr.replaceSelection(slice).scrollIntoView();
+        view.dispatch(transaction);
+        return true;
+      },
+      transformPastedHTML(html) {
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        const content = bodyMatch ? bodyMatch[1] : html;
+        const isWordContent = /class="?Mso|style="[^"]*mso-|<o:p|xmlns:w=|xmlns:o=/i.test(html);
+        return isWordContent ? cleanWordHtml(content) : cleanGenericHtml(content);
       },
     },
   });
