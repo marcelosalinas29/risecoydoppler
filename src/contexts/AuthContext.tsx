@@ -12,6 +12,7 @@ interface Profile {
   license_numbers: string | null;
   signature_text: string | null;
   avatar_url: string | null;
+  slot_interval: number;
 }
 
 interface AuthContextType {
