@@ -263,6 +263,12 @@ const NewAppointmentPage = () => {
             <div className="bg-muted/50 rounded-lg p-2">
               <p className="text-xs text-muted-foreground">Estudios seleccionados:</p>
               <p className="text-sm font-medium uppercase">{getStudyTypeString()}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Timer className="w-3 h-3 text-primary" />
+                <span className="text-xs font-medium text-primary">
+                  Duración: {studyDuration} min ({slotsNeeded} slot{slotsNeeded > 1 ? 's' : ''})
+                </span>
+              </div>
             </div>
           )}
         </div>
