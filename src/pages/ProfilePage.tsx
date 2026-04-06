@@ -168,6 +168,13 @@ const ProfilePage = () => {
               </>
             )}
 
+            {isSecretary && (
+              <Button variant="outline" className="w-full" onClick={() => navigate('/schedule')}>
+                <Clock className="w-4 h-4 mr-2" />
+                Configurar Horarios de Médicos
+              </Button>
+            )}
+
             <Button onClick={handleSave} className="w-full" disabled={saving}>
               <Save className="w-4 h-4 mr-2" />
               {saving ? 'Guardando...' : 'Guardar cambios'}
