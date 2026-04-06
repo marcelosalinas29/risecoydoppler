@@ -148,6 +148,7 @@ export type Database = {
           id: string
           license_numbers: string | null
           signature_text: string | null
+          slot_interval: number
           specialty: string | null
           updated_at: string
           user_id: string
@@ -160,6 +161,7 @@ export type Database = {
           id?: string
           license_numbers?: string | null
           signature_text?: string | null
+          slot_interval?: number
           specialty?: string | null
           updated_at?: string
           user_id: string
@@ -172,6 +174,7 @@ export type Database = {
           id?: string
           license_numbers?: string | null
           signature_text?: string | null
+          slot_interval?: number
           specialty?: string | null
           updated_at?: string
           user_id?: string
