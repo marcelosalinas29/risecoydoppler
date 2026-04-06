@@ -27,7 +27,7 @@ interface ScheduleStore {
   updateBlock: (id: string, data: Partial<ScheduleBlock>) => Promise<void>;
   deleteBlock: (id: string) => Promise<void>;
   getBlocksForDay: (doctorId: string, dayOfWeek: number) => ScheduleBlock[];
-  generateAvailableSlots: (doctorId: string, dayOfWeek: number) => string[];
+  generateAvailableSlots: (doctorId: string, dayOfWeek: number, intervalOverride?: number) => string[];
 }
 
 function mapBlock(b: any): ScheduleBlock {
