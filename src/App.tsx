@@ -14,8 +14,14 @@ import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
 import ScheduleConfigPage from "./pages/ScheduleConfigPage";
 import NotFound from "./pages/NotFound";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 const queryClient = new QueryClient();
+
+function RealtimeProvider({ children }: { children: React.ReactNode }) {
+  useRealtimeSync();
+  return <>{children}</>;
+}
 
 const App = () => (
   <ErrorBoundary>

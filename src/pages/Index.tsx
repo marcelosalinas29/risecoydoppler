@@ -45,77 +45,7 @@ const Index = () => {
     fetchAllSchedules();
   }, []);
 
-  // Realtime subscription — apply changes incrementally instead of full refetch
-  useEffect(() => {
-    const channel = supabase
-      .channel('appointments-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'appointments' },
-        (payload) => {
-          const event = payload.eventType;
-          if (event === 'DELETE') {
-            const oldId = (payload.old as any)?.id;
-            if (oldId) {
-              useClinicStore.setState((s) => ({
-                appointments: s.appointments.filter((a) => a.id !== oldId),
-              }));
-            }
-            return;
-          }
-          // For INSERT and UPDATE, refetch only that single appointment
-          const newRow = payload.new as any;
-          if (!newRow?.id) return;
-          supabase
-            .from('appointments')
-            .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
-            .eq('id', newRow.id)
-            .single()
-            .then(({ data }) => {
-              if (!data) return;
-              useClinicStore.setState((s) => {
-                const existing = s.appointments.find((a) => a.id === data.id);
-                const mapped = {
-                  id: data.id,
-                  patientId: data.patient_id,
-                  patient: {
-                    id: data.patients.id,
-                    dni: data.patients.dni || '',
-                    name: data.patients.name,
-                    age: data.patients.fecha_nacimiento
-                      ? Math.floor((Date.now() - new Date(data.patients.fecha_nacimiento + 'T00:00:00').getTime()) / 31557600000)
-                      : data.patients.age,
-                    phone: data.patients.phone,
-                    fechaNacimiento: data.patients.fecha_nacimiento || undefined,
-                    obraSocial: data.patients.obra_social || '',
-                  },
-                  studyType: data.study_type,
-                  status: data.status as any,
-                  date: data.date,
-                  time: data.time,
-                  report: existing?.report || '',
-                  images: existing?.images || [],
-                  imageUrls: existing?.imageUrls || [],
-                  observations: data.observations || '',
-                  reportedBy: data.reported_by || null,
-                  asistio: data.asistio ?? false,
-                  createdAt: data.created_at,
-                };
-                if (existing) {
-                  return { appointments: s.appointments.map((a) => a.id === data.id ? mapped : a) };
-                } else {
-                  return { appointments: [mapped, ...s.appointments] };
-                }
-              });
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Realtime is now handled globally by useRealtimeSync hook in App.tsx
 
   const dayOfWeek = getDay(selectedDate);
   const doctorSlots = selectedDoctorId !== 'all'
