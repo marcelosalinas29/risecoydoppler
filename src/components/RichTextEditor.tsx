@@ -123,6 +123,57 @@ function cleanWordHtml(html: string): string {
   return cleaned;
 }
 
+// Clean HTML from PDF viewers, Google Docs, and other non-Word sources
+// Preserves font-size, font-weight, font-style, text-decoration, text-align, color
+function cleanGenericHtml(html: string): string {
+  let cleaned = html
+    // Remove meta/link/style/title tags
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<meta[^>]*\/?>/gi, '')
+    .replace(/<link[^>]*\/?>/gi, '')
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
+  // Convert <b> to <strong>, <i> to <em>
+  cleaned = cleaned
+    .replace(/<b(\s|>)/gi, '<strong$1')
+    .replace(/<\/b>/gi, '</strong>')
+    .replace(/<i(\s|>)/gi, '<em$1')
+    .replace(/<\/i>/gi, '</em>');
+
+  // Keep only relevant style properties from inline styles
+  cleaned = cleaned.replace(/style="([^"]*)"/gi, (_, styleStr: string) => {
+    const allowedProps = ['font-size', 'font-weight', 'font-style', 'font-family',
+      'text-decoration', 'text-align', 'color', 'background-color', 'line-height'];
+    const kept: string[] = [];
+    for (const prop of allowedProps) {
+      const regex = new RegExp(`${prop}\\s*:\\s*([^;]+)`, 'i');
+      const match = styleStr.match(regex);
+      if (match) {
+        let value = match[1].trim();
+        // Normalize font-size units
+        if (prop === 'font-size') {
+          const normalized = normalizeFontSize(value);
+          if (normalized) value = normalized;
+        }
+        kept.push(`${prop}: ${value}`);
+      }
+    }
+    return kept.length > 0 ? `style="${kept.join('; ')}"` : '';
+  });
+
+  // Remove class attributes
+  cleaned = cleaned.replace(/\s+class="[^"]*"/gi, '');
+
+  // Clean empty style attributes
+  cleaned = cleaned.replace(/\sstyle="\s*"/gi, '');
+
+  // Remove empty spans without style
+  cleaned = cleaned.replace(/<span(?![^>]*style)[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+
+  return cleaned;
+}
+
 const CUSTOM_DICT_KEY = 'custom-dictionary-es';
 
 function getCustomDictionary(): string[] {
