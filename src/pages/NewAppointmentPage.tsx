@@ -105,6 +105,20 @@ const NewAppointmentPage = () => {
     return parts.join(' + ');
   };
 
+  // Calculate duration based on study type
+  const selectedDoctor = doctors.find(d => d.userId === selectedDoctorId);
+  const baseInterval = selectedDoctor?.slotInterval ?? 10;
+  const studyTypeStr = getStudyTypeString();
+  const studyDuration = getStudyDuration(studyTypeStr, baseInterval);
+  const slotsNeeded = Math.max(1, Math.ceil(studyDuration / baseInterval));
+
+  // Compute which slots are blocked by multi-slot appointments
+  const blockedSlots = useMemo(() => {
+    const blocked = new Set<string>();
+    occupiedSlots.forEach(s => blocked.add(s));
+    return blocked;
+  }, [occupiedSlots]);
+
   const finalTime = showOverride ? overrideTime : time;
 
   const handleSubmit = async () => {
