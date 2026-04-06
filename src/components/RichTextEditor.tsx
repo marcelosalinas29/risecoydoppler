@@ -231,50 +231,19 @@ const RichTextEditor = ({ content, onChange, disabled = false, placeholder }: Ri
       onChange(editor.getHTML());
     },
     editorProps: {
-      handlePaste(view, event) {
+      handlePaste(_view, event) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
         const html = clipboardData.getData('text/html');
-        const plainText = clipboardData.getData('text/plain');
 
-        // If we got HTML content, let TipTap handle it via transformPastedHTML
-        if (html && html.trim().length > 0) {
-          return false; // let default TipTap pipeline handle it
+        // If HTML is available, let TipTap's transformPastedHTML handle it
+        if (html && html.trim().length > 10) {
+          return false;
         }
 
-        // If only plain text is available (common from some PDFs), insert it preserving line breaks
-        if (plainText && plainText.trim().length > 0) {
-          event.preventDefault();
-          const paragraphs = plainText.split(/\n\s*\n/); // double newlines = new paragraph
-          const htmlContent = paragraphs
-            .map(p => {
-              const lines = p.split(/\n/).map(l => l.trim()).filter(Boolean);
-              return `<p>${lines.join('<br>')}</p>`;
-            })
-            .join('');
-          view.dispatch(
-            view.state.tr.replaceSelectionWith(
-              view.state.schema.nodeFromJSON(
-                // Use insertContent via the editor instead
-                { type: 'text', text: '' }
-              )
-            )
-          );
-          // Use the editor's insertContent for clean insertion
-          const editor = (view as any).__tiptapEditor;
-          if (editor) {
-            editor.commands.insertContent(htmlContent);
-          } else {
-            // Fallback: insert as HTML through the transaction
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
-            const fragment = doc.body.innerHTML;
-            view.pasteHTML(fragment);
-          }
-          return true;
-        }
-
+        // Plain text only (common from PDFs): no special handling needed,
+        // TipTap handles plain text paste natively
         return false;
       },
       transformPastedHTML(html) {
