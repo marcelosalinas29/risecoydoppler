@@ -743,13 +743,11 @@ const AppointmentPage = () => {
                 <Button variant="ghost" size="sm" onClick={handleSavePatient}>
                   <Save className="w-4 h-4 text-primary" />
                 </Button>
-              ) : (
-              {!isReadOnly && (
+              ) : !isReadOnly ? (
                 <Button variant="ghost" size="sm" onClick={() => setEditingPatient(true)}>
                   <Pencil className="w-4 h-4 text-muted-foreground" />
                 </Button>
-              )}
-              )}
+              ) : null}
             </div>
           </div>
 
