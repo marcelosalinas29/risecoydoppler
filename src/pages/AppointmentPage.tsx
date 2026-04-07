@@ -55,7 +55,8 @@ const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useClinicStore();
-  const { profile, isSecretary, user } = useAuth();
+  const { profile, isSecretary, isViewer, user } = useAuth();
+  const isReadOnly = isSecretary || isViewer;
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
