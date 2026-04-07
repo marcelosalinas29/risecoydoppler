@@ -12,7 +12,7 @@ interface AppLayoutProps {
   showBack?: boolean;
 }
 
-const navItems = [
+const allNavItems = [
   { path: '/', icon: Calendar, label: 'Citas' },
   { path: '/patients', icon: Users, label: 'Pacientes' },
   { path: '/new', icon: PlusCircle, label: 'Nueva' },
@@ -21,7 +21,8 @@ const navItems = [
 const AppLayout = ({ children, title }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, signOut, isViewer } = useAuth();
+  const navItems = isViewer ? allNavItems.filter(n => n.path !== '/new') : allNavItems;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { searchPatients, getPatientAppointments } = useClinicStore();

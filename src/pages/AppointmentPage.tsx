@@ -55,7 +55,8 @@ const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useClinicStore();
-  const { profile, isSecretary, user } = useAuth();
+  const { profile, isSecretary, isViewer, user } = useAuth();
+  const isReadOnly = isSecretary || isViewer;
   const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -125,14 +126,14 @@ const AppointmentPage = () => {
       return;
     }
     // Store who reported (doctor's user_id)
-    const reportedBy = !isSecretary && user ? user.id : undefined;
+    const reportedBy = !isReadOnly && user ? user.id : undefined;
     await store.updateAppointmentReport(id, report, reportedBy);
     setReportLoadedFromDb(true);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
       await store.updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
-  }, [id, report, store, appointment?.status, isSecretary, user]);
+  }, [id, report, store, appointment?.status, isReadOnly, user]);
 
   const handleSavePatient = async () => {
     if (!appointment) return;
@@ -742,11 +743,11 @@ const AppointmentPage = () => {
                 <Button variant="ghost" size="sm" onClick={handleSavePatient}>
                   <Save className="w-4 h-4 text-primary" />
                 </Button>
-              ) : (
+              ) : !isReadOnly ? (
                 <Button variant="ghost" size="sm" onClick={() => setEditingPatient(true)}>
                   <Pencil className="w-4 h-4 text-muted-foreground" />
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -780,9 +781,11 @@ const AppointmentPage = () => {
               <span className="flex items-center gap-1">
                 <FileText className="w-3 h-3" />
                 <span className="uppercase font-bold text-xs">{formatStudyType(currentAppointment.studyType)}</span>
-                <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
-                  <Edit2 className="w-3 h-3" />
-                </button>
+                {!isReadOnly && (
+                  <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                )}
               </span>
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{(() => { const [y, m, d] = appointment.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d/MM/yyyy"); })()}</span>
               {appointment.patient.obraSocial && (
@@ -798,7 +801,7 @@ const AppointmentPage = () => {
             currentValue={currentAppointment.studyType}
           />
 
-          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isSecretary}>
+          <Select value={currentAppointment.status} onValueChange={(v) => handleStatusChange(v as StudyStatus)} disabled={isReadOnly}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Cambiar estado" />
             </SelectTrigger>
@@ -816,10 +819,10 @@ const AppointmentPage = () => {
           <div className="flex items-center justify-between">
             <h2 className="font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
-              Informe {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
+              Informe {isReadOnly && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
             <div className="flex gap-2">
-              {!isSecretary && (
+              {!isReadOnly && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
                     Plantillas <ChevronDown className="w-3 h-3 ml-1" />
@@ -846,10 +849,10 @@ const AppointmentPage = () => {
               <RichTextEditor
                 content={report}
                 onChange={setReport}
-                disabled={isSecretary}
+                disabled={isReadOnly}
                 placeholder="Escriba el informe aquí..."
               />
-              {!isSecretary && (
+              {!isReadOnly && (
                 <Button onClick={async () => { await handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
                   Guardar Informe
                 </Button>
@@ -867,10 +870,10 @@ const AppointmentPage = () => {
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3">
           <h2 className="font-semibold flex items-center gap-2">
             <ImagePlus className="w-4 h-4 text-primary" />
-            Imágenes {isSecretary && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
+            Imágenes {isReadOnly && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
           </h2>
 
-          {!isSecretary && (
+          {!isReadOnly && (
             <>
               <input
                 ref={fileInputRef}
@@ -893,7 +896,7 @@ const AppointmentPage = () => {
               {currentAppointment.imageUrls.map((url, i) => (
                 <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
                   <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
-                  {!isSecretary && (
+                  {!isReadOnly && (
                     <button
                       onClick={async () => { if (id) await store.removeStorageImage(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -912,7 +915,7 @@ const AppointmentPage = () => {
               {currentAppointment.images.map((img, i) => (
                 <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
                   <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
-                  {!isSecretary && (
+                  {!isReadOnly && (
                     <button
                       onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
