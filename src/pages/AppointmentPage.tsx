@@ -783,9 +783,11 @@ const AppointmentPage = () => {
               <span className="flex items-center gap-1">
                 <FileText className="w-3 h-3" />
                 <span className="uppercase font-bold text-xs">{formatStudyType(currentAppointment.studyType)}</span>
-                <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
-                  <Edit2 className="w-3 h-3" />
-                </button>
+                {!isReadOnly && (
+                  <button onClick={() => setShowStudySelector(true)} className="ml-1 text-primary hover:text-primary/80">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                )}
               </span>
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{(() => { const [y, m, d] = appointment.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d/MM/yyyy"); })()}</span>
               {appointment.patient.obraSocial && (
