@@ -22,6 +22,7 @@ interface AuthContextType {
   role: AppRole | null;
   isDoctor: boolean;
   isSecretary: boolean;
+  isViewer: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
