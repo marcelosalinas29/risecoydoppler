@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session, user, profile, role,
       isDoctor: role === 'doctor',
       isSecretary: role === 'secretary',
+      isViewer: role === 'viewer',
       loading, signOut, refreshProfile,
     }}>
       {children}
