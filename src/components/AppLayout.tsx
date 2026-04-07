@@ -12,7 +12,7 @@ interface AppLayoutProps {
   showBack?: boolean;
 }
 
-const navItems = [
+const allNavItems = [
   { path: '/', icon: Calendar, label: 'Citas' },
   { path: '/patients', icon: Users, label: 'Pacientes' },
   { path: '/new', icon: PlusCircle, label: 'Nueva' },
