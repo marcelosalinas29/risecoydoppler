@@ -2,14 +2,19 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Patient, StudyStatus } from '@/types/medical';
 import { calcularEdad } from '@/types/medical';
+import { trackMutation } from '@/hooks/useRealtimeSync';
+
+let lastPatientsLoad = 0;
+let lastAppointmentsLoad = 0;
+const LOAD_COOLDOWN = 30000; // 30 seconds minimum between full reloads
 
 interface ClinicStore {
   patients: Patient[];
   appointments: Appointment[];
   loading: boolean;
   fetchAppointmentDetail: (id: string) => Promise<Appointment | null>;
-  fetchPatients: () => Promise<void>;
-  fetchAppointments: () => Promise<void>;
+  fetchPatients: (force?: boolean) => Promise<void>;
+  fetchAppointments: (force?: boolean) => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
   addAppointment: (data: { patientId: string; studyType: string; date: string; time: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
@@ -87,14 +92,20 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     return full;
   },
 
-  fetchPatients: async () => {
+  fetchPatients: async (force = false) => {
+    if (!force && get().patients.length > 0 && Date.now() - lastPatientsLoad < LOAD_COOLDOWN) return;
     const { data } = await supabase.from('patients').select('*').order('name');
     if (data) {
       set({ patients: data.map(mapPatient) });
+      lastPatientsLoad = Date.now();
     }
   },
 
-  fetchAppointments: async () => {
+  fetchAppointments: async (force = false) => {
+    if (!force && get().appointments.length > 0 && Date.now() - lastAppointmentsLoad < LOAD_COOLDOWN) {
+      set({ loading: false });
+      return;
+    }
     set({ loading: true });
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
@@ -118,6 +129,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
           });
         }),
       });
+      lastAppointmentsLoad = Date.now();
     }
     set({ loading: false });
   },
@@ -164,6 +176,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       throw error;
     }
     const appointment = mapAppointment(inserted);
+    trackMutation(appointment.id);
     set((s) => ({
       patients: s.patients.some((p) => p.id === appointment.patientId)
         ? s.patients
@@ -174,6 +187,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentStatus: async (id, status) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ status }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, status } : a)),
@@ -181,6 +195,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentReport: async (id, report, reportedBy) => {
+    trackMutation(id);
     const updateData: any = { report };
     if (reportedBy) updateData.reported_by = reportedBy;
     const { data: updated, error } = await supabase
@@ -205,6 +220,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentStudyType: async (id, studyType) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ study_type: studyType }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, studyType } : a)),
@@ -212,6 +228,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentTime: async (id, time) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ time }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, time } : a)),
@@ -219,6 +236,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentDate: async (id, date) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ date }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, date } : a)),
@@ -226,6 +244,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentObservations: async (id, observations) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ observations } as any).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, observations } : a)),
@@ -233,6 +252,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentAsistio: async (id, asistio) => {
+    trackMutation(id);
     const { error } = await supabase.from('appointments').update({ asistio } as any).eq('id', id);
     if (!error) {
       set((s) => ({
@@ -245,6 +265,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = [...current.images, ...images];
+    trackMutation(id);
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
@@ -255,6 +276,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = [...current.imageUrls, ...urls];
+    trackMutation(id);
     await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
@@ -265,6 +287,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = current.images.filter((_, i) => i !== index);
+    trackMutation(id);
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
@@ -275,6 +298,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = current.imageUrls.filter((_, i) => i !== index);
+    trackMutation(id);
     await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
@@ -299,6 +323,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   deleteAppointment: async (id) => {
+    trackMutation(id);
     const { error } = await supabase.from('appointments').delete().eq('id', id);
     if (error) throw error;
     set((s) => ({
@@ -307,6 +332,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   rescheduleAppointment: async (id, date, time) => {
+    trackMutation(id);
     const { error } = await supabase.from('appointments').update({ date, time }).eq('id', id);
     if (error) throw error;
     set((s) => ({

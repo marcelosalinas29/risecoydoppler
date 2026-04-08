@@ -54,10 +54,20 @@ function htmlToPlainText(html: string): string {
 const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const store = useClinicStore();
+  const appointment = useClinicStore((s) => s.appointments.find((a) => a.id === (id || '')));
+  const fetchAppointmentDetail = useClinicStore((s) => s.fetchAppointmentDetail);
+  const updateAppointmentStatus = useClinicStore((s) => s.updateAppointmentStatus);
+  const updateAppointmentReport = useClinicStore((s) => s.updateAppointmentReport);
+  const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
+  const updatePatient = useClinicStore((s) => s.updatePatient);
+  const addImagesToAppointment = useClinicStore((s) => s.addImagesToAppointment);
+  const addStorageImagesToAppointment = useClinicStore((s) => s.addStorageImagesToAppointment);
+  const removeImageFromAppointment = useClinicStore((s) => s.removeImageFromAppointment);
+  const removeStorageImage = useClinicStore((s) => s.removeStorageImage);
+  const getPatientAppointments = useClinicStore((s) => s.getPatientAppointments);
+  const getAppointment = useClinicStore((s) => s.getAppointment);
   const { profile, isSecretary, isViewer, user } = useAuth();
   const isReadOnly = isSecretary || isViewer;
-  const appointment = store.getAppointment(id || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
@@ -93,7 +103,7 @@ const AppointmentPage = () => {
     if (id) {
       setDetailLoading(true);
       setReportLoadedFromDb(false);
-      store.fetchAppointmentDetail(id)
+      fetchAppointmentDetail(id)
         .catch((error) => {
           console.error('Error loading appointment detail:', error);
         })
@@ -127,18 +137,18 @@ const AppointmentPage = () => {
     }
     // Store who reported (doctor's user_id)
     const reportedBy = !isReadOnly && user ? user.id : undefined;
-    await store.updateAppointmentReport(id, report, reportedBy);
+    await updateAppointmentReport(id, report, reportedBy);
     setReportLoadedFromDb(true);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
-      await store.updateAppointmentStatus(id, 'reported');
+      await updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
-  }, [id, report, store, appointment?.status, isReadOnly, user]);
+  }, [id, report, appointment?.status, isReadOnly, user, updateAppointmentReport, updateAppointmentStatus]);
 
   const handleSavePatient = async () => {
     if (!appointment) return;
     try {
-      await store.updatePatient(appointment.patient.id, {
+      await updatePatient(appointment.patient.id, {
         name: patientForm.name.toUpperCase(),
         dni: patientForm.dni,
         phone: patientForm.phone,
@@ -154,13 +164,13 @@ const AppointmentPage = () => {
 
   const handleStatusChange = async (status: StudyStatus) => {
     if (!id) return;
-    await store.updateAppointmentStatus(id, status);
+    await updateAppointmentStatus(id, status);
     toast.success(`Estado actualizado a: ${STATUS_LABELS[status]}`);
   };
 
   const handleStudyTypeChange = async (studyType: string) => {
     if (!id) return;
-    await store.updateAppointmentStudyType(id, studyType);
+    await updateAppointmentStudyType(id, studyType);
     toast.success('Tipo de estudio actualizado');
   };
 
@@ -200,7 +210,7 @@ const AppointmentPage = () => {
         const { data: urlData } = supabase.storage.from('estudios_imagenes').getPublicUrl(fileName);
         urls.push(urlData.publicUrl);
       }
-      await store.addStorageImagesToAppointment(id, urls);
+      await addStorageImagesToAppointment(id, urls);
       toast.success(`${urls.length} imagen(es) cargada(s)`);
     } catch (err: any) {
       console.error('Error uploading images:', err);
@@ -231,7 +241,7 @@ const AppointmentPage = () => {
 
   const buildPdfDoc = async (): Promise<jsPDF> => {
     if (!appointment) throw new Error('No appointment');
-    const currentAppointment = store.getAppointment(id || '') || appointment;
+    const currentAppointment = getAppointment(id || '') || appointment;
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -556,7 +566,7 @@ const AppointmentPage = () => {
     drawFooter();
 
     // ====== IMAGES (hybrid: Storage URLs + legacy base64) ======
-    const currentApp = store.getAppointment(id || '');
+    const currentApp = getAppointment(id || '');
     const allImages = [
       ...(currentApp?.imageUrls || []),
       ...(currentApp?.images || []),
@@ -680,7 +690,7 @@ const AppointmentPage = () => {
         window.location.href = waUrl;
       }
 
-      await store.updateAppointmentStatus(id, 'sent');
+      await updateAppointmentStatus(id, 'sent');
       toast.success('WhatsApp abierto con enlace al PDF');
     } catch (err: any) {
       console.error('Error al enviar WhatsApp:', err?.message || err, err?.stack || '');
@@ -714,7 +724,7 @@ const AppointmentPage = () => {
     );
   }
 
-  const currentAppointment = store.getAppointment(id || '') || appointment;
+  const currentAppointment = getAppointment(id || '') || appointment;
 
   return (
     <AppLayout title={appointment.patient.name}>
@@ -898,7 +908,7 @@ const AppointmentPage = () => {
                   <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
                   {!isReadOnly && (
                     <button
-                      onClick={async () => { if (id) await store.removeStorageImage(id, i); }}
+                      onClick={async () => { if (id) await removeStorageImage(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -917,7 +927,7 @@ const AppointmentPage = () => {
                   <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
                   {!isReadOnly && (
                     <button
-                      onClick={async () => { if (id) await store.removeImageFromAppointment(id, i); }}
+                      onClick={async () => { if (id) await removeImageFromAppointment(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
