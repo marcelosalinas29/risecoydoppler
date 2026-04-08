@@ -101,7 +101,11 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }
   },
 
-  fetchAppointments: async () => {
+  fetchAppointments: async (force = false) => {
+    if (!force && get().appointments.length > 0 && Date.now() - lastAppointmentsLoad < LOAD_COOLDOWN) {
+      set({ loading: false });
+      return;
+    }
     set({ loading: true });
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
