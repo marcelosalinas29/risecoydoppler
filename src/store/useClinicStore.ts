@@ -332,6 +332,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   rescheduleAppointment: async (id, date, time) => {
+    trackMutation(id);
     const { error } = await supabase.from('appointments').update({ date, time }).eq('id', id);
     if (error) throw error;
     set((s) => ({
