@@ -13,8 +13,8 @@ interface ClinicStore {
   appointments: Appointment[];
   loading: boolean;
   fetchAppointmentDetail: (id: string) => Promise<Appointment | null>;
-  fetchPatients: () => Promise<void>;
-  fetchAppointments: () => Promise<void>;
+  fetchPatients: (force?: boolean) => Promise<void>;
+  fetchAppointments: (force?: boolean) => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
   addAppointment: (data: { patientId: string; studyType: string; date: string; time: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
