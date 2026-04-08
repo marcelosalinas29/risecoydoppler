@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, Patient, StudyStatus } from '@/types/medical';
 import { calcularEdad } from '@/types/medical';
+import { trackMutation } from '@/hooks/useRealtimeSync';
+
+let lastPatientsLoad = 0;
+let lastAppointmentsLoad = 0;
+const LOAD_COOLDOWN = 30000; // 30 seconds minimum between full reloads
 
 interface ClinicStore {
   patients: Patient[];
