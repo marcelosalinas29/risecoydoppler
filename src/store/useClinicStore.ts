@@ -287,6 +287,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
     const updated = current.images.filter((_, i) => i !== index);
+    trackMutation(id);
     await supabase.from('appointments').update({ images: updated }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, images: updated } : a),
