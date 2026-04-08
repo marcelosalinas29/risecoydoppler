@@ -176,6 +176,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       throw error;
     }
     const appointment = mapAppointment(inserted);
+    trackMutation(appointment.id);
     set((s) => ({
       patients: s.patients.some((p) => p.id === appointment.patientId)
         ? s.patients
