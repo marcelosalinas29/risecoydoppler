@@ -93,7 +93,7 @@ const Index = () => {
         appointmentId: testAppointment.id,
       });
 
-      await Promise.all([fetchPatients(), fetchAppointments()]);
+      await Promise.all([fetchPatients(true), fetchAppointments(true)]);
       toast.success(`Conexión OK: escribió en appointments (${testAppointment.id.slice(0, 8)})`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falló el test de conexión';
