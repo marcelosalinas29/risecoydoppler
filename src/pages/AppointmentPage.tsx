@@ -143,7 +143,7 @@ const AppointmentPage = () => {
       await updateAppointmentStatus(id, 'reported');
     }
     toast.success('Informe guardado');
-  }, [id, report, store, appointment?.status, isReadOnly, user]);
+  }, [id, report, appointment?.status, isReadOnly, user, updateAppointmentReport, updateAppointmentStatus]);
 
   const handleSavePatient = async () => {
     if (!appointment) return;
