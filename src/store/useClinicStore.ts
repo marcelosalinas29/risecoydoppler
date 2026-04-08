@@ -228,6 +228,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentTime: async (id, time) => {
+    trackMutation(id);
     await supabase.from('appointments').update({ time }).eq('id', id);
     set((s) => ({
       appointments: s.appointments.map((a) => (a.id === id ? { ...a, time } : a)),
