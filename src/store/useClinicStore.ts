@@ -195,6 +195,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   updateAppointmentReport: async (id, report, reportedBy) => {
+    trackMutation(id);
     const updateData: any = { report };
     if (reportedBy) updateData.reported_by = reportedBy;
     const { data: updated, error } = await supabase
