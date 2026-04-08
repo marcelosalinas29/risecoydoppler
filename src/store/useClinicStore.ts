@@ -323,6 +323,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   },
 
   deleteAppointment: async (id) => {
+    trackMutation(id);
     const { error } = await supabase.from('appointments').delete().eq('id', id);
     if (error) throw error;
     set((s) => ({
