@@ -3,6 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClinicStore } from '@/store/useClinicStore';
 import { calcularEdad } from '@/types/medical';
 
+// Track recently mutated IDs to avoid re-fetching from realtime
+const recentMutations = new Map<string, number>();
+const MUTATION_COOLDOWN = 3000; // 3 seconds
+
+export function trackMutation(id: string) {
+  recentMutations.set(id, Date.now());
+}
+
+function wasRecentlyMutated(id: string): boolean {
+  const ts = recentMutations.get(id);
+  if (!ts) return false;
+  if (Date.now() - ts < MUTATION_COOLDOWN) return true;
+  recentMutations.delete(id);
+  return false;
+}
+
 /**
  * Global realtime subscription for appointments AND patients.
  * Mount once in App.tsx so every page/device stays in sync.
@@ -27,9 +43,11 @@ export function useRealtimeSync() {
             return;
           }
 
-          // INSERT or UPDATE — refetch the full row including report, images, image_urls
           const newRow = payload.new as any;
           if (!newRow?.id) return;
+
+          // Skip if this client just mutated this row
+          if (wasRecentlyMutated(newRow.id)) return;
 
           supabase
             .from('appointments')
@@ -98,6 +116,9 @@ export function useRealtimeSync() {
 
           const newRow = payload.new as any;
           if (!newRow?.id) return;
+
+          // Skip if this client just mutated this row
+          if (wasRecentlyMutated(newRow.id)) return;
 
           const mapped = {
             id: newRow.id,
