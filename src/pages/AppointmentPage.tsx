@@ -54,7 +54,17 @@ function htmlToPlainText(html: string): string {
 const AppointmentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const store = useClinicStore();
+  const getAppointment = useClinicStore((s) => s.getAppointment);
+  const fetchAppointmentDetail = useClinicStore((s) => s.fetchAppointmentDetail);
+  const updateAppointmentStatus = useClinicStore((s) => s.updateAppointmentStatus);
+  const updateAppointmentReport = useClinicStore((s) => s.updateAppointmentReport);
+  const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
+  const updatePatient = useClinicStore((s) => s.updatePatient);
+  const addImagesToAppointment = useClinicStore((s) => s.addImagesToAppointment);
+  const addStorageImagesToAppointment = useClinicStore((s) => s.addStorageImagesToAppointment);
+  const removeImageFromAppointment = useClinicStore((s) => s.removeImageFromAppointment);
+  const removeStorageImage = useClinicStore((s) => s.removeStorageImage);
+  const getPatientAppointments = useClinicStore((s) => s.getPatientAppointments);
   const { profile, isSecretary, isViewer, user } = useAuth();
   const isReadOnly = isSecretary || isViewer;
   const appointment = store.getAppointment(id || '');
