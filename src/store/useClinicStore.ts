@@ -92,10 +92,12 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     return full;
   },
 
-  fetchPatients: async () => {
+  fetchPatients: async (force = false) => {
+    if (!force && get().patients.length > 0 && Date.now() - lastPatientsLoad < LOAD_COOLDOWN) return;
     const { data } = await supabase.from('patients').select('*').order('name');
     if (data) {
       set({ patients: data.map(mapPatient) });
+      lastPatientsLoad = Date.now();
     }
   },
 
