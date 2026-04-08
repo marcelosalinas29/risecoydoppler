@@ -129,6 +129,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
           });
         }),
       });
+      lastAppointmentsLoad = Date.now();
     }
     set({ loading: false });
   },
