@@ -1,10 +1,12 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, PlusCircle, LogOut, Search, X } from 'lucide-react';
+import { Calendar, Users, PlusCircle, LogOut, Search, X, MessageSquare } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicStore } from '@/store/useClinicStore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import CommunicationCenter, { useChatUnread } from '@/components/CommunicationCenter';
+import { Badge } from '@/components/ui/badge';
 
 interface AppLayoutProps {
   children: ReactNode;
