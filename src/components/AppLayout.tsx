@@ -160,6 +160,14 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
             )}
           </div>
         )}
+
+        {/* Communication Center Panel */}
+        {commOpen && showComm && (
+          <CommunicationCenter
+            onClose={() => { setCommOpen(false); setChatOpen(false); }}
+            onOpen={() => setChatOpen(true)}
+          />
+        )}
       </header>
 
       {/* Content */}
