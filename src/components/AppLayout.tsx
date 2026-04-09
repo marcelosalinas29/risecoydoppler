@@ -52,6 +52,25 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
             <p className="text-xs text-primary-foreground/60 truncate">{title}</p>
           </div>
           <div className="flex items-center gap-2">
+            {showComm && (
+              <button
+                onClick={() => {
+                  const next = !commOpen;
+                  setCommOpen(next);
+                  setChatOpen(next);
+                  if (next) setSearchOpen(false);
+                }}
+                className="relative p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                title="Centro de Comunicación"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
               className="p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
