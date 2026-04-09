@@ -27,7 +27,10 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
   const navItems = isViewer ? allNavItems.filter(n => n.path !== '/new') : allNavItems;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [commOpen, setCommOpen] = useState(false);
   const { searchPatients, getPatientAppointments } = useClinicStore();
+  const showComm = !isViewer;
+  const { unreadCount, setOpen: setChatOpen } = useChatUnread();
 
   const searchResults = searchQuery.length >= 2 ? searchPatients(searchQuery) : [];
 
