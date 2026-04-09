@@ -73,6 +73,57 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clinic_notes: {
+        Row: {
+          author_name: string
+          completed: boolean
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          completed?: boolean
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          completed?: boolean
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       doctor_schedules: {
         Row: {
           active: boolean
@@ -215,6 +266,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      purge_old_communication_records: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "doctor" | "secretary" | "viewer"

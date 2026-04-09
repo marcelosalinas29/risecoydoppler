@@ -1,10 +1,12 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Users, PlusCircle, LogOut, Search, X } from 'lucide-react';
+import { Calendar, Users, PlusCircle, LogOut, Search, X, MessageSquare } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicStore } from '@/store/useClinicStore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import CommunicationCenter, { useChatUnread } from '@/components/CommunicationCenter';
+import { Badge } from '@/components/ui/badge';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -25,7 +27,10 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
   const navItems = isViewer ? allNavItems.filter(n => n.path !== '/new') : allNavItems;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [commOpen, setCommOpen] = useState(false);
   const { searchPatients, getPatientAppointments } = useClinicStore();
+  const showComm = !isViewer;
+  const { unreadCount, setOpen: setChatOpen } = useChatUnread();
 
   const searchResults = searchQuery.length >= 2 ? searchPatients(searchQuery) : [];
 
@@ -47,6 +52,25 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
             <p className="text-xs text-primary-foreground/60 truncate">{title}</p>
           </div>
           <div className="flex items-center gap-2">
+            {showComm && (
+              <button
+                onClick={() => {
+                  const next = !commOpen;
+                  setCommOpen(next);
+                  setChatOpen(next);
+                  if (next) setSearchOpen(false);
+                }}
+                className="relative p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                title="Centro de Comunicación"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
               className="p-1.5 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
@@ -135,6 +159,14 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
               </div>
             )}
           </div>
+        )}
+
+        {/* Communication Center Panel */}
+        {commOpen && showComm && (
+          <CommunicationCenter
+            onClose={() => { setCommOpen(false); setChatOpen(false); }}
+            onOpen={() => setChatOpen(true)}
+          />
         )}
       </header>
 
