@@ -17,12 +17,24 @@ export interface DoctorInfo {
   slotInterval: number;
 }
 
+export interface BlockedDate {
+  id: string;
+  date: string;
+  reason: string;
+  createdBy: string;
+}
+
 interface ScheduleStore {
   schedules: ScheduleBlock[];
   doctors: DoctorInfo[];
+  blockedDates: BlockedDate[];
   fetchSchedules: (doctorId: string) => Promise<void>;
   fetchAllSchedules: () => Promise<void>;
   fetchDoctors: () => Promise<void>;
+  fetchBlockedDates: () => Promise<void>;
+  addBlockedDate: (date: string, reason: string) => Promise<void>;
+  removeBlockedDate: (id: string) => Promise<void>;
+  isDateBlocked: (date: string) => boolean;
   addBlock: (block: Omit<ScheduleBlock, 'id'>) => Promise<void>;
   updateBlock: (id: string, data: Partial<ScheduleBlock>) => Promise<void>;
   deleteBlock: (id: string) => Promise<void>;
@@ -58,6 +70,7 @@ function generateSlotsFromBlock(startTime: string, endTime: string, interval: nu
 export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
   schedules: [],
   doctors: [],
+  blockedDates: [],
 
   fetchSchedules: async (doctorId) => {
     const { data } = await supabase
@@ -145,5 +158,50 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
       allSlots.push(...generateSlotsFromBlock(block.startTime, block.endTime, interval));
     }
     return [...new Set(allSlots)].sort();
+  },
+
+  fetchBlockedDates: async () => {
+    const { data } = await supabase
+      .from('blocked_dates')
+      .select('*')
+      .order('date');
+    if (data) {
+      set({
+        blockedDates: data.map((d: any) => ({
+          id: d.id,
+          date: d.date,
+          reason: d.reason,
+          createdBy: d.created_by,
+        })),
+      });
+    }
+  },
+
+  addBlockedDate: async (date, reason) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No autenticado');
+    const { data, error } = await supabase
+      .from('blocked_dates')
+      .insert({ date, reason, created_by: user.id } as any)
+      .select()
+      .single();
+    if (error) throw error;
+    set(s => ({
+      blockedDates: [...s.blockedDates, {
+        id: data.id,
+        date: data.date,
+        reason: data.reason,
+        createdBy: data.created_by,
+      }],
+    }));
+  },
+
+  removeBlockedDate: async (id) => {
+    await supabase.from('blocked_dates').delete().eq('id', id);
+    set(s => ({ blockedDates: s.blockedDates.filter(b => b.id !== id) }));
+  },
+
+  isDateBlocked: (date) => {
+    return get().blockedDates.some(b => b.date === date);
   },
 }));
