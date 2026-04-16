@@ -190,6 +190,19 @@ const Index = () => {
                 ))}
               </SelectContent>
             </Select>
+            {!isViewer && (
+              currentDateBlocked ? (
+                <Button variant="outline" size="sm" onClick={handleUnblockDate} className="text-destructive border-destructive/50 hover:bg-destructive/10">
+                  <ShieldOff className="w-4 h-4 mr-1" />
+                  Desbloquear día
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setBlockDialogOpen(true)}>
+                  <Ban className="w-4 h-4 mr-1" />
+                  Bloquear día
+                </Button>
+              )
+            )}
             <Button variant="outline" size="sm" onClick={handleConnectionTest} disabled={testingConnection}>
               <Wifi className="w-4 h-4 mr-1" />
               {testingConnection ? 'Probando...' : 'Test de conexión'}
@@ -199,6 +212,18 @@ const Index = () => {
             </Button>
           </div>
         </div>
+
+        {currentDateBlocked && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3">
+            <Ban className="w-5 h-5 text-destructive flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-destructive">Día bloqueado — No se atiende</p>
+              <p className="text-sm text-destructive/80">
+                Motivo: {currentBlockedDate?.reason || 'Sin motivo'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
@@ -213,6 +238,35 @@ const Index = () => {
           />
         )}
       </div>
+
+      {/* Block date dialog */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bloquear día</DialogTitle>
+            <DialogDescription>
+              Bloqueá el {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })} para que no se agenden turnos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Motivo (opcional)</Label>
+              <Input
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Ej: Feriado, vacaciones, congreso..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleBlockDate}>
+              <Ban className="w-4 h-4 mr-1" />
+              Bloquear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
