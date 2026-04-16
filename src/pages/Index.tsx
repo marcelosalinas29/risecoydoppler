@@ -50,6 +50,7 @@ const Index = () => {
     fetchAppointments();
     fetchDoctors();
     fetchAllSchedules();
+    fetchBlockedDates();
   }, []);
 
   // Realtime is now handled globally by useRealtimeSync hook in App.tsx
