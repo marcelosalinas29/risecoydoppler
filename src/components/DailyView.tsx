@@ -78,6 +78,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
   const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
   const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
+  const getAppointmentsByDate = useClinicStore((s) => s.getAppointmentsByDate);
+  const { generateAvailableSlots, schedules, doctors } = useScheduleStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     time: string;
