@@ -166,6 +166,8 @@ const Index = () => {
                   initialFocus
                   locale={es}
                   className={cn("p-3 pointer-events-auto")}
+                  modifiers={{ blocked: blockedDateObjects }}
+                  modifiersClassNames={{ blocked: 'bg-destructive/20 text-destructive line-through' }}
                 />
               </PopoverContent>
             </Popover>
