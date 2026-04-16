@@ -77,7 +77,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const updateAppointmentAsistio = useClinicStore((s) => s.updateAppointmentAsistio);
   const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
   const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
-  const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
+  // fetchAppointments removed — realtime sync handles updates automatically
   const getAppointmentsByDate = useClinicStore((s) => s.getAppointmentsByDate);
   const { generateAvailableSlots, schedules, doctors } = useScheduleStore();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -430,7 +430,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         onCancel={() => setPreAppointmentSlot(null)}
                         onSaved={() => {
                           setPreAppointmentSlot(null);
-                          fetchAppointments();
                         }}
                       />
                     ) : (

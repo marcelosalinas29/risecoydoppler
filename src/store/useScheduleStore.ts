@@ -29,9 +29,9 @@ interface ScheduleStore {
   doctors: DoctorInfo[];
   blockedDates: BlockedDate[];
   fetchSchedules: (doctorId: string) => Promise<void>;
-  fetchAllSchedules: () => Promise<void>;
-  fetchDoctors: () => Promise<void>;
-  fetchBlockedDates: () => Promise<void>;
+  fetchAllSchedules: (force?: boolean) => Promise<void>;
+  fetchDoctors: (force?: boolean) => Promise<void>;
+  fetchBlockedDates: (force?: boolean) => Promise<void>;
   addBlockedDate: (date: string, reason: string) => Promise<void>;
   removeBlockedDate: (id: string) => Promise<void>;
   isDateBlocked: (date: string) => boolean;
@@ -41,6 +41,12 @@ interface ScheduleStore {
   getBlocksForDay: (doctorId: string, dayOfWeek: number) => ScheduleBlock[];
   generateAvailableSlots: (doctorId: string, dayOfWeek: number, intervalOverride?: number) => string[];
 }
+
+// Cooldowns to prevent redundant loads across page navigations
+let lastDoctorsLoad = 0;
+let lastSchedulesLoad = 0;
+let lastBlockedDatesLoad = 0;
+const LOAD_COOLDOWN = 60000; // 60 seconds
 
 function mapBlock(b: any): ScheduleBlock {
   return {
@@ -82,16 +88,21 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
     if (data) set({ schedules: data.map(mapBlock) });
   },
 
-  fetchAllSchedules: async () => {
+  fetchAllSchedules: async (force = false) => {
+    if (!force && get().schedules.length > 0 && Date.now() - lastSchedulesLoad < LOAD_COOLDOWN) return;
     const { data } = await supabase
       .from('doctor_schedules')
       .select('*')
       .order('day_of_week')
       .order('start_time');
-    if (data) set({ schedules: data.map(mapBlock) });
+    if (data) {
+      set({ schedules: data.map(mapBlock) });
+      lastSchedulesLoad = Date.now();
+    }
   },
 
-  fetchDoctors: async () => {
+  fetchDoctors: async (force = false) => {
+    if (!force && get().doctors.length > 0 && Date.now() - lastDoctorsLoad < LOAD_COOLDOWN) return;
     const { data: roles } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -111,6 +122,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
           slotInterval: (p as any).slot_interval ?? 10,
         })),
       });
+      lastDoctorsLoad = Date.now();
     }
   },
 
@@ -160,7 +172,8 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
     return [...new Set(allSlots)].sort();
   },
 
-  fetchBlockedDates: async () => {
+  fetchBlockedDates: async (force = false) => {
+    if (!force && get().blockedDates.length > 0 && Date.now() - lastBlockedDatesLoad < LOAD_COOLDOWN) return;
     const { data } = await supabase
       .from('blocked_dates')
       .select('*')
@@ -174,6 +187,7 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
           createdBy: d.created_by,
         })),
       });
+      lastBlockedDatesLoad = Date.now();
     }
   },
 
