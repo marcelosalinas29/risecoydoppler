@@ -1,4 +1,5 @@
 import React, { useState, useMemo, memo } from 'react';
+import { getDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { toast } from 'sonner';
 import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,6 +78,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
   const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
   const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
+  const getAppointmentsByDate = useClinicStore((s) => s.getAppointmentsByDate);
+  const { generateAvailableSlots, schedules, doctors } = useScheduleStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     time: string;
@@ -100,6 +104,31 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date>(new Date());
   const [rescheduleTime, setRescheduleTime] = useState('');
+
+  // Available slots for reschedule target date
+  const rescheduleAvailableSlots = useMemo(() => {
+    if (!rescheduleTarget) return [];
+    const dayOfWeek = getDay(rescheduleDate);
+    // Try to find the first doctor with schedules, or use doctorSlots as fallback
+    const doctorId = doctors.length > 0 ? doctors[0].userId : null;
+    let slots: string[] = [];
+    if (doctorId) {
+      slots = generateAvailableSlots(doctorId, dayOfWeek);
+    }
+    if (slots.length === 0 && doctorSlots && doctorSlots.length > 0) {
+      slots = [...doctorSlots];
+    }
+    if (slots.length === 0) {
+      slots = generateDefaultTimeSlots();
+    }
+    // Filter out occupied slots on the target date
+    const rescheduleDateStr = format(rescheduleDate, 'yyyy-MM-dd');
+    const occupied = getAppointmentsByDate(rescheduleDateStr)
+      .filter(a => a.id !== rescheduleTarget.id)
+      .map(a => a.time);
+    const occupiedSet = new Set(occupied);
+    return slots.filter(s => !occupiedSet.has(s));
+  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, getAppointmentsByDate]);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -475,7 +504,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                   <Calendar
                     mode="single"
                     selected={rescheduleDate}
-                    onSelect={(d) => d && setRescheduleDate(d)}
+                    onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleTime(''); } }}
                     locale={es}
                     className="pointer-events-auto"
                   />
@@ -489,9 +518,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                   <SelectValue placeholder="Seleccionar horario" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_TIME_SLOTS.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
+                  {rescheduleAvailableSlots.length > 0 ? (
+                    rescheduleAvailableSlots.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No hay horarios disponibles</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
