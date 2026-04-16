@@ -518,9 +518,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                   <SelectValue placeholder="Seleccionar horario" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_TIME_SLOTS.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
+                  {rescheduleAvailableSlots.length > 0 ? (
+                    rescheduleAvailableSlots.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No hay horarios disponibles</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
