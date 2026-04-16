@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useClinicStore } from '@/store/useClinicStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { toast } from 'sonner';
 import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
