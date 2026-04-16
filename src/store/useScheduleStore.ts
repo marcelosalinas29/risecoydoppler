@@ -159,4 +159,49 @@ export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
     }
     return [...new Set(allSlots)].sort();
   },
+
+  fetchBlockedDates: async () => {
+    const { data } = await supabase
+      .from('blocked_dates')
+      .select('*')
+      .order('date');
+    if (data) {
+      set({
+        blockedDates: data.map((d: any) => ({
+          id: d.id,
+          date: d.date,
+          reason: d.reason,
+          createdBy: d.created_by,
+        })),
+      });
+    }
+  },
+
+  addBlockedDate: async (date, reason) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No autenticado');
+    const { data, error } = await supabase
+      .from('blocked_dates')
+      .insert({ date, reason, created_by: user.id } as any)
+      .select()
+      .single();
+    if (error) throw error;
+    set(s => ({
+      blockedDates: [...s.blockedDates, {
+        id: data.id,
+        date: data.date,
+        reason: data.reason,
+        createdBy: data.created_by,
+      }],
+    }));
+  },
+
+  removeBlockedDate: async (id) => {
+    await supabase.from('blocked_dates').delete().eq('id', id);
+    set(s => ({ blockedDates: s.blockedDates.filter(b => b.id !== id) }));
+  },
+
+  isDateBlocked: (date) => {
+    return get().blockedDates.some(b => b.date === date);
+  },
 }));
