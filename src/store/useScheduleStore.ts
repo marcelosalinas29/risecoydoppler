@@ -70,6 +70,7 @@ function generateSlotsFromBlock(startTime: string, endTime: string, interval: nu
 export const useScheduleStore = create<ScheduleStore>()((set, get) => ({
   schedules: [],
   doctors: [],
+  blockedDates: [],
 
   fetchSchedules: async (doctorId) => {
     const { data } = await supabase
