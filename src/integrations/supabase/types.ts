@@ -73,6 +73,30 @@ export type Database = {
           },
         ]
       }
+      blocked_dates: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          reason?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           author_name: string
