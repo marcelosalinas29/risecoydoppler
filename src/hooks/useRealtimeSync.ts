@@ -20,8 +20,45 @@ function wasRecentlyMutated(id: string): boolean {
 }
 
 /**
+ * Map a raw appointment row + patient into the store shape.
+ * Used when we have patient data available (from JOIN or existing store).
+ */
+function mapRealtimeAppointment(row: any, patient: any) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    patient: {
+      id: patient.id,
+      dni: patient.dni || '',
+      name: patient.name,
+      age: patient.fecha_nacimiento
+        ? calcularEdad(patient.fecha_nacimiento)
+        : patient.age,
+      phone: patient.phone,
+      fechaNacimiento: patient.fecha_nacimiento || undefined,
+      obraSocial: patient.obra_social || '',
+    },
+    studyType: row.study_type,
+    status: row.status as any,
+    date: row.date,
+    time: row.time,
+    report: row.report || '',
+    images: (row.images as string[]) || [],
+    imageUrls: (row.image_urls as string[]) || [],
+    observations: row.observations || '',
+    reportedBy: row.reported_by || null,
+    asistio: row.asistio ?? false,
+    createdAt: row.created_at,
+  };
+}
+
+/**
  * Global realtime subscription for appointments AND patients.
  * Mount once in App.tsx so every page/device stays in sync.
+ * 
+ * OPTIMIZATION: For UPDATEs, we update fields directly from the payload
+ * using existing patient data from the store — no extra DB query needed.
+ * Only for INSERTs of new appointments do we fetch the full row (to get patient data).
  */
 export function useRealtimeSync() {
   useEffect(() => {
@@ -29,69 +66,106 @@ export function useRealtimeSync() {
       .channel('global-appointments-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'appointments' },
+        { event: 'DELETE', schema: 'public', table: 'appointments' },
         (payload) => {
-          const event = payload.eventType;
-
-          if (event === 'DELETE') {
-            const oldId = (payload.old as any)?.id;
-            if (oldId) {
-              useClinicStore.setState((s) => ({
-                appointments: s.appointments.filter((a) => a.id !== oldId),
-              }));
-            }
-            return;
+          const oldId = (payload.old as any)?.id;
+          if (oldId) {
+            useClinicStore.setState((s) => ({
+              appointments: s.appointments.filter((a) => a.id !== oldId),
+            }));
           }
-
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'appointments' },
+        (payload) => {
           const newRow = payload.new as any;
-          if (!newRow?.id) return;
+          if (!newRow?.id || wasRecentlyMutated(newRow.id)) return;
 
-          // Skip if this client just mutated this row
-          if (wasRecentlyMutated(newRow.id)) return;
-
-          supabase
-            .from('appointments')
-            .select('id, patient_id, study_type, status, date, time, report, images, image_urls, observations, reported_by, asistio, created_at, created_by, patients(*)')
-            .eq('id', newRow.id)
-            .single()
-            .then(({ data }) => {
-              if (!data) return;
-              useClinicStore.setState((s) => {
-                const mapped = {
-                  id: data.id,
-                  patientId: data.patient_id,
-                  patient: {
-                    id: data.patients.id,
-                    dni: data.patients.dni || '',
-                    name: data.patients.name,
-                    age: data.patients.fecha_nacimiento
-                      ? calcularEdad(data.patients.fecha_nacimiento)
-                      : data.patients.age,
-                    phone: data.patients.phone,
-                    fechaNacimiento: data.patients.fecha_nacimiento || undefined,
-                    obraSocial: data.patients.obra_social || '',
-                  },
-                  studyType: data.study_type,
-                  status: data.status as any,
-                  date: data.date,
-                  time: data.time,
-                  report: data.report || '',
-                  images: (data.images as string[]) || [],
-                  imageUrls: (data.image_urls as string[]) || [],
-                  observations: data.observations || '',
-                  reportedBy: data.reported_by || null,
-                  asistio: data.asistio ?? false,
-                  createdAt: data.created_at,
+          // For UPDATEs, use existing patient data from store — no extra query
+          useClinicStore.setState((s) => {
+            const existing = s.appointments.find((a) => a.id === newRow.id);
+            if (!existing) return s; // Unknown appointment, skip
+            
+            return {
+              appointments: s.appointments.map((a) => {
+                if (a.id !== newRow.id) return a;
+                return {
+                  ...a,
+                  studyType: newRow.study_type ?? a.studyType,
+                  status: (newRow.status as any) ?? a.status,
+                  date: newRow.date ?? a.date,
+                  time: newRow.time ?? a.time,
+                  report: newRow.report ?? a.report,
+                  images: newRow.images ?? a.images,
+                  imageUrls: newRow.image_urls ?? a.imageUrls,
+                  observations: newRow.observations ?? a.observations,
+                  reportedBy: newRow.reported_by ?? a.reportedBy,
+                  asistio: newRow.asistio ?? a.asistio,
                 };
+              }),
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'appointments' },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (!newRow?.id || wasRecentlyMutated(newRow.id)) return;
 
-                const existing = s.appointments.find((a) => a.id === data.id);
-                if (existing) {
-                  return { appointments: s.appointments.map((a) => a.id === data.id ? mapped : a) };
-                } else {
-                  return { appointments: [mapped, ...s.appointments] };
-                }
-              });
+          // For INSERTs, we need patient data — check store first, fetch only if needed
+          const state = useClinicStore.getState();
+          const existingPatient = state.patients.find((p) => p.id === newRow.patient_id);
+          
+          if (existingPatient) {
+            // Patient already in store — no DB query needed
+            const mapped = mapRealtimeAppointment(newRow, {
+              id: existingPatient.id,
+              dni: existingPatient.dni,
+              name: existingPatient.name,
+              age: existingPatient.age,
+              phone: existingPatient.phone,
+              fecha_nacimiento: existingPatient.fechaNacimiento,
+              obra_social: existingPatient.obraSocial,
             });
+            useClinicStore.setState((s) => ({
+              appointments: [mapped, ...s.appointments],
+            }));
+          } else {
+            // New patient — single query to get patient data
+            supabase
+              .from('patients')
+              .select('*')
+              .eq('id', newRow.patient_id)
+              .single()
+              .then(({ data: patientData }) => {
+                if (!patientData) return;
+                const mapped = mapRealtimeAppointment(newRow, patientData);
+                // Also add the patient to the store
+                const patient = {
+                  id: patientData.id,
+                  dni: patientData.dni || '',
+                  name: patientData.name,
+                  age: patientData.fecha_nacimiento
+                    ? calcularEdad(patientData.fecha_nacimiento)
+                    : patientData.age,
+                  phone: patientData.phone,
+                  fechaNacimiento: patientData.fecha_nacimiento || undefined,
+                  obraSocial: patientData.obra_social || '',
+                };
+                useClinicStore.setState((s) => ({
+                  patients: s.patients.some((p) => p.id === patient.id)
+                    ? s.patients
+                    : [...s.patients, patient],
+                  appointments: s.appointments.some((a) => a.id === newRow.id)
+                    ? s.appointments
+                    : [mapped, ...s.appointments],
+                }));
+              });
+          }
         }
       )
       .subscribe();
@@ -100,25 +174,22 @@ export function useRealtimeSync() {
       .channel('global-patients-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'patients' },
+        { event: 'DELETE', schema: 'public', table: 'patients' },
         (payload) => {
-          const event = payload.eventType;
-
-          if (event === 'DELETE') {
-            const oldId = (payload.old as any)?.id;
-            if (oldId) {
-              useClinicStore.setState((s) => ({
-                patients: s.patients.filter((p) => p.id !== oldId),
-              }));
-            }
-            return;
+          const oldId = (payload.old as any)?.id;
+          if (oldId) {
+            useClinicStore.setState((s) => ({
+              patients: s.patients.filter((p) => p.id !== oldId),
+            }));
           }
-
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'patients' },
+        (payload) => {
           const newRow = payload.new as any;
-          if (!newRow?.id) return;
-
-          // Skip if this client just mutated this row
-          if (wasRecentlyMutated(newRow.id)) return;
+          if (!newRow?.id || wasRecentlyMutated(newRow.id)) return;
 
           const mapped = {
             id: newRow.id,
@@ -132,14 +203,39 @@ export function useRealtimeSync() {
             obraSocial: newRow.obra_social || '',
           };
 
-          useClinicStore.setState((s) => {
-            const existing = s.patients.find((p) => p.id === newRow.id);
-            if (existing) {
-              return { patients: s.patients.map((p) => p.id === newRow.id ? mapped : p) };
-            } else {
-              return { patients: [mapped, ...s.patients] };
-            }
-          });
+          useClinicStore.setState((s) => ({
+            patients: s.patients.some((p) => p.id === newRow.id)
+              ? s.patients
+              : [mapped, ...s.patients],
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'patients' },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (!newRow?.id || wasRecentlyMutated(newRow.id)) return;
+
+          const mapped = {
+            id: newRow.id,
+            dni: newRow.dni || '',
+            name: newRow.name,
+            age: newRow.fecha_nacimiento
+              ? calcularEdad(newRow.fecha_nacimiento)
+              : newRow.age,
+            phone: newRow.phone,
+            fechaNacimiento: newRow.fecha_nacimiento || undefined,
+            obraSocial: newRow.obra_social || '',
+          };
+
+          useClinicStore.setState((s) => ({
+            patients: s.patients.map((p) => p.id === newRow.id ? mapped : p),
+            // Also update patient data in appointments
+            appointments: s.appointments.map((a) =>
+              a.patientId === newRow.id ? { ...a, patient: mapped } : a
+            ),
+          }));
         }
       )
       .subscribe();
