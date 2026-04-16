@@ -20,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const today = new Date();
-  const { userRole } = useAuth();
+  const { role, isViewer } = useAuth();
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
   const [testingConnection, setTestingConnection] = useState(false);
