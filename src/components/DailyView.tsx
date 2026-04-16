@@ -504,7 +504,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                   <Calendar
                     mode="single"
                     selected={rescheduleDate}
-                    onSelect={(d) => d && setRescheduleDate(d)}
+                    onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleTime(''); } }}
                     locale={es}
                     className="pointer-events-auto"
                   />
