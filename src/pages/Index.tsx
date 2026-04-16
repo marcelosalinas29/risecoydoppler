@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, subDays, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CalendarDays, Wifi } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Wifi, Ban, ShieldOff } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -9,10 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import DailyView from '@/components/DailyView';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const today = new Date();
