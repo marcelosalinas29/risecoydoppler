@@ -430,7 +430,6 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         onCancel={() => setPreAppointmentSlot(null)}
                         onSaved={() => {
                           setPreAppointmentSlot(null);
-                          fetchAppointments();
                         }}
                       />
                     ) : (
