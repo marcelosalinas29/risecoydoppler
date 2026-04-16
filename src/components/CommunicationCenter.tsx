@@ -107,16 +107,25 @@ export default function CommunicationCenter({ onClose, onOpen }: CommunicationCe
 
   useEffect(() => { onOpen(); return () => {}; }, [onOpen]);
 
-  // Fetch notes
+  // Fetch notes once, then use direct state updates via realtime
   useEffect(() => {
     supabase.from('clinic_notes').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { setNotes(data || []); setLoadingNotes(false); });
 
     const ch = supabase.channel('notes-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clinic_notes' }, () => {
-        supabase.from('clinic_notes').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => { if (data) setNotes(data); });
-      }).subscribe();
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clinic_notes' }, (payload) => {
+        const newNote = payload.new as Note;
+        setNotes(prev => [newNote, ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clinic_notes' }, (payload) => {
+        const updated = payload.new as Note;
+        setNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'clinic_notes' }, (payload) => {
+        const oldId = (payload.old as any)?.id;
+        if (oldId) setNotes(prev => prev.filter(n => n.id !== oldId));
+      })
+      .subscribe();
 
     return () => { supabase.removeChannel(ch); };
   }, []);
