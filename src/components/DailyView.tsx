@@ -105,6 +105,31 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const [rescheduleDate, setRescheduleDate] = useState<Date>(new Date());
   const [rescheduleTime, setRescheduleTime] = useState('');
 
+  // Available slots for reschedule target date
+  const rescheduleAvailableSlots = useMemo(() => {
+    if (!rescheduleTarget) return [];
+    const dayOfWeek = getDay(rescheduleDate);
+    // Try to find the first doctor with schedules, or use doctorSlots as fallback
+    const doctorId = doctors.length > 0 ? doctors[0].userId : null;
+    let slots: string[] = [];
+    if (doctorId) {
+      slots = generateAvailableSlots(doctorId, dayOfWeek);
+    }
+    if (slots.length === 0 && doctorSlots && doctorSlots.length > 0) {
+      slots = [...doctorSlots];
+    }
+    if (slots.length === 0) {
+      slots = generateDefaultTimeSlots();
+    }
+    // Filter out occupied slots on the target date
+    const rescheduleDateStr = format(rescheduleDate, 'yyyy-MM-dd');
+    const occupied = getAppointmentsByDate(rescheduleDateStr)
+      .filter(a => a.id !== rescheduleTarget.id)
+      .map(a => a.time);
+    const occupiedSet = new Set(occupied);
+    return slots.filter(s => !occupiedSet.has(s));
+  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, getAppointmentsByDate]);
+
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
   const appointmentMap = useMemo(() => {
