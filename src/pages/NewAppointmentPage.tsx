@@ -129,6 +129,11 @@ const NewAppointmentPage = () => {
       return;
     }
 
+    if (isDateBlocked(dateStr)) {
+      toast.error('No se pueden crear citas en un día bloqueado');
+      return;
+    }
+
     if (!fechaNacimiento) {
       toast.error('La fecha de nacimiento es obligatoria');
       return;
