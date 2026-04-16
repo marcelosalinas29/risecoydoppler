@@ -60,6 +60,34 @@ const Index = () => {
     ? generateAvailableSlots(selectedDoctorId, dayOfWeek)
     : null;
 
+  const currentDateBlocked = isDateBlocked(dateStr);
+  const currentBlockedDate = blockedDates.find(b => b.date === dateStr);
+
+  const handleBlockDate = async () => {
+    try {
+      await addBlockedDate(dateStr, blockReason || 'Sin motivo especificado');
+      toast.success(`Día ${format(selectedDate, "d 'de' MMMM", { locale: es })} bloqueado`);
+      setBlockDialogOpen(false);
+      setBlockReason('');
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al bloquear fecha');
+    }
+  };
+
+  const handleUnblockDate = async () => {
+    const blocked = blockedDates.find(b => b.date === dateStr);
+    if (!blocked) return;
+    try {
+      await removeBlockedDate(blocked.id);
+      toast.success(`Día ${format(selectedDate, "d 'de' MMMM", { locale: es })} desbloqueado`);
+    } catch {
+      toast.error('Error al desbloquear fecha');
+    }
+  };
+
+  // Highlight blocked dates in calendar
+  const blockedDateObjects = blockedDates.map(b => new Date(b.date + 'T12:00:00'));
+
   const handleConnectionTest = async () => {
     setTestingConnection(true);
     try {
