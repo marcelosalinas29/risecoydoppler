@@ -314,9 +314,19 @@ const NewAppointmentPage = () => {
                 onSelect={(d) => { if (d) { setSelectedDate(d); setTime(''); } }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
+                modifiers={{ blocked: blockedDates.map(b => new Date(b.date + 'T12:00:00')) }}
+                modifiersClassNames={{ blocked: 'bg-destructive/20 text-destructive line-through' }}
               />
             </PopoverContent>
           </Popover>
+          {isDateBlocked(dateStr) && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center gap-2">
+              <Ban className="w-4 h-4 text-destructive flex-shrink-0" />
+              <p className="text-sm text-destructive font-medium">
+                Este día está bloqueado. No se pueden agendar turnos.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Time slots */}
