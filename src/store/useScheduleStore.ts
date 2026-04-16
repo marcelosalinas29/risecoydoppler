@@ -17,12 +17,24 @@ export interface DoctorInfo {
   slotInterval: number;
 }
 
+export interface BlockedDate {
+  id: string;
+  date: string;
+  reason: string;
+  createdBy: string;
+}
+
 interface ScheduleStore {
   schedules: ScheduleBlock[];
   doctors: DoctorInfo[];
+  blockedDates: BlockedDate[];
   fetchSchedules: (doctorId: string) => Promise<void>;
   fetchAllSchedules: () => Promise<void>;
   fetchDoctors: () => Promise<void>;
+  fetchBlockedDates: () => Promise<void>;
+  addBlockedDate: (date: string, reason: string) => Promise<void>;
+  removeBlockedDate: (id: string) => Promise<void>;
+  isDateBlocked: (date: string) => boolean;
   addBlock: (block: Omit<ScheduleBlock, 'id'>) => Promise<void>;
   updateBlock: (id: string, data: Partial<ScheduleBlock>) => Promise<void>;
   deleteBlock: (id: string) => Promise<void>;
