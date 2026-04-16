@@ -20,14 +20,17 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const today = new Date();
+  const { userRole } = useAuth();
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
   const [testingConnection, setTestingConnection] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
   const allAppointments = useClinicStore((s) => s.appointments);
   const fetchAppointments = useClinicStore((s) => s.fetchAppointments);
   const fetchPatients = useClinicStore((s) => s.fetchPatients);
   const loading = useClinicStore((s) => s.loading);
-  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots } = useScheduleStore();
+  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, blockedDates, fetchBlockedDates, addBlockedDate, removeBlockedDate, isDateBlocked } = useScheduleStore();
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const dayAppointments = useMemo(
