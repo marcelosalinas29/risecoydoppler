@@ -20,7 +20,7 @@ import { CalendarIcon, Clock, AlertTriangle, Timer } from 'lucide-react';
 const NewAppointmentPage = () => {
   const navigate = useNavigate();
   const { addPatient, addAppointment, searchPatients, patients, findPatientByDni, getAppointmentsByDate } = useClinicStore();
-  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, schedules } = useScheduleStore();
+  const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, schedules, isDateBlocked, fetchBlockedDates, blockedDates } = useScheduleStore();
 
   const [dni, setDni] = useState('');
   const [name, setName] = useState('');
