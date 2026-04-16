@@ -45,6 +45,7 @@ const NewAppointmentPage = () => {
   useEffect(() => {
     fetchDoctors();
     fetchAllSchedules();
+    fetchBlockedDates();
   }, []);
 
   // Auto-select first doctor
