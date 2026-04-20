@@ -77,7 +77,7 @@ export const STATUS_LABELS: Record<StudyStatus, string> = {
   'sent': 'Enviado',
 };
 
-/** Calculate age from birth date */
+/** Calculate age in years from birth date (legacy, returns number of years) */
 export function calcularEdad(fechaNacimiento: string | Date): number {
   const birth = new Date(fechaNacimiento);
   const today = new Date();
@@ -87,6 +87,59 @@ export function calcularEdad(fechaNacimiento: string | Date): number {
     age--;
   }
   return age;
+}
+
+export type EdadUnit = 'días' | 'semanas' | 'meses' | 'años';
+export interface EdadDetallada {
+  value: number;
+  unit: EdadUnit;
+}
+
+/**
+ * Calendar-exact age with smart unit:
+ *  < 7 días → días
+ *  7 días a < 1 mes → semanas
+ *  1 mes a < 1 año → meses
+ *  ≥ 1 año → años
+ */
+export function calcularEdadDetallada(fechaNacimiento: string | Date): EdadDetallada {
+  const birth = typeof fechaNacimiento === 'string'
+    ? (() => {
+        const [y, m, d] = fechaNacimiento.split('T')[0].split('-').map(Number);
+        return new Date(y, (m || 1) - 1, d || 1);
+      })()
+    : new Date(fechaNacimiento);
+  const today = new Date();
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const birthMid = new Date(birth.getFullYear(), birth.getMonth(), birth.getDate());
+
+  // Years (calendar-exact)
+  let years = todayMid.getFullYear() - birthMid.getFullYear();
+  const monthDiff = todayMid.getMonth() - birthMid.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && todayMid.getDate() < birthMid.getDate())) {
+    years--;
+  }
+  if (years >= 1) return { value: years, unit: 'años' };
+
+  // Months (calendar-exact)
+  let months = (todayMid.getFullYear() - birthMid.getFullYear()) * 12 + (todayMid.getMonth() - birthMid.getMonth());
+  if (todayMid.getDate() < birthMid.getDate()) months--;
+  if (months >= 1) return { value: months, unit: 'meses' };
+
+  // Days
+  const days = Math.max(0, Math.floor((todayMid.getTime() - birthMid.getTime()) / 86400000));
+  if (days >= 7) return { value: Math.floor(days / 7), unit: 'semanas' };
+  return { value: days, unit: 'días' };
+}
+
+/** Formatted string e.g. "3 meses", "44 años" */
+export function formatEdad(fechaNacimiento?: string | Date | null, fallbackYears?: number): string {
+  if (fechaNacimiento) {
+    const e = calcularEdadDetallada(fechaNacimiento);
+    return `${e.value} ${e.unit}`;
+  }
+  if (typeof fallbackYears === 'number') return `${fallbackYears} años`;
+  return '';
 }
 
 /** 
