@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { calcularEdad } from '@/types/medical';
+import { calcularEdad, calcularEdadDetallada } from '@/types/medical';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -780,13 +780,23 @@ const AppointmentPage = () => {
                 <Input value={patientForm.obraSocial} onChange={(e) => setPatientForm(f => ({ ...f, obraSocial: e.target.value.toUpperCase() }))} className="uppercase h-8" placeholder="Obra Social" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-muted-foreground">Edad calculada: {patientForm.fechaNacimiento ? calcularEdad(patientForm.fechaNacimiento) : appointment.patient.age} años</label>
+                {(() => {
+                  const e = patientForm.fechaNacimiento
+                    ? calcularEdadDetallada(patientForm.fechaNacimiento)
+                    : { value: appointment.patient.age, unit: 'años' as const };
+                  return <label className="text-xs text-muted-foreground">Edad calculada: <span className="font-bold text-foreground">{e.value}</span> {e.unit}</label>;
+                })()}
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
               {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
-              <span>Edad: {appointment.patient.age} años</span>
+              {(() => {
+                const e = appointment.patient.fechaNacimiento
+                  ? calcularEdadDetallada(appointment.patient.fechaNacimiento)
+                  : { value: appointment.patient.age, unit: 'años' as const };
+                return <span>Edad: <span className="font-bold text-foreground">{e.value}</span> {e.unit}</span>;
+              })()}
               <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{appointment.patient.phone}</span>
               <span className="flex items-center gap-1">
                 <FileText className="w-3 h-3" />

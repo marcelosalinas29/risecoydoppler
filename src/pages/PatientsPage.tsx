@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
-import { STATUS_LABELS } from '@/types/medical';
+import { STATUS_LABELS, calcularEdadDetallada } from '@/types/medical';
 import { Input } from '@/components/ui/input';
 
 const PatientsPage = () => {
@@ -43,6 +43,9 @@ const PatientsPage = () => {
             {results.map((patient) => {
               const appointments = getPatientAppointments(patient.id);
               const displayPhone = patient.phone?.replace(/^\+?549?\s?/, '') || '';
+              const edad = patient.fechaNacimiento
+                ? calcularEdadDetallada(patient.fechaNacimiento)
+                : { value: patient.age, unit: 'años' as const };
               return (
                 <div key={patient.id} className="bg-card rounded-xl border border-border p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
@@ -55,7 +58,7 @@ const PatientsPage = () => {
                             <span className="mx-2 text-border">|</span>
                           </>
                         )}
-                        <span>{patient.age} años</span>
+                        <span><span className="font-bold text-foreground">{edad.value}</span> {edad.unit}</span>
                         <span className="mx-2 text-border">|</span>
                         <span className="text-primary">{displayPhone}</span>
                       </p>

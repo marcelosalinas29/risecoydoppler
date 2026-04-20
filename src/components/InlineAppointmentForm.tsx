@@ -5,7 +5,7 @@ import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
 import { Check, X, Search, FileText } from 'lucide-react';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
-import { calcularEdad } from '@/types/medical';
+import { calcularEdadDetallada } from '@/types/medical';
 
 interface Props {
   slot: string;
@@ -139,9 +139,10 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
             className="h-6 text-xs"
             onKeyDown={handleKeyDown}
           />
-          {fechaNacimiento && (
-            <span className="text-[10px] text-muted-foreground">{calcularEdad(fechaNacimiento)} años</span>
-          )}
+          {fechaNacimiento && (() => {
+            const e = calcularEdadDetallada(fechaNacimiento);
+            return <span className="text-[10px] text-muted-foreground"><span className="font-bold">{e.value}</span> {e.unit}</span>;
+          })()}
         </div>
       </td>
       <td className="p-1 border border-border">

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Appointment, StudyStatus } from '@/types/medical';
-import { STATUS_LABELS, formatStudyType, calcularEdad } from '@/types/medical';
+import { STATUS_LABELS, formatStudyType, calcularEdad, calcularEdadDetallada } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -336,13 +336,16 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </div>
                           ) : (
                             <div className="flex flex-col leading-tight">
-                              {apt.patient.fechaNacimiento ? (
-                                <>
-                                  <span className="text-xs font-bold text-foreground">{calcularEdad(apt.patient.fechaNacimiento)} años</span>
-                                  <span className="text-[10px] text-muted-foreground">{apt.patient.fechaNacimiento}</span>
-                                </>
-                              ) : (
-                                apt.patient.age ? <span className="text-xs font-bold text-foreground">{apt.patient.age} años</span> : <span className="text-xs">-</span>
+                              {apt.patient.fechaNacimiento ? (() => {
+                                const e = calcularEdadDetallada(apt.patient.fechaNacimiento);
+                                return (
+                                  <>
+                                    <span className="text-xs text-foreground"><span className="font-bold">{e.value}</span> {e.unit}</span>
+                                    <span className="text-[10px] text-muted-foreground">{apt.patient.fechaNacimiento}</span>
+                                  </>
+                                );
+                              })() : (
+                                apt.patient.age ? <span className="text-xs text-foreground"><span className="font-bold">{apt.patient.age}</span> años</span> : <span className="text-xs">-</span>
                               )}
                             </div>
                           )}
