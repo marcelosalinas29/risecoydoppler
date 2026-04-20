@@ -92,3 +92,20 @@
     @apply bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow;
   }
 }
+
+/* Report editor — scoped styles to match PDF output (line-height 1.6, paragraph spacing) */
+.ProseMirror {
+  font-family: 'Helvetica', 'Arial', sans-serif;
+  line-height: 1.6;
+}
+.ProseMirror p,
+.ProseMirror ul,
+.ProseMirror ol {
+  margin-bottom: 1.2em;
+  line-height: 1.6;
+}
+.ProseMirror p:last-child,
+.ProseMirror ul:last-child,
+.ProseMirror ol:last-child {
+  margin-bottom: 0;
+}

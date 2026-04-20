@@ -246,7 +246,7 @@ const AppointmentPage = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 22;
+    const margin = 25; // 2.5 cm lateral margins
     const contentWidth = pageWidth - margin * 2;
 
     const drawFooter = () => {
@@ -377,7 +377,7 @@ const AppointmentPage = () => {
       };
 
       const processBlock = (el: HTMLElement) => {
-        const lh = parseFloat(el.style.lineHeight) || 1.5;
+        const lh = parseFloat(el.style.lineHeight) || 1.6;
         const align = (el.style.textAlign || 'left') as 'left' | 'center' | 'right';
         const rawSegments = extractSegments(el, { bold: false, italic: false, underline: false });
         const subParas: TextSegment[][] = [[]];
@@ -406,14 +406,14 @@ const AppointmentPage = () => {
               const bullet = tag === 'ol' ? `${idx + 1}. ` : '• ';
               const segs = extractSegments(li, { bold: false, italic: false, underline: false });
               segs.unshift({ text: bullet, bold: false, italic: false, underline: false });
-              paragraphs.push({ segments: segs, lineHeight: parseFloat((li as HTMLElement).style.lineHeight) || 1.5, align: 'left' });
+              paragraphs.push({ segments: segs, lineHeight: parseFloat((li as HTMLElement).style.lineHeight) || 1.6, align: 'left' });
             });
           } else {
             processBlock(el);
           }
         } else if (child.nodeType === Node.TEXT_NODE) {
           const txt = child.textContent?.trim();
-          if (txt) paragraphs.push({ segments: [{ text: txt, bold: false, italic: false, underline: false }], lineHeight: 1.5, align: 'left' });
+          if (txt) paragraphs.push({ segments: [{ text: txt, bold: false, italic: false, underline: false }], lineHeight: 1.6, align: 'left' });
         }
       }
       return paragraphs;
@@ -421,12 +421,14 @@ const AppointmentPage = () => {
 
     const renderPdfParagraphs = (paras: PdfParagraph[]) => {
       const baseLine = 5;
+      // Paragraph spacing in mm — equivalent to ~1.2em at 10pt font
+      const paragraphSpacing = 4.2;
       for (const para of paras) {
         if (para.segments.length === 0) {
-          y += baseLine * (para.lineHeight / 1.5) * 0.6;
+          y += baseLine * (para.lineHeight / 1.6) * 0.6;
           continue;
         }
-        const lineSpacing = baseLine * (para.lineHeight / 1.5);
+        const lineSpacing = baseLine * (para.lineHeight / 1.6);
         const fullText = para.segments.map(s => s.text).join('');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
@@ -489,6 +491,8 @@ const AppointmentPage = () => {
           }
           y += lineSpacing;
         }
+        // Add inter-paragraph spacing (margin-bottom: 1.2em equivalent)
+        y += paragraphSpacing;
         if (y > pageHeight - 50) { drawFooter(); doc.addPage(); y = 20; }
       }
     };
