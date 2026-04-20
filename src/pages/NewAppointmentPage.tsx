@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { STUDY_TYPES, calcularEdad, getStudyDuration } from '@/types/medical';
+import { STUDY_TYPES, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,7 @@ const NewAppointmentPage = () => {
   const [overrideTime, setOverrideTime] = useState('');
 
   const calculatedAge = fechaNacimiento ? calcularEdad(fechaNacimiento) : null;
+  const calculatedEdad = fechaNacimiento ? calcularEdadDetallada(fechaNacimiento) : null;
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayOfWeek = getDay(selectedDate);
 
@@ -225,7 +226,7 @@ const NewAppointmentPage = () => {
             <Label>Edad</Label>
             <Input
               type="text"
-              value={calculatedAge !== null ? `${calculatedAge} años` : ''}
+              value={calculatedEdad ? `${calculatedEdad.value} ${calculatedEdad.unit}` : ''}
               readOnly
               className="bg-muted/50"
               placeholder="Automático"
