@@ -45,12 +45,25 @@ const Index = () => {
     return new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
   }, [allAppointments]);
 
+  // ROLLBACK REF: versión previa hacía 5 fetch sin manejo de error; loading podía quedar colgado si fallaba la red.
   useEffect(() => {
-    fetchPatients();
-    fetchAppointments();
-    fetchDoctors();
-    fetchAllSchedules();
-    fetchBlockedDates();
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.allSettled([
+        fetchPatients(),
+        fetchAppointments(),
+        fetchDoctors(),
+        fetchAllSchedules(),
+        fetchBlockedDates(),
+      ]);
+      if (cancelled) return;
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        console.error('Fallos al cargar datos iniciales:', failed);
+        toast.error('Algunos datos no se pudieron cargar. Revisá tu conexión.');
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Realtime is now handled globally by useRealtimeSync hook in App.tsx
@@ -88,8 +101,11 @@ const Index = () => {
   // Highlight blocked dates in calendar
   const blockedDateObjects = blockedDates.map(b => new Date(b.date + 'T12:00:00'));
 
+  // ROLLBACK REF: versión previa dejaba el paciente y turno de prueba persistidos en la DB (visible para secretarias).
   const handleConnectionTest = async () => {
     setTestingConnection(true);
+    let createdPatientId: string | null = null;
+    let createdAppointmentId: string | null = null;
     try {
       const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 
@@ -106,6 +122,7 @@ const Index = () => {
         .single();
 
       if (patientError) throw new Error(`Paciente: ${patientError.message}`);
+      createdPatientId = testPatient.id;
 
       const { data: testAppointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -123,19 +140,29 @@ const Index = () => {
         .single();
 
       if (appointmentError) throw new Error(`Turno: ${appointmentError.message}`);
+      createdAppointmentId = testAppointment.id;
 
-      console.log('Connection test success', {
-        patientId: testPatient.id,
-        appointmentId: testAppointment.id,
-      });
-
-      await Promise.all([fetchPatients(true), fetchAppointments(true)]);
-      toast.success(`Conexión OK: escribió en appointments (${testAppointment.id.slice(0, 8)})`);
+      toast.success(`Conexión OK (${testAppointment.id.slice(0, 8)})`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falló el test de conexión';
       console.error('Connection test failed:', error);
       toast.error(message);
     } finally {
+      // Limpieza atómica: borrar siempre lo creado, aunque haya error parcial
+      try {
+        if (createdAppointmentId) {
+          await supabase.from('appointments').delete().eq('id', createdAppointmentId);
+        }
+        if (createdPatientId) {
+          await supabase.from('patients').delete().eq('id', createdPatientId);
+        }
+      } catch (cleanupErr) {
+        console.error('Error limpiando registros de test:', cleanupErr);
+      }
+      // Refrescar para que el realtime no deje fantasmas en UI
+      try {
+        await Promise.all([fetchPatients(true), fetchAppointments(true)]);
+      } catch {}
       setTestingConnection(false);
     }
   };
