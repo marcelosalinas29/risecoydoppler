@@ -230,10 +230,6 @@ const Index = () => {
                 </Button>
               )
             )}
-            <Button variant="outline" size="sm" onClick={handleConnectionTest} disabled={testingConnection}>
-              <Wifi className="w-4 h-4 mr-1" />
-              {testingConnection ? 'Probando...' : 'Test de conexión'}
-            </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelectedDate(today)}>
               Hoy
             </Button>
