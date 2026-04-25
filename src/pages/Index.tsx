@@ -290,6 +290,18 @@ const Index = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Test de conexión: discreto, esquina inferior derecha */}
+      <button
+        type="button"
+        onClick={handleConnectionTest}
+        disabled={testingConnection}
+        title={testingConnection ? 'Probando conexión...' : 'Test de conexión'}
+        aria-label="Test de conexión"
+        className="fixed bottom-20 right-3 z-40 h-7 w-7 rounded-full bg-background/70 hover:bg-background border border-border text-muted-foreground hover:text-foreground shadow-sm flex items-center justify-center transition-opacity opacity-50 hover:opacity-100 disabled:opacity-30"
+      >
+        <Wifi className={cn("w-3.5 h-3.5", testingConnection && "animate-pulse")} />
+      </button>
     </AppLayout>
   );
 };
