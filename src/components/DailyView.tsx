@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { toast } from 'sonner';
-import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
+import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
 import InlineAppointmentForm from '@/components/InlineAppointmentForm';
