@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { toast } from 'sonner';
-import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck } from 'lucide-react';
+import { Save, Edit2, X, ClipboardList, Trash2, CalendarDays, UserCheck, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
 import InlineAppointmentForm from '@/components/InlineAppointmentForm';
@@ -369,10 +369,16 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             <Select value={editData.status} onValueChange={(v) => setEditData(d => ({ ...d, status: v as StudyStatus }))}>
                               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="pending">Pendiente</SelectItem>
-                                <SelectItem value="in-study">En estudio</SelectItem>
-                                <SelectItem value="reported">Reportado</SelectItem>
-                                <SelectItem value="sent">Enviado</SelectItem>
+                                {apt.status === 'sent' ? (
+                                  <SelectItem value="sent">Enviado</SelectItem>
+                                ) : (
+                                  <>
+                                    <SelectItem value="pending">Pendiente</SelectItem>
+                                    <SelectItem value="in-study">En estudio</SelectItem>
+                                    <SelectItem value="reported">Reportado</SelectItem>
+                                    <SelectItem value="sent">Enviado</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           ) : (
@@ -416,12 +422,35 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
-                                <CalendarDays className="w-3 h-3 text-muted-foreground" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
+                              {apt.status === 'sent' ? (
+                                <>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    disabled
+                                    title="Bloqueado: estudio enviado"
+                                    onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: traslado bloqueado por seguridad'); }}
+                                  >
+                                    <Lock className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    disabled
+                                    title="Bloqueado: estudio enviado"
+                                    onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: eliminación bloqueada por seguridad'); }}
+                                  >
+                                    <Lock className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
+                                    <CalendarDays className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           )}
                         </td>
