@@ -369,10 +369,16 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             <Select value={editData.status} onValueChange={(v) => setEditData(d => ({ ...d, status: v as StudyStatus }))}>
                               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="pending">Pendiente</SelectItem>
-                                <SelectItem value="in-study">En estudio</SelectItem>
-                                <SelectItem value="reported">Reportado</SelectItem>
-                                <SelectItem value="sent">Enviado</SelectItem>
+                                {apt.status === 'sent' ? (
+                                  <SelectItem value="sent">Enviado</SelectItem>
+                                ) : (
+                                  <>
+                                    <SelectItem value="pending">Pendiente</SelectItem>
+                                    <SelectItem value="in-study">En estudio</SelectItem>
+                                    <SelectItem value="reported">Reportado</SelectItem>
+                                    <SelectItem value="sent">Enviado</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           ) : (
