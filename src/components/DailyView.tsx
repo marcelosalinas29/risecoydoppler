@@ -422,12 +422,35 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
-                                <CalendarDays className="w-3 h-3 text-muted-foreground" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
+                              {apt.status === 'sent' ? (
+                                <>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    disabled
+                                    title="Bloqueado: estudio enviado"
+                                    onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: traslado bloqueado por seguridad'); }}
+                                  >
+                                    <Lock className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    disabled
+                                    title="Bloqueado: estudio enviado"
+                                    onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: eliminación bloqueada por seguridad'); }}
+                                  >
+                                    <Lock className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
+                                    <CalendarDays className="w-3 h-3 text-muted-foreground" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           )}
                         </td>
