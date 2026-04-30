@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const ids: string[] = Array.isArray(body?.ids) ? body.ids : [];
-    if (ids.length === 0 || ids.length > 15) {
+    if (ids.length === 0 || ids.length > 30) {
       return new Response(
-        JSON.stringify({ error: "Se requiere 'ids' (array de 1 a 15 UUIDs)" }),
+        JSON.stringify({ error: "Se requiere 'ids' (array de 1 a 30 UUIDs)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
