@@ -426,16 +426,52 @@ const NewAppointmentPage = () => {
           </div>
           {showOverride && (
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Hora manual (sobreturno)</Label>
-              <Input type="time" value={overrideTime} onChange={(e) => setOverrideTime(e.target.value)} step="600" />
-              {overrideTime && occupiedSlots.has(overrideTime) && (
-                <p className="text-xs text-destructive font-medium">⚠ Ya hay una cita en este horario</p>
+              <Label className="text-xs text-muted-foreground">
+                Hora manual (sobreturno)
+                {doctorDayRange && (
+                  <span className="ml-1">
+                    — debe estar entre{' '}
+                    <span className="font-mono font-medium">
+                      {String(Math.floor(doctorDayRange.start / 60)).padStart(2, '0')}:
+                      {String(doctorDayRange.start % 60).padStart(2, '0')}
+                    </span>{' '}
+                    y{' '}
+                    <span className="font-mono font-medium">
+                      {String(Math.floor(doctorDayRange.end / 60)).padStart(2, '0')}:
+                      {String(doctorDayRange.end % 60).padStart(2, '0')}
+                    </span>
+                  </span>
+                )}
+              </Label>
+              <Input
+                type="time"
+                value={overrideTime}
+                onChange={(e) => setOverrideTime(e.target.value)}
+                step="600"
+                min={doctorDayRange ? `${String(Math.floor(doctorDayRange.start / 60)).padStart(2, '0')}:${String(doctorDayRange.start % 60).padStart(2, '0')}` : undefined}
+                max={doctorDayRange ? `${String(Math.floor(doctorDayRange.end / 60)).padStart(2, '0')}:${String(doctorDayRange.end % 60).padStart(2, '0')}` : undefined}
+                className={isOverrideOutOfRange ? 'border-destructive' : ''}
+              />
+              {isOverrideOutOfRange && (
+                <p className="text-xs text-destructive font-medium">
+                  ⚠ El sobreturno debe estar dentro del horario del médico
+                </p>
+              )}
+              {overrideTime && !isOverrideOutOfRange && occupiedSlots.has(overrideTime) && (
+                <p className="text-xs text-amber-600 font-medium">
+                  ⚠ Ya hay una cita en este horario (se agregará igualmente)
+                </p>
               )}
             </div>
           )}
         </div>
 
-        <Button onClick={handleSubmit} className="w-full btn-action-primary" size="lg" disabled={submitting}>
+        <Button
+          onClick={handleSubmit}
+          className="w-full btn-action-primary"
+          size="lg"
+          disabled={submitting || (showOverride && (isOverrideOutOfRange || !overrideTime))}
+        >
           {submitting ? 'Creando...' : 'Crear Cita'}
         </Button>
       </div>
