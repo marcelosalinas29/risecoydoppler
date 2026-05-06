@@ -161,6 +161,11 @@ const NewAppointmentPage = () => {
       return;
     }
 
+    if (showOverride && isOverrideOutOfRange) {
+      toast.error('El sobreturno debe estar dentro del horario del médico');
+      return;
+    }
+
     if (occupiedSlots.has(finalTime)) {
       toast.warning('⚠️ Ya existe una cita en ese horario. Se creará de todas formas.');
     }
