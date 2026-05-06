@@ -121,6 +121,27 @@ const NewAppointmentPage = () => {
     return blocked;
   }, [occupiedSlots]);
 
+  // Compute the doctor's working time range for the selected day (for sobreturno validation)
+  const doctorDayRange = useMemo(() => {
+    if (!selectedDoctorId) return null;
+    const blocks = schedules.filter(b => b.doctorId === selectedDoctorId && b.dayOfWeek === dayOfWeek && b.active);
+    if (blocks.length === 0) return null;
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const start = Math.min(...blocks.map(b => toMin(b.startTime)));
+    const end = Math.max(...blocks.map(b => toMin(b.endTime)));
+    return { start, end };
+  }, [selectedDoctorId, dayOfWeek, schedules]);
+
+  const isOverrideOutOfRange = useMemo(() => {
+    if (!showOverride || !overrideTime || !doctorDayRange) return false;
+    const [h, m] = overrideTime.split(':').map(Number);
+    const mins = h * 60 + m;
+    return mins < doctorDayRange.start || mins >= doctorDayRange.end;
+  }, [showOverride, overrideTime, doctorDayRange]);
+
   const finalTime = showOverride ? overrideTime : time;
 
   const handleSubmit = async () => {
