@@ -49,9 +49,10 @@ const NewAppointmentPage = () => {
     fetchBlockedDates();
   }, []);
 
-  // Auto-select first doctor
+  // Auto-select doctor ONLY if there is exactly one in the system.
+  // With multiple doctors, force explicit selection to avoid mixing schedules.
   useEffect(() => {
-    if (doctors.length > 0 && !selectedDoctorId) {
+    if (doctors.length === 1 && !selectedDoctorId) {
       setSelectedDoctorId(doctors[0].userId);
     }
   }, [doctors]);
