@@ -311,18 +311,27 @@ const NewAppointmentPage = () => {
           )}
         </div>
 
-        {/* Doctor selector */}
+        {/* Doctor selector — required when there are multiple doctors to avoid mixing schedules */}
         {doctors.length > 1 && (
-          <div className="space-y-2">
-            <Label>Médico</Label>
+          <div className="space-y-2 bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <Label className="text-primary font-semibold">
+              Médico que atenderá la cita *
+            </Label>
             <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar médico" /></SelectTrigger>
+              <SelectTrigger className={cn(!selectedDoctorId && "border-destructive")}>
+                <SelectValue placeholder="⚠ Seleccione un médico" />
+              </SelectTrigger>
               <SelectContent>
                 {doctors.map(d => (
                   <SelectItem key={d.userId} value={d.userId}>{d.fullName}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {!selectedDoctorId && (
+              <p className="text-xs text-destructive font-medium">
+                Debe elegir el médico antes de ver los horarios disponibles. Cada médico tiene su propia agenda.
+              </p>
+            )}
           </div>
         )}
 
