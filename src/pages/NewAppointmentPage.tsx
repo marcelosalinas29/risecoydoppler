@@ -484,7 +484,7 @@ const NewAppointmentPage = () => {
           onClick={handleSubmit}
           className="w-full btn-action-primary"
           size="lg"
-          disabled={submitting || (showOverride && (isOverrideOutOfRange || !overrideTime))}
+          disabled={submitting || !selectedDoctorId || (showOverride && (isOverrideOutOfRange || !overrideTime))}
         >
           {submitting ? 'Creando...' : 'Crear Cita'}
         </Button>
