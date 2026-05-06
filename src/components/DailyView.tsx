@@ -131,7 +131,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       .map(a => a.time);
     const occupiedSet = new Set(occupied);
     return slots.filter(s => !occupiedSet.has(s));
-  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, getAppointmentsByDate]);
+  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, selectedDoctorId, getAppointmentsByDate]);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
