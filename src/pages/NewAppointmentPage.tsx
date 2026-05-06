@@ -147,6 +147,10 @@ const NewAppointmentPage = () => {
 
   const handleSubmit = async () => {
     const studyType = getStudyTypeString();
+    if (!selectedDoctorId) {
+      toast.error('Debe seleccionar el médico al que se asigna la cita');
+      return;
+    }
     if (!name || !phone || !finalTime || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
