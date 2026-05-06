@@ -267,6 +267,7 @@ const Index = () => {
             selectedDate={selectedDate}
             doctorSlots={doctorSlots}
             patientsWithHistory={patientsWithHistory}
+            selectedDoctorId={selectedDoctorId}
           />
         )}
       </div>
