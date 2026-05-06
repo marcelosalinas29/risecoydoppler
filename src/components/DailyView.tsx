@@ -65,9 +65,10 @@ interface DailyViewProps {
   selectedDate: Date;
   doctorSlots?: string[] | null;
   patientsWithHistory?: Set<string>;
+  selectedDoctorId?: string;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory }: DailyViewProps) => {
+const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory, selectedDoctorId }: DailyViewProps) => {
   const navigate = useNavigate();
   const updateAppointmentTime = useClinicStore((s) => s.updateAppointmentTime);
   const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
@@ -109,8 +110,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const rescheduleAvailableSlots = useMemo(() => {
     if (!rescheduleTarget) return [];
     const dayOfWeek = getDay(rescheduleDate);
-    // Try to find the first doctor with schedules, or use doctorSlots as fallback
-    const doctorId = doctors.length > 0 ? doctors[0].userId : null;
+    // Use the currently filtered doctor; fallback to the only doctor if there is just one
+    const doctorId = selectedDoctorId && selectedDoctorId !== 'all'
+      ? selectedDoctorId
+      : (doctors.length === 1 ? doctors[0].userId : null);
     let slots: string[] = [];
     if (doctorId) {
       slots = generateAvailableSlots(doctorId, dayOfWeek);
@@ -128,7 +131,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       .map(a => a.time);
     const occupiedSet = new Set(occupied);
     return slots.filter(s => !occupiedSet.has(s));
-  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, getAppointmentsByDate]);
+  }, [rescheduleTarget, rescheduleDate, doctors, schedules, doctorSlots, selectedDoctorId, getAppointmentsByDate]);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 

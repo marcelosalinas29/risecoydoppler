@@ -248,6 +248,15 @@ const Index = () => {
           </div>
         )}
 
+        {doctors.length > 1 && selectedDoctorId === 'all' && !currentDateBlocked && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
+            <Ban className="w-4 h-4 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              <span className="font-semibold">Estás viendo todos los médicos.</span> Los horarios mostrados son genéricos y pueden no coincidir con la disponibilidad real de cada médico. Para asignar nuevos turnos, primero filtrá por médico arriba.
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <p className="text-base font-medium">Cargando citas...</p>
@@ -258,6 +267,7 @@ const Index = () => {
             selectedDate={selectedDate}
             doctorSlots={doctorSlots}
             patientsWithHistory={patientsWithHistory}
+            selectedDoctorId={selectedDoctorId}
           />
         )}
       </div>
