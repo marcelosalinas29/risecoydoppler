@@ -65,9 +65,10 @@ interface DailyViewProps {
   selectedDate: Date;
   doctorSlots?: string[] | null;
   patientsWithHistory?: Set<string>;
+  selectedDoctorId?: string;
 }
 
-const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory }: DailyViewProps) => {
+const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistory, selectedDoctorId }: DailyViewProps) => {
   const navigate = useNavigate();
   const updateAppointmentTime = useClinicStore((s) => s.updateAppointmentTime);
   const updateAppointmentStudyType = useClinicStore((s) => s.updateAppointmentStudyType);
