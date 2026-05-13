@@ -1,12 +1,13 @@
+import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { useClinicStore } from '@/store/useClinicStore';
-import { STATUS_LABELS, formatStudyType } from '@/types/medical';
+import { supabase } from '@/integrations/supabase/client';
+import type { Appointment, StudyStatus } from '@/types/medical';
+import { calcularEdad, STATUS_LABELS, formatStudyType } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Calendar, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText, Calendar, Loader2 } from 'lucide-react';
 
 interface PatientHistoryModalProps {
   patientId: string;
@@ -24,8 +25,51 @@ const statusClass: Record<string, string> = {
 
 const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: PatientHistoryModalProps) => {
   const navigate = useNavigate();
-  const { getPatientAppointments } = useClinicStore();
-  const appointments = getPatientAppointments(patientId);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, patients(*)')
+        .eq('patient_id', patientId)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+      if (cancelled) return;
+      setAppointments(
+        (data || []).map((a: any) => ({
+          id: a.id,
+          patientId: a.patient_id,
+          patient: {
+            id: a.patients.id,
+            dni: a.patients.dni || '',
+            name: a.patients.name,
+            age: a.patients.fecha_nacimiento ? calcularEdad(a.patients.fecha_nacimiento) : a.patients.age,
+            phone: a.patients.phone,
+            fechaNacimiento: a.patients.fecha_nacimiento || undefined,
+            obraSocial: a.patients.obra_social || '',
+          },
+          studyType: a.study_type,
+          status: a.status as StudyStatus,
+          date: a.date,
+          time: a.time,
+          report: '',
+          images: [],
+          imageUrls: [],
+          observations: a.observations || '',
+          reportedBy: a.reported_by || null,
+          asistio: a.asistio ?? false,
+          createdAt: a.created_at,
+        }))
+      );
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [open, patientId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -37,7 +81,11 @@ const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: Pat
           </DialogTitle>
         </DialogHeader>
 
-        {appointments.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             Sin estudios previos
           </p>
@@ -60,11 +108,6 @@ const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: Pat
                   {(() => { const [y, m, d] = apt.date.split('-').map(Number); return format(new Date(y, m - 1, d), "d 'de' MMMM yyyy", { locale: es }); })()}
                   <span>— {apt.time}</span>
                 </div>
-                {apt.report && (
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    📄 Tiene informe
-                  </p>
-                )}
               </button>
             ))}
           </div>
