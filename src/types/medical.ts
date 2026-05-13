@@ -29,6 +29,15 @@ export interface Appointment {
   createdAt: string;
 }
 
+export function normalizeDni(dni?: string | null): string {
+  return (dni || '').toUpperCase().replace(/[\s.\-_/]/g, '').trim();
+}
+
+export function getPatientHistoryKey(patient: Pick<Patient, 'id' | 'dni'>): string {
+  const normalizedDni = normalizeDni(patient.dni);
+  return normalizedDni ? `dni:${normalizedDni}` : `patient:${patient.id}`;
+}
+
 export const STUDY_TYPES: string[] = [
   'Ecografía Abdominal',
   'Ecografía Tiroidea',

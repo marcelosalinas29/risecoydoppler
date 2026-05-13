@@ -4,13 +4,14 @@ import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Appointment, StudyStatus } from '@/types/medical';
-import { calcularEdad, STATUS_LABELS, formatStudyType } from '@/types/medical';
+import { calcularEdad, STATUS_LABELS, formatStudyType, normalizeDni } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileText, Calendar, Loader2 } from 'lucide-react';
 
 interface PatientHistoryModalProps {
   patientId: string;
+  patientDni?: string;
   patientName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,7 +24,7 @@ const statusClass: Record<string, string> = {
   'sent': 'status-badge-sent',
 };
 
-const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: PatientHistoryModalProps) => {
+const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenChange }: PatientHistoryModalProps) => {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,10 +34,25 @@ const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: Pat
     let cancelled = false;
     (async () => {
       setLoading(true);
+      const normalizedDni = normalizeDni(patientDni);
+      let patientIds = [patientId];
+
+      if (normalizedDni) {
+        const { data: patients } = await supabase
+          .from('patients')
+          .select('id, dni');
+        patientIds = Array.from(new Set([
+          patientId,
+          ...((patients || []) as { id: string; dni: string | null }[])
+            .filter((p) => normalizeDni(p.dni) === normalizedDni)
+            .map((p) => p.id),
+        ]));
+      }
+
       const { data } = await supabase
         .from('appointments')
         .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, patients(*)')
-        .eq('patient_id', patientId)
+        .in('patient_id', patientIds)
         .order('date', { ascending: false })
         .order('time', { ascending: false });
       if (cancelled) return;
@@ -69,7 +85,7 @@ const PatientHistoryModal = ({ patientId, patientName, open, onOpenChange }: Pat
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [open, patientId]);
+  }, [open, patientId, patientDni]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
