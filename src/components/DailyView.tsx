@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getPatientHistoryKey } from '@/types/medical';
 
 const statusClass: Record<StudyStatus, string> = {
   'pending': 'status-badge-pending',
@@ -95,6 +96,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   }>({ time: '', studyType: '', status: 'pending', observations: '', patientName: '', patientDni: '', patientPhone: '', patientObraSocial: '', patientFechaNacimiento: '' });
 
   const [historyPatientId, setHistoryPatientId] = useState<string | null>(null);
+  const [historyPatientDni, setHistoryPatientDni] = useState('');
   const [historyPatientName, setHistoryPatientName] = useState('');
   const [preAppointmentSlot, setPreAppointmentSlot] = useState<string | null>(null);
 
@@ -255,7 +257,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
               const apt = appointmentMap.get(slot);
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
-              const hasHistory = apt && patientsWithHistory?.has(apt.patientId);
+              const hasHistory = apt && patientsWithHistory?.has(getPatientHistoryKey(apt.patient));
               const overbook = isOverbook(slot);
 
               const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
@@ -318,6 +320,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setHistoryPatientId(apt.patientId);
+                                     setHistoryPatientDni(apt.patient.dni || '');
                                     setHistoryPatientName(apt.patient.name);
                                   }}
                                   className="text-primary hover:text-primary/80 transition-colors"
@@ -487,9 +490,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       {historyPatientId && (
         <PatientHistoryModal
           patientId={historyPatientId}
+          patientDni={historyPatientDni}
           patientName={historyPatientName}
           open={!!historyPatientId}
-          onOpenChange={(open) => { if (!open) setHistoryPatientId(null); }}
+          onOpenChange={(open) => { if (!open) { setHistoryPatientId(null); setHistoryPatientDni(''); } }}
         />
       )}
 
