@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { getPatientHistoryKey, normalizeDni } from '@/types/medical';
 import DailyView from '@/components/DailyView';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,18 +38,22 @@ const Index = () => {
     () => allAppointments.filter(a => a.date === dateStr),
     [allAppointments, dateStr]
   );
-  // Set completo de pacientes con historial (incluye estudios > 90 días, fuera de la ventana del store).
-  const [historicalPatientIds, setHistoricalPatientIds] = useState<Set<string>>(new Set());
+  // Set completo de pacientes con historial por DNI normalizado (incluye estudios fuera de la ventana del store).
+  const [historicalPatientKeys, setHistoricalPatientKeys] = useState<Set<string>>(new Set());
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from('appointments').select('patient_id');
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('patient_id, patients(id, dni)');
       if (cancelled || error || !data) return;
       const counts = new Map<string, number>();
-      for (const row of data as { patient_id: string }[]) {
-        counts.set(row.patient_id, (counts.get(row.patient_id) || 0) + 1);
+      for (const row of data as { patient_id: string; patients: { id: string; dni: string | null } | null }[]) {
+        const dniKey = normalizeDni(row.patients?.dni);
+        const key = dniKey ? `dni:${dniKey}` : `patient:${row.patient_id}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
       }
-      setHistoricalPatientIds(new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id)));
+      setHistoricalPatientKeys(new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([key]) => key)));
     })();
     return () => { cancelled = true; };
   }, [allAppointments.length]);
@@ -56,12 +61,13 @@ const Index = () => {
   const patientsWithHistory = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of allAppointments) {
-      counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
+      const key = getPatientHistoryKey(a.patient);
+      counts.set(key, (counts.get(key) || 0) + 1);
     }
     const result = new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
-    historicalPatientIds.forEach((id) => result.add(id));
+    historicalPatientKeys.forEach((key) => result.add(key));
     return result;
-  }, [allAppointments, historicalPatientIds]);
+  }, [allAppointments, historicalPatientKeys]);
 
   // ROLLBACK REF: versión previa hacía 5 fetch sin manejo de error; loading podía quedar colgado si fallaba la red.
   useEffect(() => {
