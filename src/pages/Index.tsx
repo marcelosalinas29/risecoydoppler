@@ -37,13 +37,31 @@ const Index = () => {
     () => allAppointments.filter(a => a.date === dateStr),
     [allAppointments, dateStr]
   );
+  // Set completo de pacientes con historial (incluye estudios > 90 días, fuera de la ventana del store).
+  const [historicalPatientIds, setHistoricalPatientIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.from('appointments').select('patient_id');
+      if (cancelled || error || !data) return;
+      const counts = new Map<string, number>();
+      for (const row of data as { patient_id: string }[]) {
+        counts.set(row.patient_id, (counts.get(row.patient_id) || 0) + 1);
+      }
+      setHistoricalPatientIds(new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id)));
+    })();
+    return () => { cancelled = true; };
+  }, [allAppointments.length]);
+
   const patientsWithHistory = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of allAppointments) {
       counts.set(a.patientId, (counts.get(a.patientId) || 0) + 1);
     }
-    return new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
-  }, [allAppointments]);
+    const result = new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
+    historicalPatientIds.forEach((id) => result.add(id));
+    return result;
+  }, [allAppointments, historicalPatientIds]);
 
   // ROLLBACK REF: versión previa hacía 5 fetch sin manejo de error; loading podía quedar colgado si fallaba la red.
   useEffect(() => {
