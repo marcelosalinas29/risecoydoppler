@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 import clinicLogo from '@/assets/clinic-logo.png';
 import signatureMarceloSalinas from '@/assets/signatures/marcelosalinas29.png';
 import signatureMarimar from '@/assets/signatures/marimarschreiber.png';
@@ -239,7 +240,7 @@ const AppointmentPage = () => {
     });
   };
 
-  const buildPdfDoc = async (): Promise<jsPDF> => {
+  const buildPdfDoc = async (qrDataUrl?: string): Promise<jsPDF> => {
     if (!appointment) throw new Error('No appointment');
     const currentAppointment = getAppointment(id || '') || appointment;
 
@@ -251,6 +252,23 @@ const AppointmentPage = () => {
 
     const drawFooter = () => {
       const footerY = pageHeight - 18;
+
+      // QR code (bottom-right, above footer line) — links to online report
+      if (qrDataUrl) {
+        const qrSize = 20;
+        const qrX = pageWidth - margin - qrSize;
+        const qrY = footerY - 3 - qrSize - 2;
+        try {
+          doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 100, 100);
+          doc.text('Escaneá para ver online', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
+        } catch {
+          // ignore QR rendering errors
+        }
+      }
+
       doc.setDrawColor(37, 99, 135);
       doc.setLineWidth(0.3);
       doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
@@ -627,11 +645,39 @@ const AppointmentPage = () => {
     return doc;
   };
 
+  // Builds PDF with embedded QR, uploads it to Storage under a deterministic
+  // permanent path, and returns both the doc and the public URL.
+  const buildAndPublishPdf = async (): Promise<{ doc: jsPDF; publicUrl: string }> => {
+    if (!appointment) throw new Error('No appointment');
+    // Deterministic, permanent path per appointment (overwritten on each save)
+    const storagePath = `informe_${appointment.id}.pdf`;
+    const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath);
+    const publicUrl = urlData.publicUrl;
+
+    // Generate QR pointing to the public URL
+    const qrDataUrl = await QRCode.toDataURL(publicUrl, {
+      margin: 1,
+      width: 400,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#196B8A', light: '#FFFFFF' },
+    });
+
+    const doc = await buildPdfDoc(qrDataUrl);
+    const pdfBlob = doc.output('blob');
+
+    const { error: uploadError } = await supabase.storage
+      .from('reports')
+      .upload(storagePath, pdfBlob, { contentType: 'application/pdf', upsert: true });
+    if (uploadError) throw uploadError;
+
+    return { doc, publicUrl };
+  };
+
   const generatePDF = async () => {
     if (!appointment) return;
     try {
       await handleSaveReport();
-      const doc = await buildPdfDoc();
+      const { doc } = await buildAndPublishPdf();
       doc.save(`Informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}.pdf`);
       toast.success('PDF generado exitosamente');
     } catch (err: any) {
@@ -650,19 +696,7 @@ const AppointmentPage = () => {
     toast.info('Generando PDF...');
 
     try {
-      const doc = await buildPdfDoc();
-      const pdfBlob = doc.output('blob');
-
-      // Upload to storage
-      const uploadName = `informe_${appointment.patient.name.replace(/\s/g, '_')}_${appointment.date}_${Date.now()}.pdf`;
-      const { error: uploadError } = await supabase.storage
-        .from('reports')
-        .upload(uploadName, pdfBlob, { contentType: 'application/pdf', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('reports').getPublicUrl(uploadName);
-      const publicUrl = urlData.publicUrl;
+      const { publicUrl } = await buildAndPublishPdf();
 
       // Normalize Argentine phone: +54 9 [area][number]
       let phone = appointment.patient.phone.replace(/[\s\-\(\)\.\+]/g, '');
