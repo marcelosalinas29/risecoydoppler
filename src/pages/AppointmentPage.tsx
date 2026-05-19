@@ -240,7 +240,7 @@ const AppointmentPage = () => {
     });
   };
 
-  const buildPdfDoc = async (): Promise<jsPDF> => {
+  const buildPdfDoc = async (qrDataUrl?: string): Promise<jsPDF> => {
     if (!appointment) throw new Error('No appointment');
     const currentAppointment = getAppointment(id || '') || appointment;
 
@@ -252,6 +252,23 @@ const AppointmentPage = () => {
 
     const drawFooter = () => {
       const footerY = pageHeight - 18;
+
+      // QR code (bottom-right, above footer line) — links to online report
+      if (qrDataUrl) {
+        const qrSize = 20;
+        const qrX = pageWidth - margin - qrSize;
+        const qrY = footerY - 3 - qrSize - 2;
+        try {
+          doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 100, 100);
+          doc.text('Escaneá para ver online', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
+        } catch {
+          // ignore QR rendering errors
+        }
+      }
+
       doc.setDrawColor(37, 99, 135);
       doc.setLineWidth(0.3);
       doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
