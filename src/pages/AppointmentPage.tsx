@@ -525,11 +525,6 @@ const AppointmentPage = () => {
 
     // ====== SIGNATURE - right-aligned, below report ======
     y += 10;
-    if (y > pageHeight - 55) {
-      drawFooter();
-      doc.addPage();
-      y = 20;
-    }
 
     const signBlockWidth = 70;
     const signX = pageWidth - margin - signBlockWidth;
@@ -554,20 +549,35 @@ const AppointmentPage = () => {
 
     const signatureImgSrc = SIGNATURE_IMAGES[pdfEmail];
 
+    // Precompute signature image dimensions to know full block height,
+    // so we can move the whole block to the next page if it doesn't fit
+    // above the fixed footer.
+    let sigW = 0;
+    let sigH = 0;
     if (signatureImgSrc) {
       try {
         const sigImg = await loadImage(signatureImgSrc);
         const sigRatio = sigImg.naturalWidth / sigImg.naturalHeight;
-        const sigMaxW = 40;
-        let sigW = sigMaxW;
-        let sigH = sigW / sigRatio;
-        if (sigH > 25) {
-          sigH = 25;
-          sigW = sigH * sigRatio;
-        }
-        doc.addImage(signatureImgSrc, 'PNG', signX + (signBlockWidth - sigW) / 2, y, sigW, sigH);
-        y += sigH + 2;
-      } catch { /* fallback */ }
+        sigW = 40;
+        sigH = sigW / sigRatio;
+        if (sigH > 25) { sigH = 25; sigW = sigH * sigRatio; }
+      } catch { sigW = 0; sigH = 0; }
+    }
+
+    const specialtyLinesPre = (pdfProfile?.specialty || 'Médico especialista en\nDiagnóstico por Imágenes').split('\n');
+    // Total signature block height: image + 2 gap + line + 12 (to specialty start)
+    // + n*4 specialty + 4 license padding.
+    const signatureBlockHeight = sigH + (sigH > 0 ? 2 : 0) + 12 + specialtyLinesPre.length * 4 + 4;
+
+    if (y + signatureBlockHeight > bottomLimit) {
+      drawFooter();
+      doc.addPage();
+      y = 20;
+    }
+
+    if (signatureImgSrc && sigH > 0) {
+      doc.addImage(signatureImgSrc, 'PNG', signX + (signBlockWidth - sigW) / 2, y, sigW, sigH);
+      y += sigH + 2;
     }
 
     doc.setDrawColor(37, 99, 135);
