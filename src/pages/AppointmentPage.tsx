@@ -281,6 +281,11 @@ const AppointmentPage = () => {
       doc.setTextColor(0, 0, 0);
     };
 
+    // Reserve vertical space at the bottom of each page so content (text,
+    // signature, QR) never overlaps the fixed footer. QR top sits at
+    // pageHeight - 43, so we keep content above pageHeight - 45.
+    const bottomLimit = pageHeight - 45;
+
     // ====== HEADER (logo + subtitle) ======
     try {
       const logoImg = await loadImage(clinicLogo);
