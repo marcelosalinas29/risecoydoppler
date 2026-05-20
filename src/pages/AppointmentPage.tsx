@@ -459,7 +459,7 @@ const AppointmentPage = () => {
         let globalCharIdx = 0;
 
         for (const wLine of wrappedLines) {
-          if (y > pageHeight - 50) { drawFooter(); doc.addPage(); y = 20; }
+          if (y > bottomLimit) { drawFooter(); doc.addPage(); y = 20; }
 
           // Calculate actual line width for alignment
           let calcWidth = 0;
