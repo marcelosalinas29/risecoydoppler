@@ -516,7 +516,7 @@ const AppointmentPage = () => {
         }
         // Add inter-paragraph spacing (margin-bottom: 1.2em equivalent)
         y += paragraphSpacing;
-        if (y > pageHeight - 50) { drawFooter(); doc.addPage(); y = 20; }
+        if (y > bottomLimit) { drawFooter(); doc.addPage(); y = 20; }
       }
     };
 
