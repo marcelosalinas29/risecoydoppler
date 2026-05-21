@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { calcularEdad, calcularEdadDetallada } from '@/types/medical';
+import { calcularEdad, calcularEdadDetallada, formatEdad } from '@/types/medical';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -343,7 +343,7 @@ const AppointmentPage = () => {
 
     y += 7;
     drawLabel('EDAD:', margin, y);
-    const ageText = `${appointment.patient.age} AÑOS`;
+    const ageText = (formatEdad(appointment.patient.fechaNacimiento, appointment.patient.age) || `${appointment.patient.age} AÑOS`).toUpperCase();
     drawValue(ageText, valueX, y);
     if (appointment.patient.dni) {
       const dniLabelX = valueX + doc.getTextWidth(ageText + '   ') + 10;
