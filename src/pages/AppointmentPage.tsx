@@ -253,17 +253,21 @@ const AppointmentPage = () => {
     const drawFooter = () => {
       const footerY = pageHeight - 18;
 
-      // QR code (bottom-right, above footer line) — links to online report
+      // QR code (bottom-right, above footer line) — links to online report.
+      // Layout: [QR] -> [caption text] -> [footer line]
+      // Caption sits ABOVE the line so it never overlaps the footer text/line.
       if (qrDataUrl) {
-        const qrSize = 20;
+        const qrSize = 18;
+        const captionGap = 5; // space reserved for caption between QR and line
         const qrX = pageWidth - margin - qrSize;
-        const qrY = footerY - 3 - qrSize - 2;
+        const qrY = footerY - 3 - captionGap - qrSize;
         try {
           doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
           doc.setFontSize(6);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(100, 100, 100);
-          doc.text('Escaneá para ver online', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
+          // Place caption ~1.5mm above the footer line (which is at footerY - 3)
+          doc.text('Escaneá para ver online', qrX + qrSize / 2, footerY - 4.5, { align: 'center' });
         } catch {
           // ignore QR rendering errors
         }
@@ -282,9 +286,9 @@ const AppointmentPage = () => {
     };
 
     // Reserve vertical space at the bottom of each page so content (text,
-    // signature, QR) never overlaps the fixed footer. QR top sits at
-    // pageHeight - 43, so we keep content above pageHeight - 45.
-    const bottomLimit = pageHeight - 45;
+    // signature, QR) never overlaps the fixed footer. QR top now sits at
+    // footerY - 3 - 5 - 18 = pageHeight - 44, so keep content above -46.
+    const bottomLimit = pageHeight - 46;
 
     // ====== HEADER (logo + subtitle) ======
     try {
