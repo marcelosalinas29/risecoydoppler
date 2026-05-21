@@ -343,7 +343,7 @@ const AppointmentPage = () => {
 
     y += 7;
     drawLabel('EDAD:', margin, y);
-    const ageText = `${appointment.patient.age} AÑOS`;
+    const ageText = (formatEdad(appointment.patient.fechaNacimiento, appointment.patient.age) || `${appointment.patient.age} AÑOS`).toUpperCase();
     drawValue(ageText, valueX, y);
     if (appointment.patient.dni) {
       const dniLabelX = valueX + doc.getTextWidth(ageText + '   ') + 10;
