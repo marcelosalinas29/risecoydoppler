@@ -249,20 +249,31 @@ export default function CommunicationCenter({ onClose, onOpen }: CommunicationCe
               ) : messages.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">Sin mensajes aún</p>
               ) : (
-                messages.map(m => {
+                messages.map((m, idx) => {
                   const isOwn = m.user_id === user?.id;
+                  const prev = idx > 0 ? messages[idx - 1] : null;
+                  const showDateSep = !prev || !isSameDay(new Date(prev.created_at), new Date(m.created_at));
                   return (
-                    <div key={m.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] rounded-lg px-3 py-1.5 ${
-                        isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-                      }`}>
-                        {!isOwn && (
-                          <p className="text-[10px] font-semibold opacity-70 mb-0.5">{m.author_name}</p>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                        <p className={`text-[10px] mt-0.5 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                          {format(new Date(m.created_at), 'HH:mm', { locale: es })}
-                        </p>
+                    <div key={m.id}>
+                      {showDateSep && (
+                        <div className="flex justify-center my-1.5">
+                          <span className="text-[9px] font-semibold tracking-wide text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                            {formatDateLabel(m.created_at)}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] rounded-lg px-3 py-1.5 ${
+                          isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                        }`}>
+                          {!isOwn && (
+                            <p className="text-[10px] font-semibold opacity-70 mb-0.5">{m.author_name}</p>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                          <p className={`text-[10px] mt-0.5 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                            {format(new Date(m.created_at), 'HH:mm', { locale: es })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
