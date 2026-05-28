@@ -185,6 +185,24 @@ export default function CommunicationCenter({ onClose, onOpen }: CommunicationCe
     }
   };
 
+  const clearAllChat = async () => {
+    if (!confirm('¿Borrar TODOS los mensajes del chat? Esta acción no se puede deshacer.')) return;
+    const { error } = await supabase.from('chat_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (!error) setMessages([]);
+  };
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const formatDateLabel = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    if (isSameDay(d, today)) return 'HOY';
+    if (isSameDay(d, yesterday)) return 'AYER';
+    return format(d, "EEEE d 'de' MMMM", { locale: es }).toUpperCase();
+  };
+
   return (
     <div className="bg-card border-b border-border shadow-md max-w-2xl mx-auto animate-slide-up">
       {/* Tab header */}
@@ -207,6 +225,15 @@ export default function CommunicationCenter({ onClose, onOpen }: CommunicationCe
           <StickyNote className="w-3.5 h-3.5" />
           Notas
         </button>
+        {tab === 'chat' && messages.length > 0 && (
+          <button
+            onClick={clearAllChat}
+            title="Borrar todo el chat"
+            className="px-2 py-2.5 text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
         <button onClick={onClose} className="px-3 py-2.5 text-muted-foreground hover:text-foreground">
           <X className="w-4 h-4" />
         </button>
