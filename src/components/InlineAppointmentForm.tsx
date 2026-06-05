@@ -57,11 +57,31 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       const total = hh * 60 + mm + 10;
       const nextSlot = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
       const sameDay = store.getAppointmentsByDate(date);
-      if (sameDay.some(a => a.time === nextSlot)) {
-        toast.error(`Este estudio requiere 20 minutos y el turno de las ${nextSlot} ya está ocupado.`);
+      const occupied = new Set(sameDay.map(a => a.time));
+      if (occupied.has(nextSlot)) {
+        // Suggest the first pair of consecutive free slots in the standard day ranges (08-13 and 15-21).
+        const candidates: string[] = [];
+        for (const [from, to] of [[8, 13], [15, 21]] as const) {
+          for (let h = from; h < to; h++) for (let m = 0; m < 60; m += 10) {
+            candidates.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+          }
+        }
+        let suggestion = '';
+        for (let i = 0; i < candidates.length - 1; i++) {
+          if (!occupied.has(candidates[i]) && !occupied.has(candidates[i + 1])) {
+            suggestion = candidates[i];
+            break;
+          }
+        }
+        toast.error(
+          suggestion
+            ? `Este estudio requiere 20 min y ${nextSlot} ya está ocupado. Probá a las ${suggestion}.`
+            : `Este estudio requiere 20 min y ${nextSlot} ya está ocupado. No hay huecos consecutivos hoy.`
+        );
         return;
       }
     }
+
     setSaving(true);
 
     try {
