@@ -48,7 +48,22 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       toast.error('Ingrese el nombre del paciente');
       return;
     }
+    // B: if it's a special study (Doppler / TN / Morfológica / Scan Fetal),
+    // verify the next 10-min slot on the same date isn't already taken.
+    const effectiveStudy = studyType || 'ECOGRAFIA';
+    const duration = getStudyDuration(effectiveStudy, 10);
+    if (duration > 10) {
+      const [hh, mm] = slot.split(':').map(Number);
+      const total = hh * 60 + mm + 10;
+      const nextSlot = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+      const sameDay = store.getAppointmentsByDate(date);
+      if (sameDay.some(a => a.time === nextSlot)) {
+        toast.error(`Este estudio requiere 20 minutos y el turno de las ${nextSlot} ya está ocupado.`);
+        return;
+      }
+    }
     setSaving(true);
+
     try {
       let pid = patientId;
       if (!pid) {
