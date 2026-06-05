@@ -154,7 +154,27 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     return [...slotSet].sort();
   }, [doctorSlots, appointmentMap]);
 
+  // A: slots that are visually blocked because the previous appointment is a special
+  // study (Doppler / TN / Morfológica / etc.) and consumes more than one 10-min slot.
+  const blockedBySpecial = useMemo(() => {
+    const blocked = new Map<string, Appointment>(); // slot -> parent appointment
+    const baseInterval = 10;
+    for (const apt of appointments) {
+      const duration = getStudyDuration(apt.studyType, baseInterval);
+      const slotsNeeded = Math.max(1, Math.ceil(duration / baseInterval));
+      if (slotsNeeded <= 1) continue;
+      const idx = timeSlots.indexOf(apt.time);
+      if (idx < 0) continue;
+      for (let i = 1; i < slotsNeeded; i++) {
+        const target = timeSlots[idx + i];
+        if (target && !appointmentMap.has(target)) blocked.set(target, apt);
+      }
+    }
+    return blocked;
+  }, [appointments, timeSlots, appointmentMap]);
+
   const occupiedCount = appointmentMap.size;
+
 
   const startEdit = (apt: Appointment) => {
     setEditingId(apt.id);
