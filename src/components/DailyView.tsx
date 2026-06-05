@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Appointment, StudyStatus } from '@/types/medical';
-import { STATUS_LABELS, formatStudyType, calcularEdad, calcularEdadDetallada } from '@/types/medical';
+import { STATUS_LABELS, formatStudyType, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -154,7 +154,27 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     return [...slotSet].sort();
   }, [doctorSlots, appointmentMap]);
 
+  // A: slots that are visually blocked because the previous appointment is a special
+  // study (Doppler / TN / Morfológica / etc.) and consumes more than one 10-min slot.
+  const blockedBySpecial = useMemo(() => {
+    const blocked = new Map<string, Appointment>(); // slot -> parent appointment
+    const baseInterval = 10;
+    for (const apt of appointments) {
+      const duration = getStudyDuration(apt.studyType, baseInterval);
+      const slotsNeeded = Math.max(1, Math.ceil(duration / baseInterval));
+      if (slotsNeeded <= 1) continue;
+      const idx = timeSlots.indexOf(apt.time);
+      if (idx < 0) continue;
+      for (let i = 1; i < slotsNeeded; i++) {
+        const target = timeSlots[idx + i];
+        if (target && !appointmentMap.has(target)) blocked.set(target, apt);
+      }
+    }
+    return blocked;
+  }, [appointments, timeSlots, appointmentMap]);
+
   const occupiedCount = appointmentMap.size;
+
 
   const startEdit = (apt: Appointment) => {
     setEditingId(apt.id);
@@ -470,6 +490,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                           setPreAppointmentSlot(null);
                         }}
                       />
+                    ) : blockedBySpecial.has(slot) ? (
+                      <td
+                        colSpan={9}
+                        className="p-1.5 border border-border text-center text-amber-700 dark:text-amber-400 italic bg-amber-500/5 text-[11px]"
+                        title={`Ocupado por estudio especial previo (${formatStudyType(blockedBySpecial.get(slot)!.studyType)} - ${blockedBySpecial.get(slot)!.time})`}
+                      >
+                        ⏳ Continuación de {blockedBySpecial.get(slot)!.time} ({formatStudyType(blockedBySpecial.get(slot)!.studyType)})
+                      </td>
                     ) : (
                       <td
                         colSpan={9}
@@ -479,6 +507,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         + Nuevo turno
                       </td>
                     )}
+
                   </tr>
                 </React.Fragment>
               );
