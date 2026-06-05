@@ -5,7 +5,7 @@ import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
 import { Check, X, Search, FileText } from 'lucide-react';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
-import { calcularEdadDetallada } from '@/types/medical';
+import { calcularEdadDetallada, getStudyDuration } from '@/types/medical';
 
 interface Props {
   slot: string;
