@@ -490,6 +490,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                           setPreAppointmentSlot(null);
                         }}
                       />
+                    ) : blockedBySpecial.has(slot) ? (
+                      <td
+                        colSpan={9}
+                        className="p-1.5 border border-border text-center text-amber-700 dark:text-amber-400 italic bg-amber-500/5 text-[11px]"
+                        title={`Ocupado por estudio especial previo (${formatStudyType(blockedBySpecial.get(slot)!.studyType)} - ${blockedBySpecial.get(slot)!.time})`}
+                      >
+                        ⏳ Continuación de {blockedBySpecial.get(slot)!.time} ({formatStudyType(blockedBySpecial.get(slot)!.studyType)})
+                      </td>
                     ) : (
                       <td
                         colSpan={9}
@@ -499,6 +507,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                         + Nuevo turno
                       </td>
                     )}
+
                   </tr>
                 </React.Fragment>
               );
