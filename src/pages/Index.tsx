@@ -125,68 +125,23 @@ const Index = () => {
   // Highlight blocked dates in calendar
   const blockedDateObjects = blockedDates.map(b => new Date(b.date + 'T12:00:00'));
 
-  // ROLLBACK REF: versión previa dejaba el paciente y turno de prueba persistidos en la DB (visible para secretarias).
+  // Test de conexión de solo lectura: no escribe ni modifica datos en la base.
   const handleConnectionTest = async () => {
     setTestingConnection(true);
-    let createdPatientId: string | null = null;
-    let createdAppointmentId: string | null = null;
     try {
-      const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
-
-      const { data: testPatient, error: patientError } = await supabase
+      const { error } = await supabase
         .from('patients')
-        .insert({
-          dni: `TEST-${stamp}`,
-          name: `TEST CONEXION ${stamp}`,
-          age: 1,
-          phone: `TEST-${stamp}`,
-          obra_social: 'TEST',
-        } as any)
-        .select()
-        .single();
-
-      if (patientError) throw new Error(`Paciente: ${patientError.message}`);
-      createdPatientId = testPatient.id;
-
-      const { data: testAppointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .insert({
-          patient_id: testPatient.id,
-          study_type: 'TEST DE CONEXIÓN',
-          status: 'pending',
-          date: format(new Date(), 'yyyy-MM-dd'),
-          time: '23:59',
-          report: '',
-          images: [],
-          observations: 'TEST TEMPORAL DE CONEXIÓN',
-        } as any)
         .select('id')
-        .single();
+        .limit(1);
 
-      if (appointmentError) throw new Error(`Turno: ${appointmentError.message}`);
-      createdAppointmentId = testAppointment.id;
+      if (error) throw new Error(error.message);
 
-      toast.success(`Conexión OK (${testAppointment.id.slice(0, 8)})`);
+      toast.success('Conexión OK');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falló el test de conexión';
       console.error('Connection test failed:', error);
       toast.error(message);
     } finally {
-      // Limpieza atómica: borrar siempre lo creado, aunque haya error parcial
-      try {
-        if (createdAppointmentId) {
-          await supabase.from('appointments').delete().eq('id', createdAppointmentId);
-        }
-        if (createdPatientId) {
-          await supabase.from('patients').delete().eq('id', createdPatientId);
-        }
-      } catch (cleanupErr) {
-        console.error('Error limpiando registros de test:', cleanupErr);
-      }
-      // Refrescar para que el realtime no deje fantasmas en UI
-      try {
-        await Promise.all([fetchPatients(true), fetchAppointments(true)]);
-      } catch {}
       setTestingConnection(false);
     }
   };
