@@ -1,98 +1,103 @@
-# Plan de integración: Dictado por voz + Asistencia IA en los informes
+# Plan de integración: dictado por voz + IA en los informes
 
-## Objetivo
+Ya tengo el detalle técnico real del otro sistema (Edge Function `process-voice`,
+`dictation.ts`, `subsections.ts`, post-procesado y comandos de voz). Este plan lo
+adapta a esta app **sin tocar** guardado, PDF, QR, WhatsApp, historial ni permisos.
 
-Llevar a esta app la parte que sirve de **reporIAassistant**: dictar el informe
-por voz y que una IA lo estructure/redacte, pero sin replicar los pasos de
-"institución" y "paciente" (acá ya están cargados en la cita). El resultado
-final sigue siendo el mismo HTML que hoy escribe el editor y que ya se guarda y
-convierte a PDF. **No se toca** la lógica de guardado, PDF, QR, WhatsApp ni el
-historial.
+## Diferencia clave a resolver
 
-## Principio de estabilidad
+| reporIAassistant | esta app |
+| --- | --- |
+| Estado canónico: `ReportSection[]` texto plano con subsecciones declaradas | Estado canónico: **un solo string HTML** de TipTap (`report`) |
+| Plantillas con `sec(label, textoNormal)` | `REPORT_TEMPLATES`: texto plano, una línea por apartado (`Hígado: ...`) |
+| Wizard de 4 pasos (institución/paciente/estudio/hallazgos) | paciente y estudio ya vienen de la cita |
 
-La app se usa en un consultorio real. Por eso la integración es **aditiva y
-aislada**: se agregan componentes nuevos junto al editor y un Edge Function
-nuevo. El flujo actual de escribir a mano y guardar queda intacto. Todo lo
-nuevo se puede ocultar/desactivar sin romper nada.
+El otro sistema advierte: *editar el HTML de TipTap y parsearlo de vuelta rompe el
+mapeo por unidades*. Solución acordada en este plan: **cada línea de la plantilla
+es una unidad**. Eso encaja perfecto con `REPORT_TEMPLATES` de acá (una línea =
+un apartado anatómico), así que las unidades se derivan sin migrar plantillas.
 
-## Arquitectura de lo que se reutiliza de reporIAassistant
+## Arquitectura propuesta
 
-- **Dictado por voz**: Web Speech API del navegador (Chrome, y Firefox en
-  parte). Requiere internet (el motor de voz de Chrome es de servidor), igual
-  que el resto de la app.
-- **Estructuración por IA**: un Edge Function de Lovable Cloud (Lovable AI
-  Gateway) que recibe el texto dictado y devuelve el informe ordenado en
-  secciones/correcto. Es el equivalente a la lógica de `subsections.ts` +
-  dictation del otro sistema, adaptada a esta base.
-- **Adaptador texto → HTML**: el otro sistema trabaja con texto plano; acá el
-  editor usa HTML (TipTap). Se agrega un adaptador que convierte la salida de
-  la IA en HTML compatible con el editor (párrafos `<p>`).
+```text
+Micrófono (Web Speech API, es-AR)
+  -> normalizePunctuation / appendChunk        [src/lib/dictation.ts]  (copiado tal cual)
+  -> HTML del editor  ->  líneas de texto      [src/lib/reportUnits.ts] (nuevo, puente TipTap)
+  -> invoke("process-voice", { mode: "findings_v2", unitSections })
+  -> Gemini 2.5 Flash + tool calling (JSON estricto)
+  -> applyUnitUpdates                          [src/lib/subsections.ts] (adaptado)
+  -> líneas -> HTML  ->  setReport(...)         (mismo string que hoy se guarda)
+```
 
 ## Fases
 
-### Fase 1 — Edge Function de IA (backend)
+### Fase 1 — Backend: Edge Function `process-voice`
 
-- Nueva función `estructurar-informe` en Supabase Functions (Lovable Cloud).
-- Entrada: texto dictado en crudo + datos de contexto (tipo de estudio,
-  plantilla de referencia si la hay).
-- Usa Lovable AI Gateway con `LOVABLE_API_KEY` (ya disponible, no hay que
-  crear secretos).
-- Salida: informe estructurado en HTML simple (`<p>`/listas) listo para el
-  editor, en el tono médico correcto y con ortografía corregida.
-- Protegida con validación de JWT (solo doctores la pueden llamar).
+- Se copia tal cual, pero **solo con los modos que esta app necesita**:
+  `findings_v2` (dictado de hallazgos sobre la plantilla) y `correction`
+  (corregir dictando un bloque puntual). Se descartan `patient` y
+  `study_selection`: esos datos ya están en la cita.
+- Modelo `google/gemini-2.5-flash` vía Lovable AI Gateway con `LOVABLE_API_KEY`
+  (ya disponible). Mapeo de 429 / 402 a mensajes en español.
+- `verify_jwt = true`: solo usuarios logueados. En el cliente el panel se muestra
+  solo si `!isReadOnly` (doctores), igual que el resto del editor.
 
-### Fase 2 — Dictado por voz (Web Speech API)
+### Fase 2 — Librerías puras (sin UI)
 
-- Componente nuevo `DictationPanel.tsx`: botón de micrófono junto al editor.
-- Al presionar, captura voz y muestra el texto reconocido en vivo (transcripción
-  parcial). Al detener, deja el texto transcrito en un panel editable.
-- El dictado se comporta igual que en el otro sistema (lenguaje `es-AR`,
-  reinicio automático de la sesión, manejo de errores si el navegador no
-  soporta voz).
+- `src/lib/dictation.ts`: copiado tal cual (normalización de puntuación,
+  protecciones clínicas "coma diabético"/"en coma"/"punto de ...", `appendChunk`).
+- `src/hooks/useSpeechRecognition.ts`: copiado tal cual (es-AR, `continuous`,
+  permiso explícito con `getUserMedia`, reinicio automático, errores tipificados).
+- `src/lib/subsections.ts`: adaptado a un modelo mínimo
+  `{ title, content }` en vez de `ReportSection` con `subsections`. Mantiene
+  `getSectionUnits`, `applyUnitUpdates` y `buildUnitsPayload` con la misma lógica
+  (reemplazo quirúrgico, orden y separadores intactos).
+- `src/lib/reportUnits.ts` (nuevo, el puente): HTML del editor → bloques de texto
+  plano y vuelta. Un `<p>` = una línea = una unidad; los `<strong>` de encabezado
+  se preservan al reconstruir. Cubierto con tests unitarios (ida y vuelta).
 
-### Fase 3 — Asistencia IA
+### Fase 3 — UI de dictado (aditiva)
 
-- Componente nuevo `AIAssistPanel.tsx`: botón "Estructurar con IA".
-- Toma el texto dictado (o el contenido actual del editor) y llama al Edge
-  Function de la Fase 1.
-- Muestra el resultado propuesto y un botón "Insertar en el informe" que
-  aplica el HTML al editor a través del adaptador.
+- `src/components/DictationPanel.tsx`: botón 🎤 en la tarjeta "Informe", solo para
+  doctores. Muestra transcripción en vivo (interim) + texto final editable antes
+  de mandarlo a la IA. Si el navegador no soporta voz, el panel avisa y el resto
+  sigue igual (Chrome ok, Firefox parcial).
+- `src/components/AIAssistPanel.tsx`: botón "Aplicar con IA". Llama a
+  `process-voice`, aplica `unitUpdates` y muestra **vista previa con diff simple**
+  (unidades modificadas resaltadas) + botones "Insertar en el informe" /
+  "Descartar". Nada se escribe en el editor sin confirmación del médico.
+- Panel de patologías: por ahora **no** se agrega (acá no hay pantalla lateral);
+  se ignora `pathologies[]` de la respuesta sin romper nada.
 
-### Fase 4 — Adaptador texto → HTML
+### Fase 4 — Integración en `AppointmentPage.tsx`
 
-- Pequeña utilidad `lib/reportAdapter.ts` que convierte la salida de la IA
-  (texto con secciones) en HTML limpio compatible con TipTap, respetando
-  títulos de sección y listas.
-- Se reutiliza la conversión HTML→PDF que ya existe (sin cambios).
+- Se agrega una fila de botones junto a "Plantillas": `🎤 Dictar` y `✨ IA`,
+  condicionados a `!isReadOnly`.
+- Al insertar, el resultado va a `setReport(html)` y queda en modo edición: el
+  médico revisa y guarda con el botón actual. **Ninguna llamada nueva a la base**:
+  se reutiliza `handleSaveReport` sin cambios.
+- Si el informe está vacío, el flujo sugerido es: elegir plantilla → dictar → IA.
+  El dictado sobre informe vacío también funciona (la IA agrega como `append`).
 
-### Fase 5 — Integración en `AppointmentPage.tsx` y permisos
+### Fase 5 — Verificación antes de dar por cerrado
 
-- Se agrega una fila de botones "🎤 Dictar" y "✨ Asistencia IA" en la tarjeta
-  "Informe", **solo para doctores** (igual que hoy se controla con
-  `isReadOnly`: secretarias y viewers no ven estos botones).
-- Al insertar el resultado, el informe queda en modo edición y el usuario lo
-  puede revisar/corregir antes de guardar (misma lógica actual).
-- Nada cambia en guardado, PDF, QR ni WhatsApp.
+- Test unitario del puente HTML ↔ unidades y de `applyUnitUpdates`.
+- Prueba real de la Edge Function con un dictado de ejemplo sobre la plantilla de
+  Ecografía Abdominal, verificando que "se ve hígado esteatósico" reemplace la
+  línea de `Hígado:` y no la duplique.
+- Verificación de que el PDF sale igual que hoy (mismo HTML de entrada).
 
-## Riesgos y decisiones a confirmar
+## Riesgos y decisiones
 
-1. **Proveedor de voz**: Web Speech API es gratis pero requiere internet y en
-   Chrome su motor es de servidor. Alternativa: usar el speech-to-text de
-   Lovable AI (también necesita internet y consume créditos). Recomiendo
-   arrancar con Web Speech API (reutiliza lo que ya tienen, sin costo).
-2. **Se requiere que me pases los archivos** `dictation.ts` y `subsections.ts`
-   del otro sistema (o su estructura) para respetar el vocabulario/secciones que
-   ya usás, en vez de recrearlos desde cero.
-3. **Nivel de IA**: qué tan "agresiva" debe ser la corrección/redacción
-   automática (solo ordenar y corregir ortografía, o redactar frases completas).
-   Conviene empezar conservador: la IA sugiere, el médico revisa.
-4. **Consumo de créditos**: cada uso de la IA consume créditos del workspace.
-   El dictado por voz (Web Speech API) no consume. ¿Uso libre o con algún
-   límite por informe?
+1. **Costo**: la transcripción es gratis (navegador); solo consume créditos cada
+   "Aplicar con IA". Se puede limitar mostrando el consumo, o dejarlo libre.
+2. **Chrome vs Firefox**: en Firefox el reconocimiento puede no estar disponible;
+   el botón se deshabilita con un aviso claro, sin afectar el resto.
+3. **Sin offline** (ya acordado): dictado e IA requieren internet.
+4. **Reversibilidad**: todo lo nuevo son archivos nuevos + una fila de botones.
+   Quitar esa fila deja el sistema exactamente como hoy.
 
-## Alcance NO incluido (por ahora)
+## Fuera de alcance
 
-- No se portan los pasos "institución"/"paciente" del asistente.
-- No se toca el historial, los permisos existentes, el PDF ni WhatsApp.
-- No hay modo offline (como acordamos).
+- Pasos de institución/paciente/estudio por voz, panel de patologías,
+  migración de plantillas a subsecciones declaradas, cambios en PDF/QR/WhatsApp.
