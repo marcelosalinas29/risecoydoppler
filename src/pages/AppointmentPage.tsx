@@ -898,11 +898,17 @@ const AppointmentPage = () => {
               <FileText className="w-4 h-4 text-primary" />
               Informe {isReadOnly && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {!isReadOnly && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
                     Plantillas <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setDictationAutoStart(true); setShowDictation(true); }}>
+                    <Mic className="w-3 h-3 mr-1" /> Dictar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setDictationAutoStart(false); setShowDictation(true); }}>
+                    <Sparkles className="w-3 h-3 mr-1" /> IA
                   </Button>
                   {report && !isEditing && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
@@ -913,6 +919,17 @@ const AppointmentPage = () => {
               )}
             </div>
           </div>
+
+          {!isReadOnly && (
+            <DictationPanel
+              open={showDictation}
+              onOpenChange={setShowDictation}
+              currentReport={report}
+              autoStart={dictationAutoStart}
+              onApply={(html) => { setReport(html); setIsEditing(true); }}
+            />
+          )}
+
 
           <TemplateSelector
             open={showTemplates}
