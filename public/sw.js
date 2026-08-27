@@ -1,14 +1,17 @@
-const CACHE_NAME = 'consultorio-v1';
+// This service worker is intentionally conservative about caching HTML/
+// navigation requests: those are ALWAYS fetched from the network first,
+// so a new deploy is picked up immediately on the very next page load —
+// no stuck "old version" ever again. Only genuinely immutable, content-
+// hashed build assets (JS/CSS/fonts/images) are cached aggressively,
+// since a new deploy always produces new filenames for those anyway.
+const CACHE_NAME = 'consultorio-v2';
 
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
 ];
 
-// Install: pre-cache shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -16,17 +19,14 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: clean old caches and claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch: Stale-While-Revalidate for static assets, network-only for API
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -41,15 +41,37 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle it normally
   }
 
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
-  // Stale-While-Revalidate for static assets (html, css, js, fonts, images)
-  const isStaticAsset =
-    url.pathname.endsWith('.html') ||
-    url.pathname.endsWith('.css') ||
+  // HTML / navigation requests: network-first, ALWAYS. This is what
+  // guarantees a fresh deploy shows up right away instead of a stale
+  // cached shell pointing at old JS bundle filenames.
+  const isHtmlOrNavigation =
+    event.request.mode === 'navigate' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html');
+
+  if (isHtmlOrNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Content-hashed build assets (JS/CSS/fonts/images) are safe to cache
+  // aggressively: a new deploy always produces new filenames for these,
+  // so there is zero risk of ever serving a stale version of them.
+  const isImmutableAsset =
     url.pathname.endsWith('.js') ||
     url.pathname.endsWith('.mjs') ||
+    url.pathname.endsWith('.css') ||
     url.pathname.endsWith('.woff') ||
     url.pathname.endsWith('.woff2') ||
     url.pathname.endsWith('.ttf') ||
@@ -59,35 +81,20 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.jpeg') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.webp') ||
-    url.pathname.endsWith('.ico') ||
-    url.pathname === '/' ||
-    url.pathname === '/index.html';
+    url.pathname.endsWith('.ico');
 
-  if (isStaticAsset) {
+  if (isImmutableAsset) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         cache.match(event.request).then((cachedResponse) => {
-          const fetchPromise = fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                cache.put(event.request, networkResponse.clone());
-              }
-              return networkResponse;
-            })
-            .catch(() => cachedResponse);
-
-          return cachedResponse || fetchPromise;
+          if (cachedResponse) return cachedResponse;
+          return fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
         })
-      )
-    );
-    return;
-  }
-
-  // For navigation requests (SPA fallback), serve cached index.html
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match('/index.html')
       )
     );
     return;
