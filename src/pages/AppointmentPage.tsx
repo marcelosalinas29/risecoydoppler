@@ -253,13 +253,16 @@ const AppointmentPage = () => {
     const margin = 25; // 2.5 cm lateral margins
     const contentWidth = pageWidth - margin * 2;
 
-    const drawFooter = () => {
+    // The QR now appears ONLY on pages that contain study images (its
+    // natural home), never on the report/signature pages. This frees up
+    // vertical space there so the signature never gets pushed alone to a
+    // near-empty extra page. If the report has NO images at all, the QR
+    // falls back to the last report/signature page so the "scan to view
+    // online" feature is never silently lost.
+    const drawFooter = (withQr: boolean) => {
       const footerY = pageHeight - 18;
 
-      // QR code (bottom-right, above footer line) — links to online report.
-      // Layout: [QR] -> [caption text] -> [footer line]
-      // Caption sits ABOVE the line so it never overlaps the footer text/line.
-      if (qrDataUrl) {
+      if (withQr && qrDataUrl) {
         const qrSize = 18;
         const captionGap = 5; // space reserved for caption between QR and line
         const qrX = pageWidth - margin - qrSize;
@@ -269,7 +272,6 @@ const AppointmentPage = () => {
           doc.setFontSize(6);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(100, 100, 100);
-          // Place caption ~1.5mm above the footer line (which is at footerY - 3)
           doc.text('Escaneá para ver online', qrX + qrSize / 2, footerY - 4.5, { align: 'center' });
         } catch {
           // ignore QR rendering errors
@@ -288,10 +290,9 @@ const AppointmentPage = () => {
       doc.setTextColor(0, 0, 0);
     };
 
-    // Reserve vertical space at the bottom of each page so content (text,
-    // signature, QR) never overlaps the fixed footer. QR top now sits at
-    // footerY - 3 - 5 - 18 = pageHeight - 44, so keep content above -46.
-    const bottomLimit = pageHeight - 46;
+    // Report/signature pages reserve only room for the plain text footer
+    // (no QR there anymore), so much more content fits before a page break.
+    const bottomLimit = pageHeight - 26;
 
     // ====== HEADER (logo + subtitle) ======
     try {
@@ -466,7 +467,7 @@ const AppointmentPage = () => {
         let globalCharIdx = 0;
 
         for (const wLine of wrappedLines) {
-          if (y > bottomLimit) { drawFooter(); doc.addPage(); y = 20; }
+          if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
 
           // Calculate actual line width for alignment
           let calcWidth = 0;
@@ -523,7 +524,7 @@ const AppointmentPage = () => {
         }
         // Add inter-paragraph spacing (margin-bottom: 1.2em equivalent)
         y += paragraphSpacing;
-        if (y > bottomLimit) { drawFooter(); doc.addPage(); y = 20; }
+        if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
       }
     };
 
@@ -577,7 +578,7 @@ const AppointmentPage = () => {
     const signatureBlockHeight = sigH + (sigH > 0 ? 2 : 0) + 12 + specialtyLinesPre.length * 4 + 4;
 
     if (y + signatureBlockHeight > bottomLimit) {
-      drawFooter();
+      drawFooter(false);
       doc.addPage();
       y = 20;
     }
@@ -607,14 +608,18 @@ const AppointmentPage = () => {
     const licenseY = y + 12 + specialtyLines.length * 4;
     doc.text(pdfProfile?.license_numbers || 'MN 134217  MP 7298  Fº54  Lº4to', signX + signBlockWidth / 2, licenseY + 2, { align: 'center' });
 
-    drawFooter();
-
-    // ====== IMAGES (hybrid: Storage URLs + legacy base64) ======
+    // Compute images list BEFORE the footer call below, so we know whether
+    // this report/signature page is the last page of the whole document
+    // (no images) — in that case, fall back to showing the QR here so the
+    // "scan to view online" feature is never lost.
     const currentApp = getAppointment(id || '');
     const allImages = [
       ...(currentApp?.imageUrls || []),
       ...(currentApp?.images || []),
     ];
+    drawFooter(allImages.length === 0);
+
+    // ====== IMAGES (hybrid: Storage URLs + legacy base64) ======
     if (allImages.length > 0) {
       const maxImgW = (contentWidth - 8) / 2;
       const maxImgH = 80;
@@ -660,7 +665,7 @@ const AppointmentPage = () => {
           }
         }
 
-        drawFooter();
+        drawFooter(true);
       }
     }
 
