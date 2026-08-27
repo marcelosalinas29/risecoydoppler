@@ -452,8 +452,14 @@ const AppointmentPage = () => {
 
     const renderPdfParagraphs = (paras: PdfParagraph[]) => {
       const baseLine = 5;
-      // Paragraph spacing in mm — equivalent to ~1.2em at 10pt font
-      const paragraphSpacing = 4.2;
+      // Paragraph spacing in mm — equivalent to ~1.2em at 10pt font for
+      // real multi-line prose. Short single-line "Órgano: hallazgo" entries
+      // (very common in these reports) get a tighter gap — this is what a
+      // professionally typeset report looks like, and it reclaims a large
+      // amount of otherwise-wasted vertical space on long, list-like reports,
+      // which is what was pushing the signature onto its own near-empty page.
+      const paragraphSpacingLong = 4.2;
+      const paragraphSpacingShort = 1.5;
       for (const para of paras) {
         if (para.segments.length === 0) {
           y += baseLine * (para.lineHeight / 1.6) * 0.6;
@@ -522,8 +528,9 @@ const AppointmentPage = () => {
           }
           y += lineSpacing;
         }
-        // Add inter-paragraph spacing (margin-bottom: 1.2em equivalent)
-        y += paragraphSpacing;
+        // Add inter-paragraph spacing: tighter for a short single-line
+        // entry, full breathing room for real multi-line prose.
+        y += wrappedLines.length <= 1 ? paragraphSpacingShort : paragraphSpacingLong;
         if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
       }
     };
@@ -568,7 +575,10 @@ const AppointmentPage = () => {
         const sigRatio = sigImg.naturalWidth / sigImg.naturalHeight;
         sigW = 40;
         sigH = sigW / sigRatio;
-        if (sigH > 25) { sigH = 25; sigW = sigH * sigRatio; }
+        // Slightly more compact than before (was 25mm) — still perfectly
+        // legible, and frees a bit more room for the signature block to
+        // fit on the same page as the report text.
+        if (sigH > 20) { sigH = 20; sigW = sigH * sigRatio; }
       } catch { sigW = 0; sigH = 0; }
     }
 
