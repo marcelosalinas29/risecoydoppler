@@ -33,6 +33,7 @@ interface ClinicStore {
   getAppointmentsByDate: (date: string) => Appointment[];
   getPatientAppointments: (patientId: string) => Appointment[];
   searchPatients: (query: string) => Patient[];
+  searchPatientsRemote: (query: string) => Promise<void>;
   updatePatient: (id: string, data: Partial<Pick<Patient, 'name' | 'phone' | 'dni' | 'obraSocial' | 'fechaNacimiento'>>) => Promise<void>;
   getAppointment: (id: string) => Appointment | undefined;
   getPatient: (id: string) => Patient | undefined;
@@ -94,9 +95,26 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
 
   fetchPatients: async (force = false) => {
     if (!force && get().patients.length > 0 && Date.now() - lastPatientsLoad < LOAD_COOLDOWN) return;
-    const { data } = await supabase.from('patients').select('*').order('name');
-    if (data) {
-      set({ patients: data.map(mapPatient) });
+    // El servidor devuelve como máximo 1000 filas por consulta: paginamos.
+    const PAGE = 1000;
+    const all: any[] = [];
+    for (let page = 0; page < 10; page++) {
+      const from = page * PAGE;
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('name')
+        .range(from, from + PAGE - 1);
+      if (error) {
+        console.error('Error loading patients:', error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+    }
+    if (all.length > 0) {
+      set({ patients: all.map(mapPatient) });
       lastPatientsLoad = Date.now();
     }
   },
