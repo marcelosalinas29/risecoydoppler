@@ -19,7 +19,7 @@ import { CalendarIcon, Clock, AlertTriangle, Timer, Ban } from 'lucide-react';
 
 const NewAppointmentPage = () => {
   const navigate = useNavigate();
-  const { addPatient, addAppointment, searchPatients, patients, findPatientByDni, getAppointmentsByDate } = useClinicStore();
+  const { addPatient, addAppointment, searchPatients, patients, findPatientByDni, getAppointmentsByDate, searchPatientsRemote } = useClinicStore();
   const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, schedules, isDateBlocked, fetchBlockedDates, blockedDates } = useScheduleStore();
 
   const [dni, setDni] = useState('');
@@ -70,6 +70,12 @@ const NewAppointmentPage = () => {
   }, [dateStr, getAppointmentsByDate]);
 
   const suggestions = name.length >= 2 && !selectedPatientId ? searchPatients(name) : [];
+
+  useEffect(() => {
+    if (selectedPatientId || name.trim().length < 2) return;
+    const t = setTimeout(() => { searchPatientsRemote(name); }, 350);
+    return () => clearTimeout(t);
+  }, [name, selectedPatientId]);
 
   const selectExistingPatient = (p: typeof patients[0]) => {
     setSelectedPatientId(p.id);
