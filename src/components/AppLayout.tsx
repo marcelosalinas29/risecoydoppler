@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, Users, PlusCircle, LogOut, Search, X, MessageSquare } from 'lucide-react';
 import clinicLogo from '@/assets/clinic-logo.png';
@@ -28,11 +28,17 @@ const AppLayout = ({ children, title }: AppLayoutProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [commOpen, setCommOpen] = useState(false);
-  const { searchPatients, getPatientAppointments } = useClinicStore();
+  const { searchPatients, getPatientAppointments, searchPatientsRemote } = useClinicStore();
   const showComm = !isViewer;
   const { unreadCount, setOpen: setChatOpen } = useChatUnread();
 
   const searchResults = searchQuery.length >= 2 ? searchPatients(searchQuery) : [];
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) return;
+    const t = setTimeout(() => { searchPatientsRemote(searchQuery); }, 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   const handleSignOut = async () => {
     await signOut();
