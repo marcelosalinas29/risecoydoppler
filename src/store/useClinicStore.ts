@@ -340,6 +340,39 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     );
   },
 
+  // Busca directamente en la base y suma los resultados a la lista local,
+  // para que el filtro local encuentre pacientes que no estaban cargados.
+  searchPatientsRemote: async (query) => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    const safe = q.replace(/[%,()]/g, ' ').trim();
+    if (!safe) return;
+    const { data, error } = await supabase
+      .from('patients')
+      .select('*')
+      .or(`name.ilike.%${safe}%,dni.ilike.%${safe}%,phone.ilike.%${safe}%`)
+      .order('name')
+      .limit(50);
+    if (error) {
+      console.error('Error searching patients:', error);
+      return;
+    }
+    if (!data || data.length === 0) return;
+    set((s) => {
+      const byId = new Map(s.patients.map((p) => [p.id, p]));
+      let changed = false;
+      for (const row of data) {
+        const mapped = mapPatient(row);
+        if (!byId.has(mapped.id)) changed = true;
+        byId.set(mapped.id, mapped);
+      }
+      if (!changed) return s;
+      return {
+        patients: Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      };
+    });
+  },
+
   deleteAppointment: async (id) => {
     trackMutation(id);
     const { error } = await supabase.from('appointments').delete().eq('id', id);
