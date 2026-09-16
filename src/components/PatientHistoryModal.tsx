@@ -38,14 +38,10 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
       let patientIds = [patientId];
 
       if (normalizedDni) {
-        const { data: patients } = await supabase
-          .from('patients')
-          .select('id, dni');
+        const { data: matches } = await supabase.rpc('find_patient_ids_by_dni', { _dni: normalizedDni });
         patientIds = Array.from(new Set([
           patientId,
-          ...((patients || []) as { id: string; dni: string | null }[])
-            .filter((p) => normalizeDni(p.dni) === normalizedDni)
-            .map((p) => p.id),
+          ...((matches || []) as { id: string }[]).map((p) => p.id),
         ]));
       }
 
