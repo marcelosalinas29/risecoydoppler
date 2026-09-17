@@ -179,18 +179,28 @@ const AppointmentPage = () => {
   };
 
   const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<Blob> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo de imagen (formato no soportado o archivo dañado).'));
       reader.onload = () => {
         const img = new Image();
+        img.onerror = () => reject(new Error('No se pudo procesar la imagen (formato no soportado, por ejemplo HEIC de algunos celulares).'));
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ratio = Math.min(maxWidth / img.width, 1);
-          canvas.width = img.width * ratio;
-          canvas.height = img.height * ratio;
-          const ctx = canvas.getContext('2d')!;
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', quality);
+          try {
+            const canvas = document.createElement('canvas');
+            const ratio = Math.min(maxWidth / img.width, 1);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { reject(new Error('No se pudo preparar la imagen para subir.')); return; }
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+              if (!blob) { reject(new Error('No se pudo comprimir la imagen.')); return; }
+              resolve(blob);
+            }, 'image/jpeg', quality);
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error('Error inesperado al procesar la imagen.'));
+          }
         };
         img.src = reader.result as string;
       };
@@ -211,8 +221,13 @@ const AppointmentPage = () => {
           .from('estudios_imagenes')
           .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('estudios_imagenes').getPublicUrl(fileName);
-        urls.push(urlData.publicUrl);
+        // Bucket privado: URL firmada de larga duración (10 años) en vez de
+        // pública para siempre.
+        const { data: urlData, error: signError } = await supabase.storage
+          .from('estudios_imagenes')
+          .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
+        if (signError || !urlData) throw signError || new Error('No se pudo generar el link de la imagen.');
+        urls.push(urlData.signedUrl);
       }
       await addStorageImagesToAppointment(id, urls);
       toast.success(`${urls.length} imagen(es) cargada(s)`);
@@ -683,15 +698,34 @@ const AppointmentPage = () => {
   };
 
   // Builds PDF with embedded QR, uploads it to Storage under a deterministic
-  // permanent path, and returns both the doc and the public URL.
+  // path, and returns both the doc and the (signed, long-lived) URL.
   const buildAndPublishPdf = async (): Promise<{ doc: jsPDF; publicUrl: string }> => {
     if (!appointment) throw new Error('No appointment');
     // Deterministic, permanent path per appointment (overwritten on each save)
     const storagePath = `informe_${appointment.id}.pdf`;
-    const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath);
-    const publicUrl = urlData.publicUrl;
 
-    // Generate QR pointing to the public URL
+    // Bucket privado: una URL firmada solo se puede generar para un objeto
+    // que YA existe en Storage. Como el QR necesita conocer la URL final
+    // ANTES de que el PDF (que lo contiene) esté armado, primero "reservamos"
+    // el archivo con un placeholder mínimo en ese mismo path, generamos la
+    // URL firmada sobre él, y recién después subimos el PDF real, pisando
+    // el placeholder. El resultado final es idéntico al de antes, solo
+    // cambia el orden interno de los pasos.
+    const { error: placeholderError } = await supabase.storage
+      .from('reports')
+      .upload(storagePath, new Blob(['placeholder'], { type: 'application/pdf' }), {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+    if (placeholderError) throw placeholderError;
+
+    const { data: urlData, error: signError } = await supabase.storage
+      .from('reports')
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365 * 10);
+    if (signError || !urlData) throw signError || new Error('No se pudo generar el link del informe.');
+    const publicUrl = urlData.signedUrl;
+
+    // Generate QR pointing to the signed URL
     const qrDataUrl = await QRCode.toDataURL(publicUrl, {
       margin: 1,
       width: 400,
