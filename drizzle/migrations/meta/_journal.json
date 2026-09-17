@@ -8,6 +8,13 @@
       "when": 1789566332407,
       "tag": "0000_add_find_patient_ids_by_dni",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789664087804,
+      "tag": "0001_tmp_signed_url_migration_table",
+      "breakpoints": true
     }
   ]
 }

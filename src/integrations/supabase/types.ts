@@ -256,6 +256,21 @@ export type Database = {
         }
         Relationships: []
       }
+      tmp_signed_url_migration: {
+        Row: {
+          id: string
+          urls: Json
+        }
+        Insert: {
+          id: string
+          urls: Json
+        }
+        Update: {
+          id?: string
+          urls?: Json
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
