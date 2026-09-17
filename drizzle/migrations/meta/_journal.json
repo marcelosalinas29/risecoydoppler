@@ -15,6 +15,13 @@
       "when": 1789664087804,
       "tag": "0001_tmp_signed_url_migration_table",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789667771835,
+      "tag": "0002_set_salinas_admin",
+      "breakpoints": true
     }
   ]
 }
