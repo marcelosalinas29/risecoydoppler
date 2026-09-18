@@ -16,7 +16,7 @@ interface ClinicStore {
   fetchPatients: (force?: boolean) => Promise<void>;
   fetchAppointments: (force?: boolean) => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
-  addAppointment: (data: { patientId: string; studyType: string; date: string; time: string }) => Promise<Appointment>;
+  addAppointment: (data: { patientId: string; studyType: string; date: string; time: string; observations?: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
   updateAppointmentReport: (id: string, report: string, reportedBy?: string) => Promise<void>;
   updateAppointmentStudyType: (id: string, studyType: string) => Promise<void>;
@@ -184,6 +184,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         status: 'pending',
         date: data.date,
         time: data.time,
+        observations: data.observations || '',
         report: '',
         images: [],
       } as any)
