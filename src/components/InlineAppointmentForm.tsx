@@ -120,6 +120,7 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
         studyType: studyType || 'ECOGRAFIA',
         date,
         time: slot,
+        observations: observations.trim() || undefined,
       });
       toast.success('Turno confirmado');
       onSaved();
