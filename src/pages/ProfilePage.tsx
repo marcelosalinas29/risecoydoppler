@@ -188,6 +188,12 @@ const ProfilePage = () => {
                 Administrar usuarios
               </Button>
             )}
+            {isAdmin && (
+              <Button variant="outline" className="w-full" onClick={() => navigate('/admin-resend-links')}>
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                Reenviar links de informes
+              </Button>
+            )}
 
             <Button onClick={handleSave} className="w-full" disabled={saving}>
               <Save className="w-4 h-4 mr-2" />

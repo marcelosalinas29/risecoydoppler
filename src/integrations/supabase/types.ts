@@ -259,6 +259,24 @@ export type Database = {
         }
         Relationships: []
       }
+      resend_log: {
+        Row: {
+          appointment_id: string
+          marked_at: string
+          marked_by: string | null
+        }
+        Insert: {
+          appointment_id: string
+          marked_at?: string
+          marked_by?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          marked_at?: string
+          marked_by?: string | null
+        }
+        Relationships: []
+      }
       tmp_signed_url_migration: {
         Row: {
           id: string
