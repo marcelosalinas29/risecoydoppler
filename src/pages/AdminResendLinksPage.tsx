@@ -14,11 +14,18 @@ interface Row {
   patient_id: string;
   patient_name: string;
   phone: string;
+  dni: string | null;
   study_type: string;
   date: string;
+  created_at: string;
   link: string | null;
   error: boolean;
 }
+
+const EXCLUDED_DNIS = ['31361004'];
+
+const normalizeDni = (raw: string | null | undefined) =>
+  (raw || '').replace(/\D/g, '');
 
 const normalizePhone = (raw: string) => {
   let phone = (raw || '').replace(/[\s\-\(\)\.\+]/g, '');
@@ -98,19 +105,23 @@ const AdminResendLinksPage = () => {
         }
       }
 
-      const result: Row[] = all.map((a) => {
-        const link = urlMap.get(`informe_${a.id}.pdf`) ?? null;
-        return {
-          id: a.id,
-          patient_id: a.patient_id,
-          patient_name: a.patients?.name ?? '—',
-          phone: a.patients?.phone ?? '',
-          study_type: a.study_type,
-          date: a.date,
-          link,
-          error: !link,
-        };
-      });
+      const result: Row[] = all
+        .filter((a) => !EXCLUDED_DNIS.includes(normalizeDni(a.patients?.dni)))
+        .map((a) => {
+          const link = urlMap.get(`informe_${a.id}.pdf`) ?? null;
+          return {
+            id: a.id,
+            patient_id: a.patient_id,
+            patient_name: a.patients?.name ?? '—',
+            phone: a.patients?.phone ?? '',
+            dni: a.patients?.dni ?? null,
+            study_type: a.study_type,
+            date: a.date,
+            created_at: a.created_at,
+            link,
+            error: !link,
+          };
+        });
       const persistedSent: Record<string, boolean> = {};
       for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error } = await supabase
@@ -137,36 +148,48 @@ const AdminResendLinksPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAdmin]);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, Row[]>();
-    rows.forEach((r) => {
-      if (!map.has(r.patient_id)) map.set(r.patient_id, []);
-      map.get(r.patient_id)!.push(r);
-    });
-    return Array.from(map.values());
-  }, [rows]);
-
   const isPhoneValid = (raw: string) => {
     if (!raw || !raw.trim()) return false;
     return normalizePhone(raw).length >= 12;
   };
 
+  const groupMeta = (group: Row[]) => {
+    const sorted = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const mostRecent = sorted[sorted.length - 1];
+    const name = mostRecent.patient_name;
+    const withValidPhone = [...sorted].reverse().find((r) => isPhoneValid(r.phone));
+    const phone = withValidPhone ? withValidPhone.phone : mostRecent.phone;
+    return { name, phone, phoneOk: isPhoneValid(phone) };
+  };
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Row[]>();
+    rows.forEach((r) => {
+      const dni = normalizeDni(r.dni);
+      const key = dni.length >= 6 ? `dni:${dni}` : `pid:${r.patient_id}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return Array.from(map.values());
+  }, [rows]);
+
   const pdfExceptions = useMemo(() => rows.filter((r) => r.error).length, [rows]);
   const sentCount = useMemo(() => rows.filter((r) => sent[r.id]).length, [rows, sent]);
   const phoneExceptions = useMemo(
-    () => groups.filter((g) => !isPhoneValid(g[0].phone)).length,
+    () => groups.filter((g) => !groupMeta(g).phoneOk).length,
     [groups]
   );
 
   const openWhatsApp = (group: Row[]) => {
+    const meta = groupMeta(group);
     const withLinks = group.filter((r) => r.link);
     if (withLinks.length === 0) { toast.error('Este paciente no tiene links válidos.'); return; }
-    if (!isPhoneValid(group[0].phone)) { toast.error('Este paciente no tiene un teléfono válido.'); return; }
-    const lines = withLinks.map(
-      (r) => `Estudio: ${r.study_type} - Fecha: ${formatDate(r.date)}\n${r.link}`
-    );
+    if (!meta.phoneOk) { toast.error('Este paciente no tiene un teléfono válido.'); return; }
+    const lines = withLinks
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((r) => `Estudio: ${r.study_type} - Fecha: ${formatDate(r.date)}\n${r.link}`);
     const text = encodeURIComponent(`${MSG}\n\n${lines.join('\n\n')}`);
-    window.open(`https://wa.me/${normalizePhone(group[0].phone)}?text=${text}`, '_blank');
+    window.open(`https://wa.me/${normalizePhone(meta.phone)}?text=${text}`, '_blank');
   };
 
   const toggleSent = async (appointmentId: string) => {
@@ -221,14 +244,14 @@ const AdminResendLinksPage = () => {
             </thead>
             <tbody>
               {groups.map((group) => {
-                const phoneOk = isPhoneValid(group[0].phone);
+                const { name, phone, phoneOk } = groupMeta(group);
                 return group.map((r, i) => (
                   <tr key={r.id} className={`border-t ${sent[r.id] ? 'bg-muted/40' : ''}`}>
-                    <td className="p-2 font-medium">{i === 0 ? r.patient_name : ''}</td>
+                    <td className="p-2 font-medium">{i === 0 ? name : ''}</td>
                     <td className="p-2">
                       {i === 0 && (
                         phoneOk
-                          ? r.phone
+                          ? phone
                           : <span className="text-destructive">Excepción: teléfono inválido</span>
                       )}
                     </td>
