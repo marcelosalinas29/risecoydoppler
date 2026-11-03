@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import AppointmentPage from "./pages/AppointmentPage";
 import NewAppointmentPage from "./pages/NewAppointmentPage";
 import MyStylePage from "./pages/MyStylePage";
+import AuditPage from "./pages/AuditPage";
 import PatientsPage from "./pages/PatientsPage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/appointment/:id" element={<ProtectedRoute><AppointmentPageKeyed /></ProtectedRoute>} />
+                <Route path="/auditoria" element={<ProtectedRoute><AuditPage /></ProtectedRoute>} />
                 <Route path="/mi-estilo" element={<ProtectedRoute><MyStylePage /></ProtectedRoute>} />
                 <Route path="/new" element={<ProtectedRoute><NewAppointmentPage /></ProtectedRoute>} />
                 <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />

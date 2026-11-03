@@ -77,11 +77,13 @@ const AppointmentPage = () => {
   const removeStorageImage = useClinicStore((s) => s.removeStorageImage);
   const getPatientAppointments = useClinicStore((s) => s.getPatientAppointments);
   const getAppointment = useClinicStore((s) => s.getAppointment);
-  const { profile, isSecretary, isViewer, user } = useAuth();
+  const { profile, isSecretary, isViewer, isAdmin, user } = useAuth();
   const isReadOnly = isSecretary || isViewer;
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Un informe ya realizado solo lo edita el médico que lo hizo (los informes viejos sin médico registrado quedan editables)
   const isOtherDoctorsReport = !!appointment?.reportedBy && !!user && appointment.reportedBy !== user.id;
+  // Llave de administrador: puede corregir el informe de otro médico (el firmante original no cambia).
+  const lockedByOther = isOtherDoctorsReport && !isAdmin;
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
   const isReportEmpty = (r: string) => !r || r === '<p></p>' || r.replace(/<[^>]*>/g, '').trim() === '';
@@ -119,6 +121,14 @@ const AppointmentPage = () => {
       setDetailLoading(true);
       setReportLoadedFromDb(false);
       fetchAppointmentDetail(id)
+        .then(() => {
+          // Registro de quién vio el estudio (no bloquea ni avisa si falla)
+          if (user && !isViewer) {
+            const patientId = useClinicStore.getState().appointments.find((a) => a.id === id)?.patientId ?? null;
+            (supabase as any).from('audit_log').insert({ user_id: user.id, action: 'view', entity: 'appointments', entity_id: id, patient_id: patientId, details: {} })
+              .then(({ error }: any) => { if (error) console.warn('audit view:', error.message); });
+          }
+        })
         .catch((error) => {
           console.error('Error loading appointment detail:', error);
         })
@@ -201,13 +211,13 @@ const AppointmentPage = () => {
 
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
-    if (isOtherDoctorsReport) return;
+    if (lockedByOther) return;
     if (isReportEmpty(report)) {
       console.warn('handleSaveReport: report is empty, skipping save');
       return;
     }
     // Store who reported (doctor's user_id)
-    const reportedBy = !isReadOnly && user ? user.id : undefined;
+    const reportedBy = !isReadOnly && user && !isOtherDoctorsReport ? user.id : undefined;
     await updateAppointmentReport(id, report, reportedBy);
     setReportLoadedFromDb(true);
     if (appointment?.status === 'pending' || appointment?.status === 'in-study') {
@@ -1188,22 +1198,25 @@ const AppointmentPage = () => {
               )}
               {!isReadOnly && (
                 <>
-                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => setShowTemplates(true)}>
+                  <Button variant="outline" size="sm" disabled={lockedByOther} onClick={() => setShowTemplates(true)}>
                     Plantillas <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
-                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => { setDictationAutoStart(true); setShowDictation(true); }}>
+                  <Button variant="outline" size="sm" disabled={lockedByOther} onClick={() => { setDictationAutoStart(true); setShowDictation(true); }}>
                     <Mic className="w-3 h-3 mr-1" /> Dictar
                   </Button>
-                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => { setDictationAutoStart(false); setShowDictation(true); }}>
+                  <Button variant="outline" size="sm" disabled={lockedByOther} onClick={() => { setDictationAutoStart(false); setShowDictation(true); }}>
                     <Sparkles className="w-3 h-3 mr-1" /> IA
                   </Button>
-                  {report && !isEditing && !isOtherDoctorsReport && (
+                  {report && !isEditing && !lockedByOther && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                       Editar
                     </Button>
                   )}
-                  {report && isOtherDoctorsReport && (
+                  {report && lockedByOther && (
                     <span className="text-xs text-muted-foreground self-center">Informe de otro médico: solo él puede editarlo</span>
+                  )}
+                  {report && isOtherDoctorsReport && isAdmin && (
+                    <span className="text-xs text-amber-700 dark:text-amber-300 self-center">Informe de otro médico: lo editás con tu llave de administrador (el firmante no cambia y queda registrado)</span>
                   )}
                 </>
               )}
@@ -1225,7 +1238,7 @@ const AppointmentPage = () => {
             appointmentId={id || ''}
             open={showVersions}
             onOpenChange={setShowVersions}
-            canRestore={!isReadOnly && !isOtherDoctorsReport}
+            canRestore={!isReadOnly && !lockedByOther}
             onRestore={(html) => { setReport(html); setIsEditing(true); }}
           />
 
