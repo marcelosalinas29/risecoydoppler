@@ -1,6 +1,22 @@
-export type StudyStatus = 'pending' | 'in-study' | 'reported' | 'sent';
+export type StudyStatus = 'pending' | 'in-study' | 'reported' | 'sent' | 'cancelled' | 'no-show';
+
+/** Turno cancelado o ausente: se marca, no se borra, y libera el horario. */
+export function isInactiveStatus(status: string): boolean {
+  return status === 'cancelled' || status === 'no-show';
+}
 
 export type StudyType = string;
+
+/** Llegada del paciente a la sala: llegó (verde), demorado / avisó (amarillo), no llegó (rojo). null = sin marcar. */
+export type ArrivalState = 'arrived' | 'late' | 'missed' | null;
+export const ARRIVAL_LABELS: Record<'arrived' | 'late' | 'missed', string> = {
+  arrived: 'Llegó',
+  late: 'Demorado / avisó',
+  missed: 'No llegó',
+};
+export function resolveArrival(a: { arrivalState?: ArrivalState; asistio?: boolean }): ArrivalState {
+  return a.arrivalState ?? (a.asistio ? 'arrived' : null);
+}
 
 export interface Patient {
   id: string;
@@ -10,6 +26,8 @@ export interface Patient {
   phone: string;
   fechaNacimiento?: string; // ISO date
   obraSocial?: string;
+  dniTipo?: string; // 'DNI' | 'PASAPORTE' | 'OTRO'
+  dniMaterno?: boolean; // recién nacido que usa el DNI de la madre
 }
 
 export interface Appointment {
@@ -26,27 +44,64 @@ export interface Appointment {
   observations?: string;
   reportedBy?: string | null;
   asistio: boolean;
+  arrivalState?: ArrivalState; // llegada del paciente: null = sin marcar
   createdAt: string;
+  doctorId?: string | null; // médico asignado al turno (los turnos viejos no tienen)
 }
 
 export function normalizeDni(dni?: string | null): string {
   return (dni || '').toUpperCase().replace(/[\s.\-_/]/g, '').trim();
 }
 
-export function getPatientHistoryKey(patient: Pick<Patient, 'id' | 'dni'>): string {
-  const normalizedDni = normalizeDni(patient.dni);
+/** Al escribir el DNI: sin puntos, espacios ni guiones, sin importar cómo se tipee. Conserva letras (documentos extranjeros). */
+export function cleanDniInput(value: string): string {
+  return value.toUpperCase().replace(/[\s.\-_/]/g, '');
+}
+
+/** Teléfono: característica por defecto de Argentina (celular), modificable. */
+export const PHONE_DEFAULT_PREFIX = '+549';
+export function cleanPhoneInput(value: string): string {
+  return value.replace(/[\s.\-()]/g, '');
+}
+/** Hay un número real si, además de la característica, quedan más de 4 dígitos. */
+export function hasPhoneNumber(value: string): boolean {
+  return value.replace(/\D/g, '').length > 6;
+}
+/** Qué se guarda: vacío si solo quedó la característica por defecto. */
+export function phoneToSave(value: string): string {
+  const v = cleanPhoneInput(value);
+  return hasPhoneNumber(v) ? v : '';
+}
+
+/** Arma el nombre completo: primero apellido, después nombres. */
+export function composePatientName(apellido: string, nombres: string): string {
+  return `${apellido.trim()} ${nombres.trim()}`.replace(/\s+/g, ' ').trim();
+}
+
+/** DNI que sirve para reconocer a la persona. Un recién nacido con DNI de la madre NO se une con ella. */
+export function identityDni(patient: Pick<Patient, 'dni' | 'dniMaterno'>): string {
+  return patient.dniMaterno ? '' : normalizeDni(patient.dni);
+}
+
+export const DNI_TIPOS: { value: string; label: string }[] = [
+  { value: 'DNI', label: 'DNI' },
+  { value: 'PASAPORTE', label: 'Pasaporte' },
+  { value: 'OTRO', label: 'Otro documento' },
+];
+
+export function getPatientHistoryKey(patient: Pick<Patient, 'id' | 'dni' | 'dniMaterno'>): string {
+  const normalizedDni = identityDni(patient);
   return normalizedDni ? `dni:${normalizedDni}` : `patient:${patient.id}`;
 }
 
 export const STUDY_TYPES: string[] = [
   'Ecografía Abdominal',
+  'Ecografía Hepatobiliopancreática (Abdomen Superior)',
   'Ecografía Tiroidea',
   'Ecografía Obstétrica',
   'Ecografía Pélvica',
   'Ecografía Renal',
-  'Ecografía de Tejidos Blandos',
   'Ecografía Mamaria',
-  'Ecografía Doppler',
   'Ecografía Vesical',
   'Ecografía Prostática',
   'Ecografía Vesical y Prostática',
@@ -57,8 +112,6 @@ export const STUDY_TYPES: string[] = [
   'Ecografía de Partes Blandas',
   'Ecografía Muscular',
   'Ecografía Articular',
-  'Ecografía Doppler Venoso',
-  'Ecografía Doppler Arterial',
   'Ecografía Doppler de Vasos de Cuello',
   'Ecografía Mamaria y Ginecológica TV',
   'Ecografía Renal y Vesicoprostática',
@@ -74,8 +127,10 @@ export const STUDY_TYPES: string[] = [
   'Eco Doppler TSA',
   'Eco Doppler Sustancia Nigra',
   'Eco Doppler Arterial MMII',
-  'Eco Doppler Venoso MMII',
+  'Eco Doppler Venoso MMII (TVP)',
+  'Eco Doppler Venoso MMII (Insuficiencia / Mapeo)',
   'Eco Doppler Arterial MMSS',
+  'Eco Doppler Venoso MMSS',
   'Test de Función Endotelial',
 ];
 
@@ -84,6 +139,8 @@ export const STATUS_LABELS: Record<StudyStatus, string> = {
   'in-study': 'En estudio',
   'reported': 'Reportado',
   'sent': 'Enviado',
+  'cancelled': 'Cancelado',
+  'no-show': 'Ausente',
 };
 
 /** Calculate age in years from birth date (legacy, returns number of years) */
@@ -179,8 +236,40 @@ export function getStudyDuration(studyType: string, baseInterval: number = 10): 
 }
 
 /** Format study type string: replace "+" with "," and last with "y" */
+/** Abreviaturas que se escriben completas en cualquier lugar donde se muestre el nombre del estudio. */
+const STUDY_ABBREVIATIONS: [RegExp, string][] = [
+  [/^ECO DOPPLER\b/, 'DOPPLER'],
+  [/^ECO\b(?!GRAF)/, 'ECOGRAFÍA'],
+  [/\bMMII\b/g, 'DE MIEMBROS INFERIORES'],
+  [/\bMMSS\b/g, 'DE MIEMBROS SUPERIORES'],
+  [/\bTVP\b/g, 'TROMBOSIS VENOSA PROFUNDA'],
+  [/\bTSA\b/g, 'TRONCOS SUPRAAÓRTICOS'],
+  [/\bTN\b/g, 'TRANSLUCENCIA NUCAL'],
+  [/\bTV\b/g, 'TRANSVAGINAL'],
+  [/\bABD\.?(?=\s|$)/g, 'ABDOMINAL'],
+];
+
+/** Nombre completo del estudio: mayúscula y sin abreviar (los estudios viejos guardados abreviados también se ven completos). */
+export function expandStudyName(name: string): string {
+  let out = name.toUpperCase().replace(/\s+/g, ' ').trim();
+  for (const [re, full] of STUDY_ABBREVIATIONS) out = out.replace(re, full);
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+/** El protocolo (TVP, Insuficiencia/Mapeo) solo orienta al médico qué plantilla usar: no va en el título del estudio. */
+export function studyTitle(name: string): string {
+  return expandStudyName(name.replace(/\s*\((TVP|Insuficiencia\s*\/\s*Mapeo)\)/gi, ''));
+}
+
+/** Protocolo entre paréntesis (solo identificativo para el médico), si lo tiene. */
+export function studyProtocol(name: string): string {
+  const m = name.match(/\((TVP|Insuficiencia\s*\/\s*Mapeo)\)/i);
+  if (!m) return '';
+  return m[1].toUpperCase() === 'TVP' ? 'Protocolo: trombosis venosa profunda' : 'Protocolo: insuficiencia venosa / mapeo';
+}
+
 export function formatStudyType(studyType: string): string {
-  const parts = studyType.split(/\s*\+\s*/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  const parts = studyType.split(/\s*\+\s*/).map(s => studyTitle(s)).filter(Boolean);
   if (parts.length <= 1) return parts[0] || studyType.toUpperCase();
   if (parts.length === 2) return `${parts[0]} Y ${parts[1]}`;
   return parts.slice(0, -1).join(', ') + ' Y ' + parts[parts.length - 1];

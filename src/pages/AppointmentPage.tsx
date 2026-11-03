@@ -2,14 +2,21 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil, Mic, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil, Mic, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { calcularEdad, calcularEdadDetallada, formatEdad } from '@/types/medical';
+import { calcularEdad, calcularEdadDetallada, formatEdad, cleanDniInput } from '@/types/medical';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_LABELS, type StudyStatus, formatStudyType } from '@/types/medical';
 import TemplateSelector from '@/components/TemplateSelector';
+import TemplateSuggestion from '@/components/TemplateSuggestion';
+import ReportVersionsDialog from '@/components/ReportVersionsDialog';
+import { suggestTemplates } from '@/data/studyTemplateMap';
+import { fetchMyTemplates, type DoctorTemplate } from '@/lib/doctorTemplates';
+import { EMPTY_SETTINGS, fetchMySettings, type DoctorSettings } from '@/lib/doctorSettings';
+import { applyParagraphStyle } from '@/lib/reportStyle';
+import { buildReportHtml, canAutoLoad, optionsForStudy } from '@/lib/templateResolve';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
 import RichTextEditor from '@/components/RichTextEditor';
 import DictationPanel from '@/components/DictationPanel';
@@ -34,6 +41,8 @@ const statusClass: Record<StudyStatus, string> = {
   'in-study': 'status-badge-in-study',
   'reported': 'status-badge-reported',
   'sent': 'status-badge-sent',
+  'cancelled': 'bg-muted text-muted-foreground line-through',
+  'no-show': 'bg-muted text-muted-foreground',
 };
 
 /** Convert HTML to plain text preserving paragraph breaks */
@@ -71,6 +80,8 @@ const AppointmentPage = () => {
   const { profile, isSecretary, isViewer, user } = useAuth();
   const isReadOnly = isSecretary || isViewer;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Un informe ya realizado solo lo edita el médico que lo hizo (los informes viejos sin médico registrado quedan editables)
+  const isOtherDoctorsReport = !!appointment?.reportedBy && !!user && appointment.reportedBy !== user.id;
   const [showTemplates, setShowTemplates] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
   const isReportEmpty = (r: string) => !r || r === '<p></p>' || r.replace(/<[^>]*>/g, '').trim() === '';
@@ -133,8 +144,64 @@ const AppointmentPage = () => {
     }
   }, [appointment?.report, reportLoadedFromDb]);
 
+  // Sugerencia de plantilla: una sola vez al abrir un estudio sin informe
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const suggestionAsked = useRef(false);
+  const [ownTemplates, setOwnTemplates] = useState<DoctorTemplate[]>([]);
+  const [mySettings, setMySettings] = useState<DoctorSettings>(EMPTY_SETTINGS);
+  useEffect(() => {
+    if (suggestionAsked.current || isReadOnly || detailLoading || !appointment) return;
+    suggestionAsked.current = true;
+    if (!(isReportEmpty(appointment.report || '') && isReportEmpty(report))) return;
+    const hasBuiltIn = suggestTemplates(appointment.studyType).length > 0;
+    if (isSecretary || isViewer) { if (hasBuiltIn) setShowSuggestion(true); return; }
+    Promise.all([
+      fetchMyTemplates().catch(() => [] as DoctorTemplate[]),
+      fetchMySettings().catch(() => EMPTY_SETTINGS),
+    ]).then(([mine, settings]) => {
+      setOwnTemplates(mine);
+      setMySettings(settings);
+      const parts = appointment.studyType.split(' + ').map((x) => x.trim()).filter(Boolean);
+      const anyTemplate = parts.some((p) => optionsForStudy(p, mine).length > 0);
+      if (!anyTemplate) return;
+      if (canAutoLoad(appointment.studyType, mine, settings)) {
+        // Plantilla por defecto elegida por el médico: se carga sola, con aviso para cambiarla.
+        applyTemplate(buildReportHtml(appointment.studyType, mine, settings));
+        toast('Se cargó tu plantilla por defecto', { action: { label: 'Cambiar', onClick: () => setShowSuggestion(true) } });
+      } else {
+        setShowSuggestion(true);
+      }
+    });
+  }, [detailLoading, appointment, isReadOnly]);
+
+  // Estilo del médico (para el botón "Aplicar mi estilo" en informes ya escritos)
+  useEffect(() => {
+    if (isSecretary || isViewer) return;
+    fetchMySettings().then(setMySettings).catch(() => {});
+  }, [isSecretary, isViewer]);
+
+  // Autoguardado: guarda el borrador 3 segundos después de dejar de escribir.
+  // No cambia el estado del turno (eso sigue haciéndolo "Guardar Informe").
+  const [autoSavedAt, setAutoSavedAt] = useState<Date | null>(null);
+  useEffect(() => {
+    if (!id || isReadOnly || isOtherDoctorsReport || !isEditing || detailLoading || !appointment) return;
+    if (isReportEmpty(report) || report === appointment.report) return;
+    const t = setTimeout(async () => {
+      try {
+        setReportLoadedFromDb(true); // evita que la respuesta pise lo que se siga escribiendo
+        await updateAppointmentReport(id, report, user?.id);
+        setAutoSavedAt(new Date());
+      } catch (e) {
+        console.error('Autosave failed:', e);
+      }
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [report, id, isReadOnly, isEditing, detailLoading, appointment?.report]);
+
   const handleSaveReport = useCallback(async () => {
     if (!id) return;
+    if (isOtherDoctorsReport) return;
     if (isReportEmpty(report)) {
       console.warn('handleSaveReport: report is empty, skipping save');
       return;
@@ -208,32 +275,61 @@ const AppointmentPage = () => {
     });
   };
 
+  // Sin límite de cantidad. Se suben de a 3 en paralelo, se conserva el orden elegido,
+  // y si alguna falla las demás igual se guardan (se avisa cuántas fallaron).
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !id) return;
-    toast.info('Subiendo imágenes...');
-    try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const compressed = await compressImage(file);
-        const fileName = `${id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from('estudios_imagenes')
-          .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
-        if (uploadError) throw uploadError;
-        // Bucket privado: URL firmada de larga duración (10 años) en vez de
-        // pública para siempre.
-        const { data: urlData, error: signError } = await supabase.storage
-          .from('estudios_imagenes')
-          .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
-        if (signError || !urlData) throw signError || new Error('No se pudo generar el link de la imagen.');
-        urls.push(urlData.signedUrl);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    if (files.length === 0 || !id) return;
+    const toastId = toast.loading(`Subiendo imágenes (0 de ${files.length})...`);
+    const results: (string | null)[] = new Array(files.length).fill(null);
+    const errors: string[] = [];
+    let done = 0;
+    let next = 0;
+
+    const uploadOne = async (file: File): Promise<string> => {
+      const compressed = await compressImage(file);
+      const fileName = `${id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('estudios_imagenes')
+        .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
+      if (uploadError) throw uploadError;
+      // Bucket privado: URL firmada de larga duración (10 años)
+      const { data: urlData, error: signError } = await supabase.storage
+        .from('estudios_imagenes')
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
+      if (signError || !urlData) throw signError || new Error('No se pudo generar el link de la imagen.');
+      return urlData.signedUrl;
+    };
+
+    const worker = async () => {
+      while (next < files.length) {
+        const i = next++;
+        try {
+          results[i] = await uploadOne(files[i]);
+        } catch (err: any) {
+          console.error('Error uploading image:', files[i].name, err);
+          errors.push(`${files[i].name}: ${err?.message || 'error desconocido'}`);
+        }
+        done++;
+        toast.loading(`Subiendo imágenes (${done} de ${files.length})...`, { id: toastId });
       }
-      await addStorageImagesToAppointment(id, urls);
-      toast.success(`${urls.length} imagen(es) cargada(s)`);
+    };
+
+    try {
+      await Promise.all([worker(), worker(), worker()]);
+      const urls = results.filter((u): u is string => !!u);
+      if (urls.length > 0) await addStorageImagesToAppointment(id, urls);
+      toast.dismiss(toastId);
+      if (errors.length === 0) {
+        toast.success(`${urls.length} imagen(es) cargada(s)`);
+      } else {
+        toast.error(`Se cargaron ${urls.length} de ${files.length}. No se pudieron cargar: ${errors.join('; ')}`);
+      }
     } catch (err: any) {
-      console.error('Error uploading images:', err);
-      toast.error(`Error al subir imágenes: ${err?.message || 'Error desconocido'}`);
+      console.error('Error saving images:', err);
+      toast.dismiss(toastId);
+      toast.error(`Error al guardar las imágenes: ${err?.message || 'Error desconocido'}`);
     }
   };
 
@@ -307,7 +403,20 @@ const AppointmentPage = () => {
 
     // Report/signature pages reserve only room for the plain text footer
     // (no QR there anymore), so much more content fits before a page break.
-    const bottomLimit = pageHeight - 26;
+    // Report/signature pages: the space for the signature block is reserved
+    // on EVERY page from the start — exactly like the QR used to be, always
+    // in the same guaranteed spot. This removes the old "does the whole
+    // signature block fit on this page?" guesswork entirely: since text
+    // never uses more than this reduced limit in the first place, whichever
+    // page the report text naturally ends on will always have this room
+    // already set aside for the signature, with margin to spare.
+    const footerTextZoneHeight = 18;
+    // Keep the signature reservation conservative, but recover a small
+    // amount of usable report space without changing the pagination model.
+    const reservedSignatureHeight = 20 + 2 + 12 + 2 * 4 + 4 - 9;
+    const signatureTopGap = 2;
+    const footerSafeLimit = pageHeight - footerTextZoneHeight - 10;
+    const bottomLimit = footerSafeLimit - signatureTopGap - reservedSignatureHeight;
 
     // ====== HEADER (logo + subtitle) ======
     try {
@@ -391,7 +500,7 @@ const AppointmentPage = () => {
     y += 8;
 
     interface TextSegment { text: string; bold: boolean; italic: boolean; underline: boolean; }
-    interface PdfParagraph { segments: TextSegment[]; lineHeight: number; align: 'left' | 'center' | 'right'; }
+    interface PdfParagraph { segments: TextSegment[]; lineHeight: number; align: 'left' | 'center' | 'right' | 'justify'; }
 
     const parseHtmlToPdfParagraphs = (html: string): PdfParagraph[] => {
       const container = document.createElement('div');
@@ -424,7 +533,7 @@ const AppointmentPage = () => {
 
       const processBlock = (el: HTMLElement) => {
         const lh = parseFloat(el.style.lineHeight) || 1.6;
-        const align = (el.style.textAlign || 'left') as 'left' | 'center' | 'right';
+        const align = (['center', 'right', 'justify'].includes(el.style.textAlign) ? el.style.textAlign : 'left') as 'left' | 'center' | 'right' | 'justify';
         const rawSegments = extractSegments(el, { bold: false, italic: false, underline: false });
         const subParas: TextSegment[][] = [[]];
         for (const seg of rawSegments) {
@@ -465,17 +574,29 @@ const AppointmentPage = () => {
       return paragraphs;
     };
 
-    const renderPdfParagraphs = (paras: PdfParagraph[]) => {
-      const baseLine = 5;
+    // fontSize defaults to 10 — the ORIGINAL size, unchanged. It only ever
+    // becomes 9 in the one specific case (decided further below, before this
+    // is called) where a report's text overflows a single page by just a
+    // small amount: rather than leave 1-4 orphaned lines on a near-empty
+    // second page, we shrink text+spacing together (proportionally, so the
+    // visual rhythm stays consistent) just enough to fit everything on one
+    // page — still a fully professional, legible size for another reader.
+    // If a report already fits at 10 (the overwhelming majority), or if it
+    // overflows by a lot, this function's output is 100% identical to
+    // before this change: same fontSize 10, same baseLine 5, same spacing.
+    const renderPdfParagraphs = (paras: PdfParagraph[], fontSize: number = 10) => {
+      const scale = fontSize / 10;
+      const baseLine = 5 * scale;
       // Paragraph spacing in mm — equivalent to ~1.2em at 10pt font for
       // real multi-line prose. Short single-line "Órgano: hallazgo" entries
       // (very common in these reports) get a tighter gap — this is what a
       // professionally typeset report looks like, and it reclaims a large
       // amount of otherwise-wasted vertical space on long, list-like reports,
       // which is what was pushing the signature onto its own near-empty page.
-      const paragraphSpacingLong = 4.2;
-      const paragraphSpacingShort = 1.5;
-      for (const para of paras) {
+      const paragraphSpacingLong = 4.2 * scale;
+      const paragraphSpacingShort = 1.5 * scale;
+      for (let pi = 0; pi < paras.length; pi++) {
+        const para = paras[pi];
         if (para.segments.length === 0) {
           y += baseLine * (para.lineHeight / 1.6) * 0.6;
           continue;
@@ -483,11 +604,22 @@ const AppointmentPage = () => {
         const lineSpacing = baseLine * (para.lineHeight / 1.6);
         const fullText = para.segments.map(s => s.text).join('');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
+        doc.setFontSize(fontSize);
         const wrappedLines = doc.splitTextToSize(fullText, contentWidth);
         let globalCharIdx = 0;
 
-        for (const wLine of wrappedLines) {
+        // Un título (una línea corta, toda en negrita) no puede quedar solo al final de una hoja:
+        // si no entran además al menos 2 renglones del texto que sigue, pasa a la hoja siguiente.
+        const isHeading = wrappedLines.length === 1 && fullText.length < 90 && para.segments.every(sg => sg.bold || !sg.text.trim());
+        if (isHeading && pi < paras.length - 1) {
+          if (y + lineSpacing * 3 + paragraphSpacingShort > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
+        }
+
+        for (let li = 0; li < wrappedLines.length; li++) {
+          const wLine = wrappedLines[li];
+          // Control de renglón suelto: nunca queda un solo renglón de un párrafo solo en la hoja siguiente
+          // (así la firma siempre acompaña a por lo menos 2 renglones de texto).
+          if (li === wrappedLines.length - 2 && wrappedLines.length >= 4 && y + lineSpacing > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
           if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
 
           // Calculate actual line width for alignment
@@ -510,6 +642,10 @@ const AppointmentPage = () => {
             if (tso >= seg.text.length) { tsi++; tso = 0; }
           }
 
+          const isJustified = para.align === 'justify' && li < wrappedLines.length - 1 && wLine.includes(' ');
+          const gaps = isJustified ? (wLine.match(/ /g) || []).length : 0;
+          const extraPerGap = isJustified && gaps > 0 ? Math.max(0, (contentWidth - calcWidth) / gaps) : 0;
+
           let xStart = margin;
           if (para.align === 'center') xStart = margin + (contentWidth - calcWidth) / 2;
           else if (para.align === 'right') xStart = margin + contentWidth - calcWidth;
@@ -530,8 +666,23 @@ const AppointmentPage = () => {
             const runText = wLine.substring(linePos, linePos + runLen);
             const fontStyle = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
             doc.setFont('helvetica', fontStyle);
-            doc.text(runText, xPos, y);
-            const tw = doc.getTextWidth(runText);
+            let tw: number;
+            if (extraPerGap > 0) {
+              // Justificado: se reparte el espacio sobrante entre las palabras.
+              const startX = xPos;
+              const spaceW = doc.getTextWidth(' ');
+              for (const tok of runText.split(/( )/)) {
+                if (tok === '') continue;
+                if (tok === ' ') { xPos += spaceW + extraPerGap; continue; }
+                doc.text(tok, xPos, y);
+                xPos += doc.getTextWidth(tok);
+              }
+              tw = xPos - startX;
+              xPos = startX;
+            } else {
+              doc.text(runText, xPos, y);
+              tw = doc.getTextWidth(runText);
+            }
             if (seg.underline) {
               doc.setLineWidth(0.3);
               doc.setDrawColor(0, 0, 0);
@@ -543,28 +694,82 @@ const AppointmentPage = () => {
           }
           y += lineSpacing;
         }
-        // Add inter-paragraph spacing: tighter for a short single-line
-        // entry, full breathing room for real multi-line prose.
-        y += wrappedLines.length <= 1 ? paragraphSpacingShort : paragraphSpacingLong;
-        if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
+        // Add inter-paragraph spacing only between paragraphs.
+        // Never add trailing spacing after the final report paragraph:
+        // that extra spacing can falsely cross bottomLimit and push the
+        // signature onto an otherwise empty page.
+        if (para !== paras[paras.length - 1]) {
+          y += wrappedLines.length <= 1 ? paragraphSpacingShort : paragraphSpacingLong;
+          if (y > bottomLimit) { drawFooter(false); doc.addPage(); y = 20; }
+        }
       }
     };
 
     const pdfParagraphs = parseHtmlToPdfParagraphs(report || '<p>Sin informe</p>');
-    renderPdfParagraphs(pdfParagraphs);
+
+    // ====== Measure BEFORE drawing anything, to decide font size ======
+    // This never changes what a report looks like unless it would otherwise
+    // overflow onto a second page by only a small amount (a handful of
+    // orphaned lines). We measure the report at the normal size first,
+    // without drawing a single character — if it already fits, nothing
+    // below this block has any effect and rendering proceeds exactly as
+    // it always has.
+    const measureParasHeight = (paras: PdfParagraph[], measureFontSize: number): number => {
+      const scale = measureFontSize / 10;
+      const mBaseLine = 5 * scale;
+      const mSpacingLong = 4.2 * scale;
+      const mSpacingShort = 1.5 * scale;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(measureFontSize);
+      let h = 0;
+      for (const para of paras) {
+        if (para.segments.length === 0) {
+          h += mBaseLine * (para.lineHeight / 1.6) * 0.6;
+          continue;
+        }
+        const lineSpacing = mBaseLine * (para.lineHeight / 1.6);
+        const fullText = para.segments.map(s => s.text).join('');
+        const wrappedLines = doc.splitTextToSize(fullText, contentWidth);
+        h += wrappedLines.length * lineSpacing;
+        h += wrappedLines.length <= 1 ? mSpacingShort : mSpacingLong;
+      }
+      return h;
+    };
+
+    const firstPageCapacity = bottomLimit - y;
+    const normalHeight = measureParasHeight(pdfParagraphs, 10);
+    const overflow = normalHeight - firstPageCapacity;
+    // Small overflow (roughly up to 4-5 short lines' worth) is exactly the
+    // "orphaned paragraph on an almost-empty page 2" case — worth a modest,
+    // still fully professional and legible compact size to avoid it. A
+    // bigger overflow is a genuinely long report: leave it at full normal
+    // size and let it use a second page generously, which looks intentional
+    // rather than compressed.
+    let bodyFontSize = 10;
+    if (overflow > 0 && overflow <= 20) {
+      const compactHeight = measureParasHeight(pdfParagraphs, 9);
+      if (compactHeight <= firstPageCapacity) {
+        bodyFontSize = 9;
+      }
+    }
+    // Reset back to normal drawing state before actually rendering.
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    renderPdfParagraphs(pdfParagraphs, bodyFontSize);
 
     // ====== SIGNATURE - right-aligned, below report ======
-    y += 10;
+    y += signatureTopGap;
 
     const signBlockWidth = 70;
     const signX = pageWidth - margin - signBlockWidth;
 
     // Determine which profile/email to use for signature
-    // If secretary, use the doctor who reported (reported_by)
+    // Siempre firma el médico que realizó el informe (reported_by), sea quien sea el que genere el PDF
     let pdfProfile = profile;
     let pdfEmail = user?.email || '';
 
-    if (isSecretary && currentAppointment.reportedBy) {
+    if (currentAppointment.reportedBy && currentAppointment.reportedBy !== user?.id) {
       // Fetch the doctor's profile (which now includes email)
       const { data: doctorProfile } = await supabase
         .from('profiles')
@@ -602,7 +807,7 @@ const AppointmentPage = () => {
     // + n*4 specialty + 4 license padding.
     const signatureBlockHeight = sigH + (sigH > 0 ? 2 : 0) + 12 + specialtyLinesPre.length * 4 + 4;
 
-    if (y + signatureBlockHeight > bottomLimit) {
+    if (y + signatureBlockHeight > footerSafeLimit) {
       drawFooter(false);
       doc.addPage();
       y = 20;
@@ -690,7 +895,8 @@ const AppointmentPage = () => {
           }
         }
 
-        drawFooter(true);
+        // El QR va solo en la última hoja del documento
+        drawFooter(imgIndex >= allImages.length);
       }
     }
 
@@ -759,6 +965,13 @@ const AppointmentPage = () => {
 
   const sendWhatsApp = async () => {
     if (!appointment || !id) return;
+
+    // La fecha de nacimiento es obligatoria antes de enviar el informe
+    if (!appointment.patient.fechaNacimiento) {
+      toast.error('Falta la fecha de nacimiento del paciente. Completala antes de enviar el informe.');
+      if (!isReadOnly) setEditingPatient(true);
+      return;
+    }
 
     // Open WhatsApp window IMMEDIATELY (synchronous) to avoid popup blocker
     const waWindow = window.open('about:blank', '_blank');
@@ -838,6 +1051,13 @@ const AppointmentPage = () => {
   return (
     <AppLayout title={appointment.patient.name}>
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Volver a donde estabas (el mismo día de la agenda, la búsqueda o el historial) */}
+        <Button
+          variant="ghost" size="sm" className="-mb-2 -ml-2 text-muted-foreground"
+          onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))}
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Volver
+        </Button>
         {/* Patient Info Card */}
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
@@ -874,7 +1094,7 @@ const AppointmentPage = () => {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <label className="text-xs text-muted-foreground">DNI</label>
-                <Input value={patientForm.dni} onChange={(e) => setPatientForm(f => ({ ...f, dni: e.target.value }))} className="h-8" placeholder="DNI" />
+                <Input value={patientForm.dni} onChange={(e) => setPatientForm(f => ({ ...f, dni: cleanDniInput(e.target.value) }))} className="h-8" placeholder="DNI" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Fecha Nac.</label>
@@ -899,6 +1119,12 @@ const AppointmentPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+              {!appointment.patient.fechaNacimiento && (
+                <span className="col-span-2 text-xs font-semibold text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/15 border border-amber-200 rounded px-2 py-1 flex items-center justify-between gap-2">
+                  ⚠ Falta la fecha de nacimiento (obligatoria para enviar el informe)
+                  {!isReadOnly && <button className="underline" onClick={() => setEditingPatient(true)}>Completar</button>}
+                </span>
+              )}
               {appointment.patient.dni && <span>DNI: {appointment.patient.dni}</span>}
               {(() => {
                 const e = appointment.patient.fechaNacimiento
@@ -939,6 +1165,12 @@ const AppointmentPage = () => {
               <SelectItem value="in-study">En estudio</SelectItem>
               <SelectItem value="reported">Reportado</SelectItem>
               <SelectItem value="sent">Enviado</SelectItem>
+              {(currentAppointment.status === 'pending' || currentAppointment.status === 'in-study' || currentAppointment.status === 'cancelled' || currentAppointment.status === 'no-show') && (
+                <>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                  <SelectItem value="no-show">Ausente</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -951,21 +1183,27 @@ const AppointmentPage = () => {
               Informe {isReadOnly && <span className="text-xs text-muted-foreground">(solo lectura)</span>}
             </h2>
             <div className="flex flex-wrap gap-2">
+              {!isViewer && (
+                <Button variant="outline" size="sm" onClick={() => setShowVersions(true)}>Versiones</Button>
+              )}
               {!isReadOnly && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
+                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => setShowTemplates(true)}>
                     Plantillas <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => { setDictationAutoStart(true); setShowDictation(true); }}>
+                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => { setDictationAutoStart(true); setShowDictation(true); }}>
                     <Mic className="w-3 h-3 mr-1" /> Dictar
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => { setDictationAutoStart(false); setShowDictation(true); }}>
+                  <Button variant="outline" size="sm" disabled={isOtherDoctorsReport} onClick={() => { setDictationAutoStart(false); setShowDictation(true); }}>
                     <Sparkles className="w-3 h-3 mr-1" /> IA
                   </Button>
-                  {report && !isEditing && (
+                  {report && !isEditing && !isOtherDoctorsReport && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                       Editar
                     </Button>
+                  )}
+                  {report && isOtherDoctorsReport && (
+                    <span className="text-xs text-muted-foreground self-center">Informe de otro médico: solo él puede editarlo</span>
                   )}
                 </>
               )}
@@ -983,6 +1221,24 @@ const AppointmentPage = () => {
           )}
 
 
+          <ReportVersionsDialog
+            appointmentId={id || ''}
+            open={showVersions}
+            onOpenChange={setShowVersions}
+            canRestore={!isReadOnly && !isOtherDoctorsReport}
+            onRestore={(html) => { setReport(html); setIsEditing(true); }}
+          />
+
+          <TemplateSuggestion
+            open={showSuggestion}
+            onOpenChange={setShowSuggestion}
+            studyType={appointment?.studyType || ''}
+            own={ownTemplates}
+            settings={mySettings}
+            onApply={applyTemplate}
+            onChooseOther={() => setShowTemplates(true)}
+          />
+
           <TemplateSelector
             open={showTemplates}
             onOpenChange={setShowTemplates}
@@ -992,12 +1248,25 @@ const AppointmentPage = () => {
 
           {isEditing || !report ? (
             <>
+              {!isReadOnly && !isSecretary && !isViewer && !isReportEmpty(report) && (
+                <div className="flex justify-end mb-1">
+                  <Button
+                    type="button" variant="ghost" size="sm" className="h-7 text-xs"
+                    onClick={() => { setReport(applyParagraphStyle(report, mySettings.style)); toast.success('Estilo aplicado'); }}
+                  >Aplicar mi estilo</Button>
+                </div>
+              )}
               <RichTextEditor
                 content={report}
                 onChange={setReport}
                 disabled={isReadOnly}
                 placeholder="Escriba el informe aquí..."
               />
+              {!isReadOnly && autoSavedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Borrador guardado automáticamente a las {autoSavedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
               {!isReadOnly && (
                 <Button onClick={async () => { await handleSaveReport(); setIsEditing(false); }} className="w-full btn-action-primary">
                   Guardar Informe
@@ -1006,7 +1275,7 @@ const AppointmentPage = () => {
             </>
           ) : (
             <div
-              className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none text-foreground"
+              className="bg-muted/50 rounded-lg p-4 prose prose-sm dark:prose-invert max-w-none text-foreground"
               dangerouslySetInnerHTML={{ __html: report }}
             />
           )}

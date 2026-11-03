@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { STUDY_TYPES, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
+import { STUDY_TYPES, DNI_TIPOS, cleanDniInput, composePatientName, calcularEdad, calcularEdadDetallada, getStudyDuration, PHONE_DEFAULT_PREFIX, cleanPhoneInput, hasPhoneNumber, phoneToSave, isInactiveStatus } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,9 +24,13 @@ const NewAppointmentPage = () => {
   const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, schedules, isDateBlocked, fetchBlockedDates, blockedDates } = useScheduleStore();
 
   const [dni, setDni] = useState('');
-  const [name, setName] = useState('');
+  const [dniTipo, setDniTipo] = useState('DNI');
+  const [dniMaterno, setDniMaterno] = useState(false);
+  const [apellido, setApellido] = useState('');
+  const [nombres, setNombres] = useState('');
+  const name = composePatientName(apellido, nombres);
   const [fechaNacimiento, setFechaNacimiento] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(PHONE_DEFAULT_PREFIX);
   const [obraSocial, setObraSocial] = useState('');
   const [selectedStudies, setSelectedStudies] = useState<string[]>([]);
   const [customStudy, setCustomStudy] = useState('');
@@ -67,7 +71,7 @@ const NewAppointmentPage = () => {
   // Occupied slots for the selected date
   const occupiedSlots = useMemo(() => {
     const existing = getAppointmentsByDate(dateStr);
-    return new Set(existing.map(a => a.time));
+    return new Set(existing.filter(a => !isInactiveStatus(a.status)).map(a => a.time));
   }, [dateStr, getAppointmentsByDate]);
 
   const suggestions = name.length >= 2 && !selectedPatientId ? searchPatients(name) : [];
@@ -80,15 +84,18 @@ const NewAppointmentPage = () => {
 
   const selectExistingPatient = (p: typeof patients[0]) => {
     setSelectedPatientId(p.id);
-    setName(p.name);
-    setDni(p.dni || '');
+    setApellido(p.name); // pacientes existentes: nombre completo tal cual está cargado
+    setNombres('');
+    setDni(cleanDniInput(p.dni || ''));
+    setDniTipo(p.dniTipo || 'DNI');
+    setDniMaterno(!!p.dniMaterno);
     setFechaNacimiento(p.fechaNacimiento || '');
-    setPhone(p.phone);
+    setPhone(p.phone || PHONE_DEFAULT_PREFIX);
     setObraSocial(p.obraSocial || '');
   };
 
   const handleDniBlur = useCallback(async () => {
-    if (!dni.trim() || selectedPatientId) return;
+    if (!dni.trim() || selectedPatientId || dniMaterno) return;
     setLookingUp(true);
     try {
       const patient = await findPatientByDni(dni.trim());
@@ -101,7 +108,14 @@ const NewAppointmentPage = () => {
     } finally {
       setLookingUp(false);
     }
-  }, [dni, selectedPatientId, findPatientByDni]);
+  }, [dni, selectedPatientId, dniMaterno, findPatientByDni]);
+
+  // Busca solo apenas se termina de escribir el DNI (sin tener que salir del casillero)
+  useEffect(() => {
+    if (selectedPatientId || dniMaterno || cleanDniInput(dni).length < 7) return;
+    const t = setTimeout(() => { handleDniBlur(); }, 500);
+    return () => clearTimeout(t);
+  }, [dni, selectedPatientId, dniMaterno, handleDniBlur]);
 
   const toggleStudy = (study: string) => {
     setSelectedStudies(prev =>
@@ -158,7 +172,11 @@ const NewAppointmentPage = () => {
       toast.error('Debe seleccionar el médico al que se asigna la cita');
       return;
     }
-    if (!name || !phone || !finalTime || !studyType) {
+    if (!cleanDniInput(dni)) {
+      toast.error('El documento es obligatorio (en recién nacidos, el de la madre)');
+      return;
+    }
+    if (!apellido.trim() || (!selectedPatientId && !nombres.trim()) || !hasPhoneNumber(phone) || !finalTime || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
     }
@@ -190,6 +208,7 @@ const NewAppointmentPage = () => {
         .select('id')
         .eq('date', dateStr)
         .eq('time', finalTime)
+        .not('status', 'in', '(cancelled,no-show)')
         .limit(1);
       if (clash && clash.length > 0) {
         toast.error('Ese horario acaba de ser ocupado. Elegí otro horario o usá Sobreturno.');
@@ -202,16 +221,18 @@ const NewAppointmentPage = () => {
       let patientId = selectedPatientId;
       if (!patientId) {
         const patient = await addPatient({
-          dni: dni.trim(),
+          dni: cleanDniInput(dni),
+          dniTipo,
+          dniMaterno,
           name,
-          phone,
+          phone: phoneToSave(phone),
           fechaNacimiento,
           obraSocial,
         });
         patientId = patient.id;
       }
 
-      await addAppointment({ patientId, studyType, date: dateStr, time: finalTime });
+      await addAppointment({ patientId, studyType, date: dateStr, time: finalTime, doctorId: selectedDoctorId || undefined });
       toast.success('Cita creada exitosamente');
       navigate('/');
     } catch (err) {
@@ -232,23 +253,41 @@ const NewAppointmentPage = () => {
       <div className="p-4 space-y-5 max-w-lg mx-auto">
         {/* DNI field */}
         <div className="space-y-2">
-          <Label>DNI / ID</Label>
+          <Label>Documento (obligatorio)</Label>
+          <div className="flex gap-2">
+            {DNI_TIPOS.map((t) => (
+              <Button key={t.value} type="button" size="sm" variant={dniTipo === t.value ? 'default' : 'outline'} onClick={() => { setDniTipo(t.value); setSelectedPatientId(null); }}>
+                {t.label}
+              </Button>
+            ))}
+          </div>
           <Input
             value={dni}
-            onChange={(e) => { setDni(e.target.value); setSelectedPatientId(null); }}
+            onChange={(e) => { setDni(cleanDniInput(e.target.value)); setSelectedPatientId(null); }}
             onBlur={handleDniBlur}
             placeholder="Número de documento"
           />
           {lookingUp && <p className="text-xs text-muted-foreground">Buscando paciente...</p>}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={dniMaterno} onChange={(e) => { setDniMaterno(e.target.checked); if (selectedPatientId) { setApellido(''); setNombres(''); setPhone(PHONE_DEFAULT_PREFIX); setFechaNacimiento(''); } setSelectedPatientId(null); }} />
+            Recién nacido: usa el documento de la madre
+          </label>
         </div>
 
         <div className="space-y-2">
-          <Label>Nombre del paciente</Label>
-          <Input
-            value={name}
-            onChange={(e) => { setName(e.target.value); setSelectedPatientId(null); }}
-            placeholder="Nombre completo"
-          />
+          <Label>Apellido y nombres del paciente</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={apellido}
+              onChange={(e) => { setApellido(e.target.value); setSelectedPatientId(null); }}
+              placeholder="Apellido"
+            />
+            <Input
+              value={nombres}
+              onChange={(e) => { setNombres(e.target.value); setSelectedPatientId(null); }}
+              placeholder="Nombres"
+            />
+          </div>
           {suggestions.length > 0 && (
             <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
               {suggestions.slice(0, 5).map((p) => (
@@ -290,7 +329,7 @@ const NewAppointmentPage = () => {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Teléfono *</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54..." />
+            <Input value={phone} onChange={(e) => setPhone(cleanPhoneInput(e.target.value))} placeholder="+549 característica y número" />
           </div>
           <div className="space-y-2">
             <Label>Obra Social</Label>

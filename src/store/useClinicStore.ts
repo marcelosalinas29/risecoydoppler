@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
-import type { Appointment, Patient, StudyStatus } from '@/types/medical';
-import { calcularEdad } from '@/types/medical';
+import type { Appointment, Patient, StudyStatus, ArrivalState } from '@/types/medical';
+import { calcularEdad, normalizeDni } from '@/types/medical';
 import { trackMutation } from '@/hooks/useRealtimeSync';
 
 let lastPatientsLoad = 0;
@@ -16,7 +16,7 @@ interface ClinicStore {
   fetchPatients: (force?: boolean) => Promise<void>;
   fetchAppointments: (force?: boolean) => Promise<void>;
   addPatient: (patient: Omit<Patient, 'id' | 'age'> & { age?: number }) => Promise<Patient>;
-  addAppointment: (data: { patientId: string; studyType: string; date: string; time: string; observations?: string }) => Promise<Appointment>;
+  addAppointment: (data: { patientId: string; studyType: string; date: string; time: string; observations?: string; doctorId?: string }) => Promise<Appointment>;
   updateAppointmentStatus: (id: string, status: StudyStatus) => Promise<void>;
   updateAppointmentReport: (id: string, report: string, reportedBy?: string) => Promise<void>;
   updateAppointmentStudyType: (id: string, studyType: string) => Promise<void>;
@@ -24,6 +24,7 @@ interface ClinicStore {
   updateAppointmentDate: (id: string, date: string) => Promise<void>;
   updateAppointmentObservations: (id: string, observations: string) => Promise<void>;
   updateAppointmentAsistio: (id: string, asistio: boolean) => Promise<void>;
+  setArrivalState: (id: string, state: ArrivalState) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   rescheduleAppointment: (id: string, date: string, time: string) => Promise<void>;
   addImagesToAppointment: (id: string, images: string[]) => Promise<void>;
@@ -38,7 +39,11 @@ interface ClinicStore {
   getAppointment: (id: string) => Appointment | undefined;
   getPatient: (id: string) => Patient | undefined;
   findPatientByDni: (dni: string) => Promise<Patient | null>;
+  fetchAppointmentsRange: (opts: { from?: string; to?: string; patientIds?: string[] }) => Promise<Appointment[]>;
 }
+
+const APPOINTMENTS_WINDOW_DAYS = 180;
+const APPOINTMENT_LIST_COLUMNS = 'id, patient_id, study_type, status, date, time, observations, reported_by, asistio, arrival_state, created_at, created_by, doctor_id, patients(*)';
 
 function mapPatient(p: any): Patient {
   return {
@@ -49,6 +54,8 @@ function mapPatient(p: any): Patient {
     phone: p.phone,
     fechaNacimiento: p.fecha_nacimiento || undefined,
     obraSocial: p.obra_social || '',
+    dniTipo: p.dni_tipo || 'DNI',
+    dniMaterno: !!p.dni_materno,
   };
 }
 
@@ -67,7 +74,9 @@ function mapAppointment(a: any): Appointment {
     observations: a.observations || '',
     reportedBy: a.reported_by || null,
     asistio: a.asistio ?? false,
+    arrivalState: (a.arrival_state ?? (a.asistio ? 'arrived' : null)) as ArrivalState,
     createdAt: a.created_at,
+    doctorId: a.doctor_id ?? null,
   };
 }
 
@@ -125,18 +134,35 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       return;
     }
     set({ loading: true });
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const dateFilter = ninetyDaysAgo.toISOString().split('T')[0];
+    // Últimos 6 meses. El servidor entrega como máximo 1000 filas por consulta: se pide por páginas.
+    const since = new Date();
+    since.setDate(since.getDate() - APPOINTMENTS_WINDOW_DAYS);
+    const dateFilter = since.toISOString().split('T')[0];
     const existingAppointments = new Map(get().appointments.map((appointment) => [appointment.id, appointment]));
-    const { data } = await supabase
-      .from('appointments')
-      .select('id, patient_id, study_type, status, date, time, observations, reported_by, asistio, created_at, created_by, patients(*)')
-      .gte('date', dateFilter)
-      .order('created_at', { ascending: false });
-    if (data) {
+    const PAGE = 1000;
+    const all: any[] = [];
+    let failed = false;
+    for (let page = 0; page < 20; page++) {
+      const from = page * PAGE;
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(APPOINTMENT_LIST_COLUMNS)
+        .gte('date', dateFilter)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, from + PAGE - 1);
+      if (error) {
+        console.error('Error loading appointments:', error);
+        failed = true;
+        break;
+      }
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+    }
+    if (!failed) {
       set({
-        appointments: data.map((a: any) => {
+        appointments: all.map((a: any) => {
           const existing = existingAppointments.get(a.id);
           return mapAppointment({
             ...a,
@@ -163,6 +189,8 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         phone: data.phone,
         fecha_nacimiento: data.fechaNacimiento || null,
         obra_social: data.obraSocial || '',
+        dni_tipo: data.dniTipo || 'DNI',
+        dni_materno: !!data.dniMaterno,
       } as any)
       .select()
       .single();
@@ -185,6 +213,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
         date: data.date,
         time: data.time,
         observations: data.observations || '',
+        doctor_id: data.doctorId || null,
         report: '',
         images: [],
       } as any)
@@ -280,6 +309,16 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     }
   },
 
+  setArrivalState: async (id, state) => {
+    trackMutation(id);
+    const asistio = state === 'arrived';
+    const { error } = await supabase.from('appointments').update({ arrival_state: state, asistio } as any).eq('id', id);
+    if (error) throw error;
+    set((s) => ({
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, arrivalState: state, asistio } : a)),
+    }));
+  },
+
   addImagesToAppointment: async (id, images) => {
     const current = get().appointments.find((a) => a.id === id);
     if (!current) return;
@@ -296,7 +335,8 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     if (!current) return;
     const updated = [...current.imageUrls, ...urls];
     trackMutation(id);
-    await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    const { error } = await supabase.from('appointments').update({ image_urls: updated } as any).eq('id', id);
+    if (error) throw error;
     set((s) => ({
       appointments: s.appointments.map((a) => a.id === id ? { ...a, imageUrls: updated } : a),
     }));
@@ -331,14 +371,59 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
       .appointments.filter((a) => a.patientId === patientId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
 
+  // Busca turnos en toda la historia (más allá de los 6 meses cargados). No toca la lista
+  // en memoria: devuelve solo lo pedido, sin informe ni imágenes (se cargan al abrir el estudio).
+  fetchAppointmentsRange: async ({ from, to, patientIds }) => {
+    const PAGE = 1000;
+    const out: any[] = [];
+    for (let page = 0; page < 30; page++) {
+      let q = supabase.from('appointments').select(APPOINTMENT_LIST_COLUMNS);
+      if (from) q = q.gte('date', from);
+      if (to) q = q.lte('date', to);
+      if (patientIds && patientIds.length > 0) q = q.in('patient_id', patientIds);
+      const { data, error } = await q
+        .order('date', { ascending: false })
+        .order('time', { ascending: false })
+        .order('id')
+        .range(page * PAGE, page * PAGE + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      out.push(...data);
+      if (data.length < PAGE) break;
+    }
+    return out.map((a) => mapAppointment({ ...a, report: '', images: [], image_urls: a.image_urls ?? [] }));
+  },
+
+  // Búsqueda: primero por DNI (con o sin puntos), después por apellido y nombre
+  // sin importar tildes, mayúsculas ni el orden de las palabras.
   searchPatients: (query) => {
-    const q = query.toLowerCase();
-    return get().patients.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.phone.includes(q) ||
-        (p.dni && p.dni.includes(q))
-    );
+    const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const q = fold(query).trim();
+    if (!q) return get().patients;
+    const digits = q.replace(/[\s.\-_/]/g, '');
+    const isNumeric = /^\d+$/.test(digits) && digits.length >= 2;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const scored: { p: Patient; score: number }[] = [];
+    for (const p of get().patients) {
+      const dni = fold(normalizeDni(p.dni));
+      const phone = (p.phone || '').replace(/\D/g, '');
+      const name = fold(p.name);
+      let score = -1;
+      if (isNumeric) {
+        if (dni === digits) score = 0;
+        else if (dni.includes(digits)) score = 1;
+        else if (phone.includes(digits)) score = 3;
+      } else if (dni && dni === q.replace(/[\s.\-_/]/g, '')) {
+        score = 0; // DNI con letras (documento extranjero)
+      }
+      if (score < 0 && !isNumeric && tokens.every((t) => name.includes(t))) {
+        score = name.startsWith(tokens[0]) ? 2 : 4;
+      }
+      if (score >= 0) scored.push({ p, score });
+    }
+    return scored
+      .sort((x, y) => x.score - y.score || x.p.name.localeCompare(y.p.name))
+      .map((x) => x.p);
   },
 
   // Busca directamente en la base y suma los resultados a la lista local,
@@ -416,10 +501,18 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   getPatient: (id) => get().patients.find((p) => p.id === id),
 
   findPatientByDni: async (dni: string) => {
+    const wanted = normalizeDni(dni);
+    if (!wanted) return null;
+    // Primero entre los pacientes cargados, comparando sin puntos (los viejos pueden tener "12.345.678")
+    const local = get().patients.find((p) => !p.dniMaterno && normalizeDni(p.dni) === wanted);
+    if (local) return local;
+    // Si no está cargado, buscar en la base tal cual se escribió y sin puntos
+    const candidates = Array.from(new Set([dni.trim(), wanted]));
     const { data } = await supabase
       .from('patients')
       .select('*')
-      .eq('dni', dni)
+      .in('dni', candidates)
+      .eq('dni_materno', false)
       .limit(1)
       .maybeSingle();
     if (!data) return null;

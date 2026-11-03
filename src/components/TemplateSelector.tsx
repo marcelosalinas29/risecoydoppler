@@ -1,4 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import MyTemplatesDialog from '@/components/MyTemplatesDialog';
+import { studyForTemplate } from '@/data/studyTemplateMap';
+import { EMPTY_SETTINGS, fetchMySettings } from '@/lib/doctorSettings';
+import { applyParagraphStyle } from '@/lib/reportStyle';
+import { fetchMyTemplates, type DoctorTemplate } from '@/lib/doctorTemplates';
 import { REPORT_TEMPLATES } from '@/data/reportTemplates';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,7 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { FileText, Plus } from 'lucide-react';
 
 /** Convert plain text template to proper HTML with <p> tags per line */
-function textToHtml(text: string): string {
+export function textToHtml(text: string, opts: { sectionBold?: boolean; labelBold?: boolean } = {}): string {
+  const sectionBold = opts.sectionBold ?? true;
+  const labelBold = opts.labelBold ?? true;
   return text
     .split('\n')
     .map(line => {
@@ -16,12 +24,12 @@ function textToHtml(text: string): string {
       // Detect lines that look like section headers (ALL CAPS or ending with colon at start)
       const isHeader = /^[A-ZÁÉÍÓÚÑÜ\s\-()\/]+:?$/.test(trimmed) && trimmed.length < 60;
       if (isHeader) {
-        return `<p><strong>${trimmed}</strong></p>`;
+        return sectionBold ? `<p><strong>${trimmed}</strong></p>` : `<p>${trimmed}</p>`;
       }
       // Detect label: value pattern (e.g. "Hígado: texto...")
       const labelMatch = trimmed.match(/^([A-Za-záéíóúñüÁÉÍÓÚÑÜ\s\-()\/]+:)\s*(.*)/);
       if (labelMatch) {
-        return `<p><strong>${labelMatch[1]}</strong> ${labelMatch[2]}</p>`;
+        return labelBold ? `<p><strong>${labelMatch[1]}</strong> ${labelMatch[2]}</p>` : `<p>${labelMatch[1]} ${labelMatch[2]}</p>`;
       }
       return `<p>${trimmed}</p>`;
     })
@@ -37,13 +45,30 @@ interface TemplateSelectorProps {
 }
 
 const TemplateSelector = ({ open, onOpenChange, onApply, currentReport }: TemplateSelectorProps) => {
-  const [selected, setSelected] = useState<number[]>([]);
+  const { isSecretary, isViewer } = useAuth();
+  const canOwn = !isSecretary && !isViewer;
+  const [selected, setSelected] = useState<string[]>([]);
   const [customTitle, setCustomTitle] = useState('');
+  const [mine, setMine] = useState<DoctorTemplate[]>([]);
+  const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [showMine, setShowMine] = useState(false);
+  const [prefill, setPrefill] = useState<{ name: string; html: string; studyType: string } | null>(null);
 
-  const toggleTemplate = (index: number) => {
-    setSelected((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
+  const loadMine = () => { if (canOwn) fetchMyTemplates().then(setMine).catch(() => setMine([])); };
+  useEffect(() => {
+    if (!open) return;
+    loadMine();
+    if (canOwn) fetchMySettings().then(setSettings).catch(() => setSettings(EMPTY_SETTINGS));
+  }, [open, canOwn]);
+
+  // Lista única: primero las propias, después las de la app.
+  const all = [
+    ...mine.map((m) => ({ key: `m${m.id}`, name: m.name, own: true, html: applyParagraphStyle(m.content, settings.style) })),
+    ...REPORT_TEMPLATES.filter((t) => !mine.some((m) => m.name === t.name)).map((t, i) => ({ key: `b${t.name}`, name: t.name, own: false, html: applyParagraphStyle(textToHtml(t.content, { sectionBold: settings.style.sectionBold, labelBold: settings.style.labelBold }), settings.style) })),
+  ];
+
+  const toggleTemplate = (key: string) => {
+    setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
 
   const handleApply = () => {
@@ -53,10 +78,9 @@ const TemplateSelector = ({ open, onOpenChange, onApply, currentReport }: Templa
       htmlParts.push(`<p><strong>${customTitle.trim().toUpperCase()}</strong></p>`);
     }
 
-    const sortedSelected = [...selected].sort((a, b) => a - b);
-    sortedSelected.forEach((idx, i) => {
-      const template = REPORT_TEMPLATES[idx];
-      htmlParts.push(textToHtml(template.content));
+    const sortedSelected = all.filter((t) => selected.includes(t.key));
+    sortedSelected.forEach((template, i) => {
+      htmlParts.push(template.html);
       if (i < sortedSelected.length - 1) {
         htmlParts.push('<p>---</p>');
       }
@@ -102,16 +126,22 @@ const TemplateSelector = ({ open, onOpenChange, onApply, currentReport }: Templa
               Plantillas disponibles
             </label>
             <div className="space-y-1 border border-border rounded-lg overflow-hidden">
-              {REPORT_TEMPLATES.map((t, idx) => (
+              {all.map((t) => (
                 <label
-                  key={t.name}
+                  key={t.key}
                   className="flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/50 transition-colors cursor-pointer border-b border-border last:border-0"
                 >
                   <Checkbox
-                    checked={selected.includes(idx)}
-                    onCheckedChange={() => toggleTemplate(idx)}
+                    checked={selected.includes(t.key)}
+                    onCheckedChange={() => toggleTemplate(t.key)}
                   />
-                  <span className="text-sm font-medium">{t.name}</span>
+                  <span className="text-sm font-medium flex-1">{t.name}{t.own && <span className="ml-2 text-xs text-primary">(mía)</span>}</span>
+                  {canOwn && !t.own && (
+                    <Button
+                      type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                      onClick={(e) => { e.preventDefault(); setPrefill({ name: t.name, html: t.html, studyType: studyForTemplate(t.name) }); setShowMine(true); }}
+                    >Editar</Button>
+                  )}
                 </label>
               ))}
             </div>
@@ -123,6 +153,11 @@ const TemplateSelector = ({ open, onOpenChange, onApply, currentReport }: Templa
             </p>
           )}
         </div>
+
+        {canOwn && (
+          <Button variant="outline" className="w-full" onClick={() => { setPrefill(null); setShowMine(true); }}>Mis plantillas (agregar / borrar)</Button>
+        )}
+        <MyTemplatesDialog open={showMine} onOpenChange={setShowMine} currentReport={currentReport} onChanged={loadMine} prefill={prefill} />
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

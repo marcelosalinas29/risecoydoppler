@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Appointment, StudyStatus } from '@/types/medical';
-import { STATUS_LABELS, formatStudyType, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
+import { isInactiveStatus } from '@/types/medical';
+import { STATUS_LABELS, ARRIVAL_LABELS, resolveArrival, type ArrivalState, formatStudyType, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,6 +32,8 @@ const statusClass: Record<StudyStatus, string> = {
   'in-study': 'status-badge-in-study',
   'reported': 'status-badge-reported',
   'sent': 'status-badge-sent',
+  'cancelled': 'bg-muted text-muted-foreground line-through',
+  'no-show': 'bg-muted text-muted-foreground',
 };
 
 function generateDefaultTimeSlots(): string[] {
@@ -76,7 +79,8 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const updateAppointmentStatus = useClinicStore((s) => s.updateAppointmentStatus);
   const updateAppointmentObservations = useClinicStore((s) => s.updateAppointmentObservations);
   const updatePatient = useClinicStore((s) => s.updatePatient);
-  const updateAppointmentAsistio = useClinicStore((s) => s.updateAppointmentAsistio);
+  const setArrivalState = useClinicStore((s) => s.setArrivalState);
+  const arrivalOf = (a?: { arrivalState?: ArrivalState; asistio?: boolean } | null): ArrivalState => (a ? resolveArrival(a) : null);
   const deleteAppointment = useClinicStore((s) => s.deleteAppointment);
   const rescheduleAppointment = useClinicStore((s) => s.rescheduleAppointment);
   // fetchAppointments removed — realtime sync handles updates automatically
@@ -140,7 +144,18 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
   const appointmentMap = useMemo(() => {
     const map = new Map<string, Appointment>();
     for (const a of appointments) {
+      if (isInactiveStatus(a.status)) continue;
       map.set(a.time, a);
+    }
+    return map;
+  }, [appointments]);
+
+  // Todos los turnos de cada hora (si hay más de uno, el segundo en adelante es sobreturno y también se muestra)
+  const appointmentsBySlot = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    for (const a of appointments) {
+      const list = map.get(a.time);
+      if (list) list.push(a); else map.set(a.time, [a]);
     }
     return map;
   }, [appointments]);
@@ -173,7 +188,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     return blocked;
   }, [appointments, timeSlots, appointmentMap]);
 
-  const occupiedCount = appointmentMap.size;
+  const occupiedCount = appointments.filter((a) => !isInactiveStatus(a.status)).length;
 
 
   const startEdit = (apt: Appointment) => {
@@ -239,6 +254,22 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
     }
   };
 
+  const timeRows = useMemo(() => {
+    const rows: { slot: string; apt: Appointment | undefined; extra: boolean }[] = [];
+    for (const slot of timeSlots) {
+      const list = appointmentsBySlot.get(slot) || [];
+      let activeSeen = 0;
+      for (const a of list) {
+        const inactive = isInactiveStatus(a.status);
+        rows.push({ slot, apt: a, extra: !inactive && activeSeen > 0 });
+        if (!inactive) activeSeen++;
+      }
+      // Si no queda ningún turno activo en esa hora, el horario vuelve a estar libre
+      if (activeSeen === 0) rows.push({ slot, apt: undefined, extra: false });
+    }
+    return rows;
+  }, [timeSlots, appointmentsBySlot]);
+
   const openReschedule = (apt: Appointment) => {
     setRescheduleTarget(apt);
     setRescheduleDate(selectedDate);
@@ -273,21 +304,21 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
             </tr>
           </thead>
           <tbody>
-            {timeSlots.map((slot, idx) => {
-              const apt = appointmentMap.get(slot);
+            {timeRows.map(({ slot, apt, extra }, idx) => {
               const isOccupied = !!apt;
               const isEditing = apt && editingId === apt.id;
               const hasHistory = apt && patientsWithHistory?.has(getPatientHistoryKey(apt.patient));
               const overbook = isOverbook(slot);
 
-              const prevSlot = idx > 0 ? timeSlots[idx - 1] : null;
+              const prevSlot = idx > 0 ? timeRows[idx - 1].slot : null;
               const slotHour = parseInt(slot.split(':')[0]);
               const prevHour = prevSlot ? parseInt(prevSlot.split(':')[0]) : null;
-              const showMorningSep = slot === '08:00' || (idx === 0 && slotHour < 13);
+              const firstOfSlot = idx === 0 || timeRows[idx - 1].slot !== slot;
+              const showMorningSep = firstOfSlot && (slot === '08:00' || (idx === 0 && slotHour < 13));
               const showAfternoonSep = prevHour !== null && prevHour < 13 && slotHour >= 13;
 
               return (
-                <React.Fragment key={`slot-${slot}`}>
+                <React.Fragment key={`slot-${slot}-${apt?.id ?? 'libre'}`}>
                   {showMorningSep && (
                     <tr key="morning-sep">
                       <td colSpan={10} className="py-1.5 px-2 bg-primary/10 text-center text-[11px] text-primary font-bold border border-border border-t-2 border-t-primary/40 tracking-widest">
@@ -303,12 +334,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                     </tr>
                   )}
                   <tr
-                    key={slot}
-                    className={`transition-colors ${apt?.asistio ? 'bg-green-100 dark:bg-green-900/30' : overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
+                    key={`row-${slot}-${apt?.id ?? 'libre'}`}
+                    className={`transition-colors ${apt && isInactiveStatus(apt.status) ? 'bg-muted/40 opacity-60' : arrivalOf(apt) === 'arrived' ? 'bg-green-100 dark:bg-green-900/30' : arrivalOf(apt) === 'late' ? 'bg-yellow-100 dark:bg-yellow-900/30' : arrivalOf(apt) === 'missed' ? 'bg-red-100 dark:bg-red-900/30' : extra ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500' : overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
                     <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
                       {slot}
                       {overbook && <span className="ml-1 text-[9px] text-accent-foreground font-bold">ST</span>}
+                      {extra && <span className="ml-1 text-[9px] text-amber-700 font-bold" title="Sobreturno: ya hay otro turno a esta hora">SOB</span>}
                     </td>
 
                     {isOccupied && apt ? (
@@ -403,6 +435,12 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                     <SelectItem value="in-study">En estudio</SelectItem>
                                     <SelectItem value="reported">Reportado</SelectItem>
                                     <SelectItem value="sent">Enviado</SelectItem>
+                                    {(apt.status === 'pending' || apt.status === 'in-study' || isInactiveStatus(apt.status)) && (
+                                      <>
+                                        <SelectItem value="cancelled">Cancelado</SelectItem>
+                                        <SelectItem value="no-show">Ausente</SelectItem>
+                                      </>
+                                    )}
                                   </>
                                 )}
                               </SelectContent>
@@ -432,19 +470,46 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-0.5">
-                              {!apt.asistio && (
-                                <Button
-                                  variant="ghost" size="sm" className="h-6 w-6 p-0"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    updateAppointmentAsistio(apt.id, true);
-                                    toast.success(`${apt.patient.name} confirmado/a en sala`);
-                                  }}
-                                  title="Confirmar recepción"
-                                >
-                                  <UserCheck className="w-3 h-3 text-green-600" />
-                                </Button>
-                              )}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={arrivalOf(apt) ? ARRIVAL_LABELS[arrivalOf(apt) as 'arrived' | 'late' | 'missed'] : 'Marcar llegada'}
+                                  >
+                                    <UserCheck className={`w-3 h-3 ${arrivalOf(apt) === 'arrived' ? 'text-green-600' : arrivalOf(apt) === 'late' ? 'text-yellow-500' : arrivalOf(apt) === 'missed' ? 'text-red-600' : 'text-muted-foreground'}`} />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-1" align="end" onClick={(e) => e.stopPropagation()}>
+                                  {([
+                                    ['arrived', 'bg-green-500'],
+                                    ['late', 'bg-yellow-400'],
+                                    ['missed', 'bg-red-500'],
+                                  ] as const).map(([st, dot]) => (
+                                    <button
+                                      key={st}
+                                      className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
+                                      onClick={async () => {
+                                        try {
+                                          await setArrivalState(apt.id, st);
+                                          toast.success(`${apt.patient.name}: ${ARRIVAL_LABELS[st].toLowerCase()}`);
+                                        } catch { toast.error('No se pudo guardar'); }
+                                      }}
+                                    >
+                                      <span className={`w-3 h-3 rounded-full ${dot}`} />
+                                      {ARRIVAL_LABELS[st]}{arrivalOf(apt) === st ? ' ✓' : ''}
+                                    </button>
+                                  ))}
+                                  {arrivalOf(apt) && (
+                                    <button
+                                      className="w-full px-2 py-1.5 text-sm rounded hover:bg-muted text-left text-muted-foreground border-t border-border mt-1"
+                                      onClick={async () => {
+                                        try { await setArrivalState(apt.id, null); toast.success('Llegada sin marcar'); } catch { toast.error('No se pudo guardar'); }
+                                      }}
+                                    >Sin marcar</button>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
@@ -485,6 +550,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                       <InlineAppointmentForm
                         slot={slot}
                         date={dateStr}
+                        doctorId={selectedDoctorId && selectedDoctorId !== 'all' ? selectedDoctorId : undefined}
                         onCancel={() => setPreAppointmentSlot(null)}
                         onSaved={() => {
                           setPreAppointmentSlot(null);

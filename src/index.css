@@ -52,6 +52,52 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  .dark {
+    --background: 225 45% 6%;
+    --foreground: 210 30% 94%;
+
+    --action-primary: 217 100% 62%;
+
+    --card: 225 38% 10%;
+    --card-foreground: 210 30% 94%;
+
+    --popover: 225 38% 11%;
+    --popover-foreground: 210 30% 94%;
+
+    --primary: 221 78% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 30% 16%;
+    --secondary-foreground: 210 30% 94%;
+
+    --muted: 225 28% 14%;
+    --muted-foreground: 215 20% 70%;
+
+    --accent: 190 95% 45%;
+    --accent-foreground: 225 45% 6%;
+
+    --destructive: 0 75% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 70% 32%;
+    --input: 217 60% 30%;
+    --ring: 190 100% 55%;
+
+    --status-pending: 40 95% 58%;
+    --status-in-study: 217 100% 68%;
+    --status-reported: 190 95% 55%;
+    --status-sent: 152 70% 50%;
+
+    --sidebar-background: 225 40% 8%;
+    --sidebar-foreground: 210 30% 90%;
+    --sidebar-primary: 210 30% 94%;
+    --sidebar-primary-foreground: 225 45% 6%;
+    --sidebar-accent: 225 28% 14%;
+    --sidebar-accent-foreground: 210 30% 94%;
+    --sidebar-border: 217 70% 32%;
+    --sidebar-ring: 190 100% 55%;
+  }
 }
 
 @layer base {
@@ -67,16 +113,16 @@
 
 @layer utilities {
   .status-badge-pending {
-    @apply bg-amber-50 text-amber-700 border-amber-200;
+    @apply bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30;
   }
   .status-badge-in-study {
-    @apply bg-blue-50 text-blue-800 border-blue-200;
+    @apply bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30;
   }
   .status-badge-reported {
-    @apply bg-cyan-50 text-cyan-800 border-cyan-200;
+    @apply bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30;
   }
   .status-badge-sent {
-    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30;
   }
   .btn-whatsapp {
     @apply bg-emerald-600 hover:bg-emerald-700 text-white;
@@ -108,4 +154,58 @@
 .ProseMirror ul:last-child,
 .ProseMirror ol:last-child {
   margin-bottom: 0;
+}
+
+/* Modo oscuro: detalle "neón" suave (borde azul brillante y leve resplandor) */
+.dark .card-elevated,
+.dark [role="dialog"],
+.dark [data-radix-popper-content-wrapper] > * {
+  box-shadow: 0 0 0 1px hsl(217 90% 55% / 0.35), 0 0 14px hsl(210 100% 55% / 0.14);
+}
+.dark input:focus-visible,
+.dark textarea:focus-visible,
+.dark select:focus-visible,
+.dark button:focus-visible {
+  box-shadow: 0 0 0 2px hsl(190 100% 55% / 0.6), 0 0 10px hsl(190 100% 55% / 0.35);
+}
+.dark header.bg-primary {
+  border-bottom: 1px solid hsl(217 90% 55% / 0.55);
+  box-shadow: 0 2px 14px hsl(210 100% 55% / 0.25);
+}
+
+/* Informe mostrado (solo lectura, versiones, editor) en modo oscuro: negritas y texto en blanco */
+.dark .prose,
+.dark .prose :where(p, li, span) {
+  color: hsl(210 30% 94%);
+}
+.dark .prose :where(strong, b),
+.dark .prose :where(strong, b) * {
+  color: #ffffff;
+  font-weight: 700;
+}
+.dark .prose [style*="color: rgb(0, 0, 0)"],
+.dark .prose [style*="color:#000"],
+.dark .prose [style*="color: #000"],
+.dark .prose [style*="color: black"],
+.dark .prose [style*="color:black"] {
+  color: inherit !important;
+}
+
+/* Editor de informes en modo oscuro: negritas y texto en blanco (un texto pegado con color negro explícito también) */
+.dark .ProseMirror,
+.dark .ProseMirror p,
+.dark .ProseMirror li {
+  color: hsl(210 30% 94%);
+}
+.dark .ProseMirror strong,
+.dark .ProseMirror b {
+  color: #ffffff;
+  font-weight: 700;
+}
+.dark .ProseMirror [style*="color: rgb(0, 0, 0)"],
+.dark .ProseMirror [style*="color:#000"],
+.dark .ProseMirror [style*="color: #000"],
+.dark .ProseMirror [style*="color: black"],
+.dark .ProseMirror [style*="color:black"] {
+  color: inherit !important;
 }

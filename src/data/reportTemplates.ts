@@ -16,6 +16,47 @@ Aorta: calibre y recorrido conservados.
 No se observa líquido libre en cavidad.`,
   },
   {
+    name: 'Ecografía Pélvica',
+    content: `Vejiga: de paredes finas y contenido líquido homogéneo.
+Útero: en AVF de forma, tamaño y ecoestructura miometrial conservados.
+Medidas: Long: mm.  AP: mm. Axial: mm.
+Endometrio lineal / homogéneo de mm.
+Ovario Derecho: mm x mm.
+Ovario Izquierdo: mm x mm.
+Ambos ovarios de características conservadas para la edad.
+Fondo de saco de Douglas libre.`,
+  },
+  {
+    name: 'Ecografía Vesical',
+    content: `Vejiga: de paredes finas y regulares, contenido líquido homogéneo. Sin imágenes endoluminales.
+Volumen premiccional:  cc. RPM:  cc.`,
+  },
+  {
+    name: 'Ecografía Prostática',
+    content: `Próstata: CP: mm. AP: mm. Axial: mm de ecoestructura finamente no homogénea. Volumen:      cc.
+Vejiga: de paredes finas y contenido líquido homogéneo.
+Volumen premiccional:  cc. RPM:  cc.`,
+  },
+  {
+    name: 'Ecografía Vesical y Prostática',
+    content: `Vejiga: de paredes finas y contenido líquido homogéneo.
+Volumen premiccional:  cc. RPM:  cc.
+Próstata: CP: mm. AP: mm. Axial: mm de ecoestructura finamente no homogénea. Volumen:      cc.`,
+  },
+  {
+    name: 'Ecografía de Partes Blandas',
+    content: `Se realiza rastreo ecográfico de la región referida por el paciente, observándose planos cutáneo, celular subcutáneo y muscular de características ecográficas conservadas.
+No se evidencian colecciones ni masas a destacar por este método.
+Si la clínica lo sugiere completar con otros métodos diagnósticos.`,
+  },
+  {
+    name: 'Ecografía Articular',
+    content: `Se explora la articulación referida: superficies óseas de contorno regular, sin derrame articular ni sinovitis.
+Estructuras tendinosas y ligamentarias visualizadas de ecoestructura fibrilar conservada.
+No se evidencian colecciones periarticulares.
+Si la clínica lo sugiere completar con otros métodos diagnósticos.`,
+  },
+  {
     name: 'Ecografía Renal',
     content: `Riñón derecho: Long: mm  AP: mm Axial: mm. Espesor cortical conservado.
 Riñón izquierdo: Long: mm  AP: mm Axial: mm. Espesor cortical conservado.
@@ -257,6 +298,42 @@ Vena safena parva: ostium de calibre conservado y continente.
 No se observan venas perforantes insuficientes a destacar.`,
   },
   {
+    name: 'Doppler Venoso MMII (Insuficiencia / Mapeo)',
+    content: `Estudio realizado en bipedestación, con maniobras de compresión distal/Valsalva.
+
+SISTEMA VENOSO PROFUNDO (ambos miembros)
+Venas femoral común, femoral, poplítea, tibiales posteriores y peroneas: permeables, compresibles, con flujo espontáneo y variación respiratoria. Sin signos de trombosis. Sin reflujo patológico (>1 s).
+
+SISTEMA VENOSO SUPERFICIAL
+MIEMBRO INFERIOR DERECHO
+Unión safeno-femoral: válvula terminal [continente / incompetente].
+Safena magna: diámetro en muslo proximal __ mm, medio __ mm, pierna __ mm. Reflujo: [ausente / presente, __ s, hasta __].
+Unión safeno-poplítea y safena parva: diámetro __ mm. Reflujo: [ausente / presente, __ s].
+Venas safenas accesorias / colaterales: [sin particularidades / dilatadas con reflujo].
+Venas perforantes: [sin incompetentes / incompetente en __, diámetro __ mm, reflujo __ s].
+
+MIEMBRO INFERIOR IZQUIERDO
+Unión safeno-femoral: válvula terminal [continente / incompetente].
+Safena magna: diámetro en muslo proximal __ mm, medio __ mm, pierna __ mm. Reflujo: [ausente / presente, __ s, hasta __].
+Unión safeno-poplítea y safena parva: diámetro __ mm. Reflujo: [ausente / presente, __ s].
+Venas safenas accesorias / colaterales: [sin particularidades / dilatadas con reflujo].
+Venas perforantes: [sin incompetentes / incompetente en __, diámetro __ mm, reflujo __ s].
+
+CONCLUSION:
+Sistema venoso profundo permeable y competente en ambos miembros inferiores.
+Insuficiencia venosa superficial [ausente / en territorio de safena magna / safena parva / colaterales] [derecha / izquierda / bilateral].
+Se sugiere correlación clínica (clasificación CEAP).`,
+  },
+  {
+    name: 'Ecografía Hepatobiliopancreática',
+    content: `Hígado: de forma, tamaño y ecoestructura conservados, sin lesiones focales en los segmentos explorados.
+Vía biliar: intra y extrahepática no dilatadas. Colédoco: __ mm.
+Vesícula: de paredes finas y contenido líquido homogéneo. Alitiásica.
+Páncreas: parénquima homogéneo, sin imágenes a destacar en los segmentos visualizados.
+Vena porta: calibre y flujo conservados.
+No se observa líquido libre en cavidad.`,
+  },
+  {
     name: 'Doppler Arterial MMII',
     content: `LADO DERECHO:
 Arteria femoral común: permeable con espectro trifásico.
@@ -304,6 +381,17 @@ No se observa circulación colateral.
 
 CONCLUSION:
 Doppler esplenoportal dentro de parámetros normales.`,
+  },
+  {
+    name: 'Doppler Venoso MMSS',
+    content: `[BORRADOR - revisar]
+LADO DERECHO:
+Venas yugular interna, subclavia, axilar, braquial, basílica y cefálica: permeables, compresibles, con flujo espontáneo y variación respiratoria.
+
+LADO IZQUIERDO:
+Venas yugular interna, subclavia, axilar, braquial, basílica y cefálica: permeables, compresibles, con flujo espontáneo y variación respiratoria.
+
+CONCLUSION: Sistema venoso profundo y superficial de ambos miembros superiores permeable y compresible. Sin signos de trombosis al momento del estudio.`,
   },
   {
     name: 'Doppler Arterial MMSS',

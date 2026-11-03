@@ -13,16 +13,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { getPatientHistoryKey, normalizeDni } from '@/types/medical';
+import type { Appointment } from '@/types/medical';
+import { getPatientHistoryKey, normalizeDni, isInactiveStatus } from '@/types/medical';
 import DailyView from '@/components/DailyView';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
+import { parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const today = new Date();
   const { role, isViewer } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(today);
+  // El día que se está mirando queda en la dirección (?fecha=), así al volver desde un paciente se vuelve a ese mismo día.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const f = searchParams.get('fecha');
+    const d = f && /^\d{4}-\d{2}-\d{2}$/.test(f) ? parseISO(f) : null;
+    return d && isValid(d) ? d : today;
+  });
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
   const [testingConnection, setTestingConnection] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -34,10 +43,34 @@ const Index = () => {
   const { doctors, fetchDoctors, fetchAllSchedules, generateAvailableSlots, blockedDates, fetchBlockedDates, addBlockedDate, removeBlockedDate, isDateBlocked } = useScheduleStore();
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
-  const dayAppointments = useMemo(
-    () => allAppointments.filter(a => a.date === dateStr),
-    [allAppointments, dateStr]
-  );
+  useEffect(() => {
+    if (searchParams.get('fecha') !== dateStr) {
+      setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('fecha', dateStr); return n; }, { replace: true });
+    }
+  }, [dateStr]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Días anteriores a los 6 meses cargados: se piden al servidor solo al navegar a esa fecha.
+  const [olderDay, setOlderDay] = useState<{ date: string; items: Appointment[] } | null>(null);
+  const windowStart = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 175);
+    return format(d, 'yyyy-MM-dd');
+  }, []);
+  useEffect(() => {
+    if (dateStr >= windowStart) { setOlderDay(null); return; }
+    let cancelled = false;
+    useClinicStore.getState().fetchAppointmentsRange({ from: dateStr, to: dateStr })
+      .then((items) => { if (!cancelled) setOlderDay({ date: dateStr, items }); })
+      .catch((e) => { console.error(e); if (!cancelled) toast.error('No se pudo cargar ese día'); });
+    return () => { cancelled = true; };
+  }, [dateStr, windowStart]);
+
+  const dayAppointments = useMemo(() => {
+    const source = olderDay && olderDay.date === dateStr ? olderDay.items : allAppointments;
+    // Con un médico elegido: sus turnos y los viejos sin médico asignado
+    return source
+      .filter(a => a.date === dateStr && (selectedDoctorId === 'all' || !a.doctorId || a.doctorId === selectedDoctorId))
+      .sort((x, y) => x.time.localeCompare(y.time));
+  }, [allAppointments, olderDay, dateStr, selectedDoctorId]);
   // Set completo de pacientes con historial por DNI normalizado (incluye estudios fuera de la ventana del store).
   const [historicalPatientKeys, setHistoricalPatientKeys] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -45,11 +78,12 @@ const Index = () => {
     (async () => {
       const { data, error } = await supabase
         .from('appointments')
-        .select('patient_id, patients(id, dni)');
+        .select('patient_id, patients(id, dni, dni_materno)')
+        .not('status', 'in', '(cancelled,no-show)');
       if (cancelled || error || !data) return;
       const counts = new Map<string, number>();
-      for (const row of data as { patient_id: string; patients: { id: string; dni: string | null } | null }[]) {
-        const dniKey = normalizeDni(row.patients?.dni);
+      for (const row of data as { patient_id: string; patients: { id: string; dni: string | null; dni_materno: boolean | null } | null }[]) {
+        const dniKey = row.patients?.dni_materno ? '' : normalizeDni(row.patients?.dni);
         const key = dniKey ? `dni:${dniKey}` : `patient:${row.patient_id}`;
         counts.set(key, (counts.get(key) || 0) + 1);
       }
@@ -61,6 +95,7 @@ const Index = () => {
   const patientsWithHistory = useMemo(() => {
     const counts = new Map<string, number>();
     for (const a of allAppointments) {
+      if (isInactiveStatus(a.status)) continue; // cancelado/ausente no es un estudio previo
       const key = getPatientHistoryKey(a.patient);
       counts.set(key, (counts.get(key) || 0) + 1);
     }

@@ -1,24 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useClinicStore } from '@/store/useClinicStore';
 import { toast } from 'sonner';
 import { Check, X, Search, FileText } from 'lucide-react';
 import StudyTypeSelector from '@/components/StudyTypeSelector';
-import { calcularEdadDetallada, getStudyDuration } from '@/types/medical';
+import { calcularEdadDetallada, getStudyDuration, cleanDniInput, composePatientName, normalizeDni, PHONE_DEFAULT_PREFIX, cleanPhoneInput, phoneToSave } from '@/types/medical';
 
 interface Props {
   slot: string;
   date: string;
   onCancel: () => void;
   onSaved: () => void;
+  doctorId?: string;
 }
 
-const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
+const InlineAppointmentForm = ({ slot, date, doctorId, onCancel, onSaved }: Props) => {
   const store = useClinicStore();
   const [dni, setDni] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [dniMaterno, setDniMaterno] = useState(false);
+  const [apellido, setApellido] = useState('');
+  const [nombres, setNombres] = useState('');
+  const name = composePatientName(apellido, nombres);
+  const [phone, setPhone] = useState(PHONE_DEFAULT_PREFIX);
   const [obraSocial, setObraSocial] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [studyType, setStudyType] = useState('');
@@ -27,34 +31,65 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
   const [saving, setSaving] = useState(false);
   const [showStudySelector, setShowStudySelector] = useState(false);
 
-  const lookupDni = async () => {
-    if (!dni.trim()) return;
-    const p = await store.findPatientByDni(dni.trim());
+  // Completa todos los datos a partir de un paciente ya cargado
+  const fillFromPatient = (p: { id: string; name: string; dni?: string; dniMaterno?: boolean; phone?: string; obraSocial?: string; fechaNacimiento?: string }) => {
+    setPatientId(p.id);
+    setApellido(p.name); // nombre completo tal cual está cargado
+    setNombres('');
+    setDni(cleanDniInput(p.dni || ''));
+    setDniMaterno(!!p.dniMaterno);
+    setPhone(p.phone || PHONE_DEFAULT_PREFIX);
+    setObraSocial(p.obraSocial || '');
+    setFechaNacimiento(p.fechaNacimiento || '');
+  };
+
+  const suggestions = !patientId && name.length >= 2 ? store.searchPatients(name).slice(0, 5) : [];
+  useEffect(() => {
+    if (patientId || name.trim().length < 2) return;
+    const t = setTimeout(() => { store.searchPatientsRemote(name); }, 350);
+    return () => clearTimeout(t);
+  }, [name, patientId]);
+
+  // Búsqueda automática por DNI apenas se termina de escribir (sin tener que salir del casillero)
+  useEffect(() => {
+    if (patientId || dniMaterno || cleanDniInput(dni).length < 7) return;
+    const t = setTimeout(() => { lookupDni(true); }, 500);
+    return () => clearTimeout(t);
+  }, [dni, patientId, dniMaterno]);
+
+  const lookupDni = async (auto = false) => {
+    if (!dni.trim() || dniMaterno) return;
+    const p = await store.findPatientByDni(dni);
     if (p) {
       setPatientId(p.id);
-      setName(p.name);
-      setPhone(p.phone);
+      setApellido(p.name); // paciente existente: nombre completo tal cual está cargado
+      setNombres('');
+      setPhone(p.phone || PHONE_DEFAULT_PREFIX);
       setObraSocial(p.obraSocial || '');
       setFechaNacimiento(p.fechaNacimiento || '');
       toast.success('Paciente encontrado');
     } else {
       setPatientId(null);
-      toast.info('Paciente no registrado, complete los datos');
+      if (!auto) toast.info('Paciente no registrado, complete los datos');
     }
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      toast.error('Ingrese el nombre del paciente');
+    if (!cleanDniInput(dni)) {
+      toast.error('Ingrese el documento del paciente (en recién nacidos, el de la madre)');
+      return;
+    }
+    if (!apellido.trim() || (!patientId && !nombres.trim())) {
+      toast.error('Ingrese apellido y nombres del paciente');
       return;
     }
     // Guarda anti-duplicado: si este paciente ya tiene una cita en esta fecha y hora,
     // pedir confirmación explícita antes de crear otra igual.
-    const normDni = dni.replace(/\D/g, '');
+    const normDni = dniMaterno ? '' : normalizeDni(dni);
     const existingSameSlot = store.getAppointmentsByDate(date).filter((a) => {
       if (a.time !== slot) return false;
       if (patientId && a.patientId === patientId) return true;
-      if (normDni && (a.patient?.dni || '').replace(/\D/g, '') === normDni) return true;
+      if (normDni && !a.patient?.dniMaterno && normalizeDni(a.patient?.dni) === normDni) return true;
       return false;
     });
     if (existingSameSlot.length > 0) {
@@ -107,9 +142,11 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       let pid = patientId;
       if (!pid) {
         const p = await store.addPatient({
-          dni,
+          dni: cleanDniInput(dni),
+          dniTipo: /[A-Z]/.test(cleanDniInput(dni)) ? 'OTRO' : 'DNI',
+          dniMaterno,
           name: name.trim(),
-          phone,
+          phone: phoneToSave(phone),
           obraSocial,
           fechaNacimiento: fechaNacimiento || undefined,
         });
@@ -121,6 +158,7 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
         date,
         time: slot,
         observations: observations.trim() || undefined,
+        doctorId,
       });
       toast.success('Turno confirmado');
       onSaved();
@@ -144,15 +182,35 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
 
   return (
     <>
-      <td className="p-1 border border-border">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value.toUpperCase())}
-          placeholder="Nombre"
-          className="h-6 text-xs uppercase"
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
+      <td className="p-1 border border-border relative">
+        <div className="flex gap-0.5">
+          <Input
+            value={apellido}
+            onChange={(e) => { setApellido(e.target.value.toUpperCase()); if (patientId) setPatientId(null); }}
+            placeholder="Apellido"
+            className="h-6 text-xs uppercase"
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+          <Input
+            value={nombres}
+            onChange={(e) => { setNombres(e.target.value.toUpperCase()); if (patientId) setPatientId(null); }}
+            placeholder="Nombres"
+            className="h-6 text-xs uppercase"
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+        {suggestions.length > 0 && (
+          <div className="absolute left-0 top-full z-40 w-72 bg-card border border-border rounded-md shadow-lg">
+            {suggestions.map((p) => (
+              <button key={p.id} type="button" className="w-full text-left text-xs px-2 py-1.5 hover:bg-muted/60 border-b border-border last:border-0"
+                onMouseDown={(e) => e.preventDefault()} onClick={() => fillFromPatient(p)}>
+                <span className="font-semibold">{p.name}</span>
+                <span className="text-muted-foreground">{p.dni ? ` · DNI ${p.dni}` : ''}{p.fechaNacimiento ? ` · ${p.fechaNacimiento.split('-').reverse().join('/')}` : ''}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </td>
       <td className="p-1 border border-border">
         <div className="flex items-center gap-0.5">
@@ -174,13 +232,16 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
         <div className="flex items-center gap-0.5">
           <Input
             value={dni}
-            onChange={(e) => setDni(e.target.value)}
-            onBlur={lookupDni}
+            onChange={(e) => { setDni(cleanDniInput(e.target.value)); if (patientId) setPatientId(null); }}
+            onBlur={() => lookupDni()}
             placeholder="DNI"
             className="h-6 text-xs w-20"
             onKeyDown={handleKeyDown}
           />
-          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={lookupDni} title="Buscar por DNI">
+          <label className="flex items-center gap-0.5 text-[10px] shrink-0" title="Recién nacido: usa el DNI de la madre">
+            <input type="checkbox" checked={dniMaterno} onChange={(e) => { setDniMaterno(e.target.checked); if (e.target.checked) setPatientId(null); }} />RN
+          </label>
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => lookupDni()} title="Buscar por DNI">
             <Search className="w-3 h-3" />
           </Button>
         </div>
@@ -203,7 +264,7 @@ const InlineAppointmentForm = ({ slot, date, onCancel, onSaved }: Props) => {
       <td className="p-1 border border-border">
         <Input
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => setPhone(cleanPhoneInput(e.target.value))}
           placeholder="Tel"
           className="h-6 text-xs"
           onKeyDown={handleKeyDown}
