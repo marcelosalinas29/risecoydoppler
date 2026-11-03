@@ -18,21 +18,25 @@ const AuditPage = () => {
   const [patients, setPatients] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
-      const { data } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(300);
+      const { data, error: e1 } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(300);
+      if (e1) { setError('No se pudo cargar el registro. No significa que no haya actividad. Reintentá más tarde.'); setLoading(false); return; }
       const list = (data || []) as Row[];
       setRows(list);
       const uids = Array.from(new Set(list.flatMap((r) => [r.user_id, (r.details as any)?.firmante]).filter(Boolean))) as string[];
       if (uids.length) {
-        const { data: ps } = await supabase.from('profiles').select('user_id, full_name').in('user_id', uids);
+        const { data: ps, error: e2 } = await supabase.from('profiles').select('user_id, full_name').in('user_id', uids);
+        if (e2) setError('No se pudieron cargar algunos nombres de usuarios.');
         setNames(Object.fromEntries((ps || []).map((p: any) => [p.user_id, p.full_name])));
       }
       const pids = Array.from(new Set(list.map((r) => r.patient_id).filter(Boolean))) as string[];
       if (pids.length) {
-        const { data: pts } = await supabase.from('patients').select('id, name').in('id', pids.slice(0, 200));
+        const { data: pts, error: e3 } = await supabase.from('patients').select('id, name').in('id', pids);
+        if (e3) setError('No se pudieron cargar algunos nombres de pacientes.');
         setPatients(Object.fromEntries((pts || []).map((p: any) => [p.id, p.name])));
       }
       setLoading(false);
@@ -58,6 +62,7 @@ const AuditPage = () => {
       <div className="p-4 space-y-3">
         <p className="text-xs text-muted-foreground">Últimos 300 movimientos. Los cambios de texto del informe se ven en "Versiones" de cada estudio.</p>
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Filtrar por usuario, paciente o acción" />
+        {error && <p className="text-xs text-destructive font-medium">{error}</p>}
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : shown.map(({ r, who, patient, text: t, detail }) => (
           <div key={r.id} className="bg-card border border-border rounded-lg p-2 text-xs space-y-0.5">
             <div className="flex justify-between gap-2"><span className="font-semibold">{who}</span><span className="text-muted-foreground">{new Date(r.created_at).toLocaleString('es-AR')}</span></div>
