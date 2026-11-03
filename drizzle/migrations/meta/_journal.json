@@ -43,6 +43,13 @@
       "when": 1793724343379,
       "tag": "0005_reports_versions_estudios_previos_doctor_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793730636023,
+      "tag": "0006_audit_log_and_report_protection",
+      "breakpoints": true
     }
   ]
 }
