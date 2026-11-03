@@ -36,6 +36,13 @@
       "when": 1793314589655,
       "tag": "0004_resend_log_allow_secretary",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793724343379,
+      "tag": "0005_reports_versions_estudios_previos_doctor_settings",
+      "breakpoints": true
     }
   ]
 }

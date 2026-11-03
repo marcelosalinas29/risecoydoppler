@@ -16,10 +16,12 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          arrival_state: string | null
           asistio: boolean
           created_at: string
           created_by: string | null
           date: string
+          doctor_id: string | null
           id: string
           image_urls: string[] | null
           images: Json | null
@@ -32,10 +34,12 @@ export type Database = {
           time: string
         }
         Insert: {
+          arrival_state?: string | null
           asistio?: boolean
           created_at?: string
           created_by?: string | null
           date: string
+          doctor_id?: string | null
           id?: string
           image_urls?: string[] | null
           images?: Json | null
@@ -48,10 +52,12 @@ export type Database = {
           time: string
         }
         Update: {
+          arrival_state?: string | null
           asistio?: boolean
           created_at?: string
           created_by?: string | null
           date?: string
+          doctor_id?: string | null
           id?: string
           image_urls?: string[] | null
           images?: Json | null
@@ -178,37 +184,162 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_settings: {
+        Row: {
+          default_templates: Json
+          report_style: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          default_templates?: Json
+          report_style?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          default_templates?: Json
+          report_style?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      doctor_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          name: string
+          study_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          name: string
+          study_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          name?: string
+          study_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      estudios_previos: {
+        Row: {
+          archivo_hash: string | null
+          archivo_nombre: string
+          archivo_path: string
+          created_at: string
+          created_by: string | null
+          dni_detectado: string | null
+          estado: string
+          fecha: string | null
+          id: string
+          mime: string | null
+          nombre_detectado: string | null
+          notas: string | null
+          origen: string
+          patient_id: string | null
+          tipo: string
+        }
+        Insert: {
+          archivo_hash?: string | null
+          archivo_nombre: string
+          archivo_path: string
+          created_at?: string
+          created_by?: string | null
+          dni_detectado?: string | null
+          estado?: string
+          fecha?: string | null
+          id?: string
+          mime?: string | null
+          nombre_detectado?: string | null
+          notas?: string | null
+          origen?: string
+          patient_id?: string | null
+          tipo: string
+        }
+        Update: {
+          archivo_hash?: string | null
+          archivo_nombre?: string
+          archivo_path?: string
+          created_at?: string
+          created_by?: string | null
+          dni_detectado?: string | null
+          estado?: string
+          fecha?: string | null
+          id?: string
+          mime?: string | null
+          nombre_detectado?: string | null
+          notas?: string | null
+          origen?: string
+          patient_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudios_previos_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           age: number
+          apellido: string | null
           created_at: string
           created_by: string | null
           dni: string | null
+          dni_materno: boolean
+          dni_tipo: string
           fecha_nacimiento: string | null
           id: string
           name: string
+          nombres: string | null
           obra_social: string | null
           phone: string
         }
         Insert: {
           age: number
+          apellido?: string | null
           created_at?: string
           created_by?: string | null
           dni?: string | null
+          dni_materno?: boolean
+          dni_tipo?: string
           fecha_nacimiento?: string | null
           id?: string
           name: string
+          nombres?: string | null
           obra_social?: string | null
           phone: string
         }
         Update: {
           age?: number
+          apellido?: string | null
           created_at?: string
           created_by?: string | null
           dni?: string | null
+          dni_materno?: boolean
+          dni_tipo?: string
           fecha_nacimiento?: string | null
           id?: string
           name?: string
+          nombres?: string | null
           obra_social?: string | null
           phone?: string
         }
@@ -258,6 +389,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      report_versions: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          report: string
+          saved_by: string | null
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          report: string
+          saved_by?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          report?: string
+          saved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_versions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resend_log: {
         Row: {
