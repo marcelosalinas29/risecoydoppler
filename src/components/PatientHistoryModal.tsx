@@ -30,6 +30,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [historyIds, setHistoryIds] = useState<string[]>([patientId]);
   const { isViewer } = useAuth();
 
@@ -96,7 +97,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className={`${previewing ? 'max-w-4xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <FileText className="w-4 h-4 text-primary" />
@@ -135,7 +136,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
             ))}
           </div>
         )}
-        <PreviousStudiesSection patientIds={historyIds} primaryPatientId={patientId} canEdit={!isViewer} />
+        <PreviousStudiesSection patientIds={historyIds} primaryPatientId={patientId} canEdit={!isViewer} onPreviewChange={setPreviewing} />
       </DialogContent>
     </Dialog>
   );

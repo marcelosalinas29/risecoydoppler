@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FileText, Loader2, Plus } from 'lucide-react';
+import { FileText, Loader2, Plus, X, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +21,7 @@ interface PreviousStudy {
   origen: 'propio' | 'externo';
   archivo_path: string;
   archivo_nombre: string;
+  mime?: string | null;
   notas: string | null;
 }
 
@@ -49,10 +50,10 @@ async function shrinkIfPhoto(file: File): Promise<{ blob: Blob; name: string; ty
   return { blob, name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg' };
 }
 
-interface Props { patientIds: string[]; primaryPatientId: string; canEdit: boolean }
+interface Props { patientIds: string[]; primaryPatientId: string; canEdit: boolean; onPreviewChange?: (open: boolean) => void }
 
 /** Estudios previos del paciente (Word, PDF, fotos de papel): se guardan tal cual y se abren desde acá. */
-const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit }: Props) => {
+const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPreviewChange }: Props) => {
   const { user, isDoctor, isAdmin } = useAuth();
   const canManage = isDoctor || isAdmin; // eliminar / reasignar
   const { searchPatients, searchPatientsRemote } = useClinicStore();
@@ -68,6 +69,12 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit }: Props
   const [notas, setNotas] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const idsKey = patientIds.join(',');
+  // Vista previa dentro de la misma pantalla (sin pestañas nuevas). Lo ya abierto queda en memoria.
+  const [preview, setPreview] = useState<{ id: string; url: string; mime: string; name: string } | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const cache = useRef(new Map<string, { url: string; mime: string }>());
+  useEffect(() => () => { cache.current.forEach((v) => URL.revokeObjectURL(v.url)); cache.current.clear(); }, []);
+  useEffect(() => { onPreviewChange?.(!!preview); }, [preview]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,10 +142,31 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit }: Props
     await load();
   };
 
+  const isViewable = (mime: string, name: string) => mime === 'application/pdf' || mime.startsWith('image/') || /\.(pdf|jpe?g|png)$/i.test(name);
+
   const openFile = async (it: PreviousStudy) => {
-    const { data, error } = await supabase.storage.from('estudios_previos').createSignedUrl(it.archivo_path, 60 * 10);
-    if (error || !data) { toast.error('No se pudo abrir el archivo'); return; }
-    window.open(data.signedUrl, '_blank', 'noopener');
+    if (preview?.id === it.id) { setPreview(null); return; }
+    setOpening(it.id);
+    try {
+      let entry = cache.current.get(it.id);
+      if (!entry) {
+        const { data, error } = await supabase.storage.from('estudios_previos').download(it.archivo_path);
+        if (error || !data) throw new Error(error?.message || 'sin datos');
+        const mime = it.mime || data.type || (/\.pdf$/i.test(it.archivo_nombre) ? 'application/pdf' : '');
+        entry = { url: URL.createObjectURL(new Blob([data], { type: mime })), mime };
+        cache.current.set(it.id, entry);
+      }
+      if (isViewable(entry.mime, it.archivo_nombre)) {
+        setPreview({ id: it.id, url: entry.url, mime: entry.mime, name: it.archivo_nombre });
+      } else {
+        // Word u otros formatos que el navegador no muestra: se descarga
+        const a = document.createElement('a'); a.href = entry.url; a.download = it.archivo_nombre; a.click();
+      }
+    } catch {
+      toast.error('No se pudo abrir el archivo');
+    } finally {
+      setOpening(null);
+    }
   };
 
   const fmt = (d: string | null) => { if (!d) return 'sin fecha'; const [y, m, day] = d.split('-').map(Number); return format(new Date(y, m - 1, day), "d 'de' MMMM yyyy", { locale: es }); };
@@ -171,6 +199,21 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit }: Props
         </div>
       )}
 
+      {preview && (
+        <div className="border border-border rounded-lg overflow-hidden bg-card">
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-muted/40 text-xs">
+            <span className="truncate font-semibold">{preview.name}</span>
+            <span className="flex items-center gap-3 shrink-0">
+              <a href={preview.url} download={preview.name} className="flex items-center gap-1 text-primary underline"><Download className="w-3 h-3" />Descargar</a>
+              <button onClick={() => setPreview(null)} aria-label="Cerrar vista previa"><X className="w-4 h-4" /></button>
+            </span>
+          </div>
+          {preview.mime.startsWith('image/')
+            ? <img src={preview.url} alt={preview.name} className="max-h-[65vh] w-full object-contain bg-black/5" />
+            : <iframe src={preview.url} title={preview.name} className="w-full h-[65vh]" />}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
       ) : items.length === 0 ? (
@@ -178,7 +221,7 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit }: Props
       ) : (
         items.map((it) => (
           <div key={it.id} className="bg-muted/30 rounded-lg p-3 border border-border space-y-1">
-            <button onClick={() => openFile(it)} className="w-full text-left hover:opacity-80">
+            <button onClick={() => openFile(it)} disabled={opening === it.id} className={`w-full text-left hover:opacity-80 ${preview?.id === it.id ? 'ring-1 ring-primary rounded' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold uppercase flex items-center gap-1"><FileText className="w-3 h-3" />{it.tipo}</span>
                 <Badge variant="outline" className="text-[10px]">{it.origen === 'externo' ? 'Externo' : 'Propio'}</Badge>

@@ -329,8 +329,8 @@ const PendingList = ({ matchPool }: { matchPool: MatchPatient[] }) => {
     setRows((prev) => prev.filter((x) => x.id !== id));
   };
   const open = async (path: string) => {
-    const { data } = await supabase.storage.from('estudios_previos').createSignedUrl(path, 600);
-    if (data) window.open(data.signedUrl, '_blank', 'noopener'); else toast.error('No se pudo abrir');
+    const { data } = await supabase.storage.from('estudios_previos').download(path);
+    if (data) window.open(URL.createObjectURL(new Blob([data], { type: /\.pdf$/i.test(path) ? 'application/pdf' : data.type })), '_blank'); else toast.error('No se pudo abrir');
   };
 
   return (

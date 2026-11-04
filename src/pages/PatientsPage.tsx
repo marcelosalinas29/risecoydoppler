@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, ChevronRight, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,6 +8,25 @@ import { useClinicStore } from '@/store/useClinicStore';
 import { STATUS_LABELS, calcularEdadDetallada } from '@/types/medical';
 import { Input } from '@/components/ui/input';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+
+const PAGE = 50;
+
+/** Cuántos estudios (de todos los años) y estudios previos tiene cada paciente, pedido a la base solo para los que se ven. */
+async function countByPatient(table: string, ids: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (let i = 0; i < ids.length; i += 25) {
+    const chunk = ids.slice(i, i + 25);
+    for (let page = 0; page < 10; page++) {
+      const { data, error } = await (supabase as any).from(table).select('patient_id').in('patient_id', chunk).order('id').range(page * 1000, page * 1000 + 999);
+      if (error || !data) break;
+      for (const r of data) out[r.patient_id] = (out[r.patient_id] || 0) + 1;
+      if (data.length < 1000) break;
+    }
+  }
+  return out;
+}
 
 const PatientsPage = () => {
   const [query, setQuery] = useState('');
@@ -26,7 +45,22 @@ const PatientsPage = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  const results = query.length >= 1 ? searchPatients(query) : patients;
+  const allResults = query.length >= 1 ? searchPatients(query) : patients;
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => { setLimit(PAGE); }, [query]);
+  const results = useMemo(() => allResults.slice(0, limit), [allResults, limit]);
+
+  const [counts, setCounts] = useState<{ turnos: Record<string, number>; previos: Record<string, number> }>({ turnos: {}, previos: {} });
+  const idsKey = results.map((p) => p.id).join(',');
+  useEffect(() => {
+    const ids = results.map((p) => p.id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    Promise.all([countByPatient('appointments', ids), countByPatient('estudios_previos', ids)])
+      .then(([turnos, previos]) => { if (!cancelled) setCounts((c) => ({ turnos: { ...c.turnos, ...turnos }, previos: { ...c.previos, ...previos } })); })
+      .catch((e) => console.error(e));
+    return () => { cancelled = true; };
+  }, [idsKey]);
 
   return (
     <AppLayout title="Pacientes">
@@ -72,7 +106,10 @@ const PatientsPage = () => {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <span className="text-xs text-muted-foreground">{appointments.length} estudio(s)</span>
+                      <span className="text-xs text-muted-foreground">
+                        {(counts.turnos[patient.id] ?? appointments.length)} estudio(s)
+                        {(counts.previos[patient.id] ?? 0) > 0 && ` · ${counts.previos[patient.id]} previo(s)`}
+                      </span>
                       <button onClick={() => setHistoryPatient({ id: patient.id, dni: patient.dni, name: patient.name })} className="text-xs text-primary underline">Historial y estudios previos</button>
                     </div>
                   </div>
@@ -103,6 +140,9 @@ const PatientsPage = () => {
                 </div>
               );
             })}
+            {allResults.length > limit && (
+              <Button variant="outline" className="w-full" onClick={() => setLimit(limit + PAGE)}>Mostrar más ({allResults.length - limit} restantes)</Button>
+            )}
           </div>
         )}
       </div>
