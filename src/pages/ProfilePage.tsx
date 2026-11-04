@@ -192,7 +192,7 @@ const ProfilePage = () => {
                 Registro de actividad
               </Button>
             )}
-            {isAdmin && (
+            {(isAdmin || isDoctor) && (
               <Button variant="outline" className="w-full" onClick={() => navigate('/importar')}>
                 Importar estudios previos (Word, PDF, fotos)
               </Button>
