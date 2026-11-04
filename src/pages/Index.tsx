@@ -76,18 +76,35 @@ const Index = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('patient_id, patients(id, dni, dni_materno)')
-        .not('status', 'in', '(cancelled,no-show)');
-      if (cancelled || error || !data) return;
-      const counts = new Map<string, number>();
-      for (const row of data as { patient_id: string; patients: { id: string; dni: string | null; dni_materno: boolean | null } | null }[]) {
+      type Row = { patient_id: string; patients: { id: string; dni: string | null; dni_materno: boolean | null } | null };
+      // El servidor devuelve como máximo 1000 filas por consulta: paginamos.
+      const readAll = async (table: string, filter?: (q: any) => any): Promise<Row[] | null> => {
+        const out: Row[] = [];
+        for (let page = 0; page < 30; page++) {
+          let q: any = supabase.from(table as any).select('patient_id, patients(id, dni, dni_materno)').order('id');
+          if (filter) q = filter(q);
+          const { data, error } = await q.range(page * 1000, page * 1000 + 999);
+          if (error || !data) return null;
+          out.push(...(data as Row[]));
+          if (data.length < 1000) break;
+        }
+        return out;
+      };
+      const keyOf = (row: Row) => {
         const dniKey = row.patients?.dni_materno ? '' : normalizeDni(row.patients?.dni);
-        const key = dniKey ? `dni:${dniKey}` : `patient:${row.patient_id}`;
-        counts.set(key, (counts.get(key) || 0) + 1);
-      }
-      setHistoricalPatientKeys(new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([key]) => key)));
+        return dniKey ? `dni:${dniKey}` : `patient:${row.patient_id}`;
+      };
+      const [appts, previos] = await Promise.all([
+        readAll('appointments', (q) => q.not('status', 'in', '(cancelled,no-show)')),
+        readAll('estudios_previos'),
+      ]);
+      if (cancelled || !appts) return;
+      const counts = new Map<string, number>();
+      for (const row of appts) counts.set(keyOf(row), (counts.get(keyOf(row)) || 0) + 1);
+      const keys = new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([key]) => key));
+      // Un paciente con estudios previos cargados (de antes del sistema) también tiene historial
+      for (const row of previos || []) keys.add(keyOf(row));
+      setHistoricalPatientKeys(keys);
     })();
     return () => { cancelled = true; };
   }, [allAppointments.length]);
