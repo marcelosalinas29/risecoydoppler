@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useClinicStore } from '@/store/useClinicStore';
+import PdfViewer from '@/components/PdfViewer';
 
 // La tabla/bucket "estudios_previos" son nuevos; se accede sin tipos hasta que se regeneren.
 const db = supabase as any;
@@ -210,7 +211,7 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
           </div>
           {preview.mime.startsWith('image/')
             ? <img src={preview.url} alt={preview.name} className="max-h-[65vh] w-full object-contain bg-black/5" />
-            : <iframe src={preview.url} title={preview.name} className="w-full h-[65vh]" />}
+            : <PdfViewer url={preview.url} name={preview.name} />}
         </div>
       )}
 
