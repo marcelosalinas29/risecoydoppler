@@ -193,6 +193,11 @@ const ProfilePage = () => {
               </Button>
             )}
             {isAdmin && (
+              <Button variant="outline" className="w-full" onClick={() => navigate('/importar')}>
+                Importar estudios previos (Word, PDF, fotos)
+              </Button>
+            )}
+            {isAdmin && (
               <Button variant="outline" className="w-full" onClick={() => navigate('/exportar')}>
                 Exportar a Excel (por fechas)
               </Button>
