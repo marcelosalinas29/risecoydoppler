@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PreviousStudiesSection from '@/components/PreviousStudiesSection';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +30,8 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [historyIds, setHistoryIds] = useState<string[]>([patientId]);
+  const { isViewer } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -37,13 +41,20 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
       const normalizedDni = normalizeDni(patientDni);
       let patientIds = [patientId];
 
-      if (normalizedDni) {
+      // Recién nacido con DNI de la madre: su historial es solo el suyo
+      const { data: own } = await supabase.from('patients').select('dni_materno').eq('id', patientId).maybeSingle();
+      if (normalizedDni && !own?.dni_materno) {
         const { data: matches } = await supabase.rpc('find_patient_ids_by_dni', { _dni: normalizedDni });
-        patientIds = Array.from(new Set([
-          patientId,
-          ...((matches || []) as { id: string }[]).map((p) => p.id),
-        ]));
+        const matchIds = ((matches || []) as { id: string }[]).map((p) => p.id);
+        // Se descartan los registros de recién nacidos que usan el DNI de la madre
+        let valid = matchIds;
+        if (matchIds.length > 0) {
+          const { data: flags } = await supabase.from('patients').select('id, dni_materno').in('id', matchIds);
+          valid = ((flags || []) as { id: string; dni_materno: boolean }[]).filter((p) => !p.dni_materno).map((p) => p.id);
+        }
+        patientIds = Array.from(new Set([patientId, ...valid]));
       }
+      if (!cancelled) setHistoryIds(patientIds);
 
       const { data } = await supabase
         .from('appointments')
@@ -99,7 +110,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
           </div>
         ) : appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            Sin estudios previos
+            Sin estudios hechos en el sistema
           </p>
         ) : (
           <div className="space-y-2">
@@ -124,6 +135,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
             ))}
           </div>
         )}
+        <PreviousStudiesSection patientIds={historyIds} primaryPatientId={patientId} canEdit={!isViewer} />
       </DialogContent>
     </Dialog>
   );
