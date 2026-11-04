@@ -3,7 +3,7 @@ import { Loader2, Minus, Plus } from 'lucide-react';
 
 /**
  * Muestra un PDF dibujando sus hojas en pantalla, sin usar el visor del navegador
- * (que algunas extensiones o configuraciones bloquean). La librería se carga solo al abrir un PDF.
+ * (que algunas extensiones o configuraciones bloquean). Usa la versión "legacy" de pdf.js para que funcione también en navegadores viejos. La librería se carga solo al abrir un PDF.
  */
 const MAX_PAGES = 40;
 
@@ -13,15 +13,16 @@ const PdfViewer = ({ url, name }: { url: string; name?: string }) => {
   const [state, setState] = useState<'cargando' | 'listo' | 'error'>('cargando');
   const [zoom, setZoom] = useState(1);
   const [info, setInfo] = useState('');
+  const [why, setWhy] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     let doc: any = null;
-    setState('cargando'); setInfo('');
+    setState('cargando'); setInfo(''); setWhy('');
     (async () => {
       try {
-        const pdfjs = await import('pdfjs-dist');
-        const worker = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const worker = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
         pdfjs.GlobalWorkerOptions.workerSrc = worker;
         const data = new Uint8Array(await (await fetch(url)).arrayBuffer());
         doc = await pdfjs.getDocument({ data }).promise;
@@ -50,7 +51,7 @@ const PdfViewer = ({ url, name }: { url: string; name?: string }) => {
         setState('listo');
       } catch (e) {
         console.error('PdfViewer:', e);
-        if (!cancelled) setState('error');
+        if (!cancelled) { setWhy(String((e as any)?.message || e).slice(0, 120)); setState('error'); }
       }
     })();
     return () => { cancelled = true; doc?.destroy?.(); };
@@ -65,7 +66,7 @@ const PdfViewer = ({ url, name }: { url: string; name?: string }) => {
       </div>
       <div ref={box} className="max-h-[65vh] overflow-auto p-1" aria-label={name}>
         {state === 'cargando' && <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>}
-        {state === 'error' && <p className="text-sm text-destructive text-center py-8">No se pudo mostrar el PDF. Usá "Descargar".</p>}
+        {state === 'error' && <p className="text-sm text-destructive text-center py-8">No se pudo mostrar el PDF. Usá "Descargar".{why && <span className="block text-xs text-muted-foreground mt-1">({why})</span>}</p>}
         <div ref={pagesRef} />
         {info && <p className="text-xs text-muted-foreground text-center py-2">{info}</p>}
       </div>
