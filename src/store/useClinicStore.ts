@@ -35,7 +35,7 @@ interface ClinicStore {
   getPatientAppointments: (patientId: string) => Appointment[];
   searchPatients: (query: string) => Patient[];
   searchPatientsRemote: (query: string) => Promise<void>;
-  updatePatient: (id: string, data: Partial<Pick<Patient, 'name' | 'phone' | 'dni' | 'obraSocial' | 'fechaNacimiento'>>) => Promise<void>;
+  updatePatient: (id: string, data: Partial<Pick<Patient, 'name' | 'phone' | 'dni' | 'obraSocial' | 'fechaNacimiento' | 'dniMaterno'>>) => Promise<void>;
   getAppointment: (id: string) => Appointment | undefined;
   getPatient: (id: string) => Patient | undefined;
   findPatientByDni: (dni: string) => Promise<Patient | null>;
@@ -483,6 +483,7 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
     if (data.name !== undefined) updateData.name = data.name;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.dni !== undefined) updateData.dni = data.dni;
+    if (data.dniMaterno !== undefined) updateData.dni_materno = data.dniMaterno;
     if (data.obraSocial !== undefined) updateData.obra_social = data.obraSocial;
     if (data.fechaNacimiento !== undefined) {
       updateData.fecha_nacimiento = data.fechaNacimiento;

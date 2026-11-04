@@ -229,7 +229,11 @@ const AppointmentPage = () => {
   const handleSavePatient = async () => {
     if (!appointment) return;
     try {
+      const dniChanged = patientForm.dni !== (appointment.patient.dni || '');
+      const ownDni = dniChanged && !!appointment.patient.dniMaterno && !!patientForm.dni.trim()
+        && window.confirm('Este paciente figura como recién nacido con el DNI de la madre.\n\n¿El DNI que cargaste es el DNI PROPIO del bebé?\n\nAceptar: se le saca la marca RN y queda con su DNI (conserva todo su historial).\nCancelar: sigue como RN.');
       await updatePatient(appointment.patient.id, {
+        ...(ownDni ? { dniMaterno: false } : {}),
         name: patientForm.name.toUpperCase(),
         dni: patientForm.dni,
         phone: patientForm.phone,

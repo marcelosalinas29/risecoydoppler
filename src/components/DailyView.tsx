@@ -217,6 +217,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
       const patientChanges: any = {};
       if (editData.patientName !== apt.patient.name) patientChanges.name = editData.patientName;
       if (editData.patientDni !== (apt.patient.dni || '')) patientChanges.dni = editData.patientDni;
+      if (patientChanges.dni !== undefined && apt.patient.dniMaterno && patientChanges.dni.trim() && window.confirm('Este paciente figura como recién nacido con el DNI de la madre.\n\n¿El DNI que cargaste es el DNI PROPIO del bebé?\n\nAceptar: se le saca la marca RN y queda con su DNI (conserva todo su historial).\nCancelar: sigue como RN.')) patientChanges.dniMaterno = false;
       if (editData.patientPhone !== apt.patient.phone) patientChanges.phone = editData.patientPhone;
       if (editData.patientObraSocial !== (apt.patient.obraSocial || '')) patientChanges.obraSocial = editData.patientObraSocial;
       if (editData.patientFechaNacimiento !== (apt.patient.fechaNacimiento || '')) patientChanges.fechaNacimiento = editData.patientFechaNacimiento;
