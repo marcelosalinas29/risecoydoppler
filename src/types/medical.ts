@@ -215,6 +215,7 @@ export function formatEdad(fechaNacimiento?: string | Date | null, fallbackYears
  * Calculate study duration in minutes based on study type.
  * Doppler / Obstétrica Morfológica / Obstétrica TN / Scan Fetal → 20 min
  * Combinados con Doppler → 20 min
+ * Punción / biopsia guiada por ecografía → 30 min (3 turnos)
  * Otherwise → uses the doctor's base interval (default 10)
  */
 export function getStudyDuration(studyType: string, baseInterval: number = 10): number {
@@ -234,6 +235,11 @@ export function getStudyDuration(studyType: string, baseInterval: number = 10): 
     s.includes('TEST DE FUNCIÓN ENDOTELIAL') ||
     s.includes('TEST DE FUNCION ENDOTELIAL');
 
+  // Punciones y biopsias guiadas por ecografía: 3 turnos (30 min)
+  const isTriple = (s: string) =>
+    s.includes('PUNCIÓN') || s.includes('PUNCION') || s.includes('BIOPSIA') || s.includes('PAAF') || s.includes('TRUCUT');
+
+  if (parts.some(isTriple)) return 30;
   if (parts.some(isSpecial)) return 20;
   return baseInterval;
 }
