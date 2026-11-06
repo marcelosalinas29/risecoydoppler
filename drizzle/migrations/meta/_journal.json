@@ -57,6 +57,13 @@
       "when": 1793987121204,
       "tag": "0007_enforce_double_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793987846284,
+      "tag": "0008_appt_slots_puncion_3_turnos",
+      "breakpoints": true
     }
   ]
 }
