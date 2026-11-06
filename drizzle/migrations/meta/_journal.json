@@ -50,6 +50,13 @@
       "when": 1793730636023,
       "tag": "0006_audit_log_and_report_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793987121204,
+      "tag": "0007_enforce_double_slot",
+      "breakpoints": true
     }
   ]
 }

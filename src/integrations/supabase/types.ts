@@ -22,6 +22,7 @@ export type Database = {
           created_by: string | null
           date: string
           doctor_id: string | null
+          es_sobreturno: boolean
           id: string
           image_urls: string[] | null
           images: Json | null
@@ -40,6 +41,7 @@ export type Database = {
           created_by?: string | null
           date: string
           doctor_id?: string | null
+          es_sobreturno?: boolean
           id?: string
           image_urls?: string[] | null
           images?: Json | null
@@ -58,6 +60,7 @@ export type Database = {
           created_by?: string | null
           date?: string
           doctor_id?: string | null
+          es_sobreturno?: boolean
           id?: string
           image_urls?: string[] | null
           images?: Json | null
@@ -511,6 +514,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      appt_slots_needed: { Args: { _study: string }; Returns: number }
+      appt_time: { Args: { t: string }; Returns: string }
       find_patient_ids_by_dni: {
         Args: { _dni: string }
         Returns: {
