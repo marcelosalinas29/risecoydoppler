@@ -14,6 +14,8 @@ describe('regla de 2 turnos', () => {
     expect(slotsNeeded('Ecografía Abdominal + Doppler Renal')).toBe(2);
     expect(slotsNeeded('Ecografía de Partes Blandas')).toBe(1);
     expect(slotsNeeded('Ecografía Abdominal')).toBe(1);
+    expect(slotsNeeded('Punción Aspiración con Aguja Fina (PAAF) guiada por Ecografía')).toBe(1);
+    expect(slotsNeeded('Biopsia con Aguja Gruesa (Trucut) guiada por Ecografía')).toBe(1);
   });
 
   it('un Doppler no entra si el turno siguiente está ocupado', () => {

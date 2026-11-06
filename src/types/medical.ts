@@ -133,6 +133,8 @@ export const STUDY_TYPES: string[] = [
   'Eco Doppler Arterial MMSS',
   'Eco Doppler Venoso MMSS',
   'Test de Función Endotelial',
+  'Punción Aspiración con Aguja Fina (PAAF) guiada por Ecografía',
+  'Biopsia con Aguja Gruesa (Trucut) guiada por Ecografía',
 ];
 
 export const STATUS_LABELS: Record<StudyStatus, string> = {
