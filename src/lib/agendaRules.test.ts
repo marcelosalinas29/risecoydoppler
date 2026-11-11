@@ -82,9 +82,9 @@ describe('regla de 2 turnos', () => {
     expect(checkPlacement(day, { time: '15:00', studyType: 'Doppler Venoso', validSlots: SLOTS }).ok).toBe(false);
   });
 
-  it('turnos de otro médico no interfieren', () => {
+  it('un solo ecógrafo: los turnos de otro médico también cuentan', () => {
     const day = [A('1', '15:10', 'Ecografía Abdominal', { doctorId: 'dr-b' })];
-    expect(checkPlacement(day, { time: '15:00', studyType: 'Doppler Arterial', doctorId: 'dr-a', validSlots: SLOTS }).ok).toBe(true);
+    expect(checkPlacement(day, { time: '15:00', studyType: 'Doppler Arterial', doctorId: 'dr-a', validSlots: SLOTS }).ok).toBe(false);
   });
 
   it('una punción ocupa 3 turnos: no entra si el 2º o el 3º están ocupados', () => {

@@ -5,6 +5,7 @@ import { getStudyDuration, isInactiveStatus } from '@/types/medical';
  * punciones y biopsias = 3) ocupa su horario y los siguientes. Solo se puede dar si el siguiente está libre, y ese segundo turno
  * queda bloqueado para cualquier otro turno. La única excepción es el sobreturno, que se atiende
  * por encima de la agenda.
+ * Hay un solo ecógrafo: la regla vale entre TODOS los médicos (no se filtra por médico).
  * La misma regla está en la base de datos (función enforce_double_slot) como última barrera.
  */
 export const SLOT_MIN = 10;
@@ -43,8 +44,6 @@ export function addMinutes(t: string, n: number): string {
   return fromMinutes(toMinutes(t) + n);
 }
 
-const sameDoctor = (a?: string | null, b?: string | null) => !a || !b || a === b;
-
 /**
  * ¿Se puede poner este estudio en este horario?
  * `existing` = los turnos de ese día. `validSlots` (opcional) = horarios reales de la agenda del médico:
@@ -65,7 +64,7 @@ export function checkPlacement(
   if (p.sobreturno) return { ok: true, message: '' };
   const interval = p.interval ?? SLOT_MIN;
   const others = existing.filter(
-    (a) => a.id !== p.id && !isInactiveStatus(a.status) && !a.esSobreturno && sameDoctor(a.doctorId, p.doctorId),
+    (a) => a.id !== p.id && !isInactiveStatus(a.status) && !a.esSobreturno,
   );
   const start = toMinutes(p.time);
 
