@@ -64,6 +64,13 @@
       "when": 1793987846284,
       "tag": "0008_appt_slots_puncion_3_turnos",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794362425887,
+      "tag": "0009_doctor_schedule_rules",
+      "breakpoints": true
     }
   ]
 }
