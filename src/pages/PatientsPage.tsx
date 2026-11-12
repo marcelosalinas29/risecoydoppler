@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, ChevronRight, Calendar } from 'lucide-react';
+import { Search, User, ChevronRight, Calendar, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import AppLayout from '@/components/AppLayout';
@@ -10,6 +10,10 @@ import { Input } from '@/components/ui/input';
 import PatientHistoryModal from '@/components/PatientHistoryModal';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import PreviousStudiesSection from '@/components/PreviousStudiesSection';
+import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const PAGE = 50;
 
@@ -30,6 +34,11 @@ async function countByPatient(table: string, ids: string[]): Promise<Record<stri
 
 const PatientsPage = () => {
   const [query, setQuery] = useState('');
+  const { isViewer, role } = useAuth();
+  const canUpload = !!role && !isViewer;
+  const [uploadPatient, setUploadPatient] = useState<{ id: string; name: string; dni: string } | null>(null);
+  const [uploadPreviewing, setUploadPreviewing] = useState(false);
+  const [previousStudyRevision, setPreviousStudyRevision] = useState(0);
   const { searchPatients, patients, getPatientAppointments, fetchPatients, fetchAppointments, searchPatientsRemote } = useClinicStore();
   const navigate = useNavigate();
   const [historyPatient, setHistoryPatient] = useState<{ id: string; dni: string; name: string } | null>(null);
@@ -60,7 +69,7 @@ const PatientsPage = () => {
       .then(([turnos, previos]) => { if (!cancelled) setCounts((c) => ({ turnos: { ...c.turnos, ...turnos }, previos: { ...c.previos, ...previos } })); })
       .catch((e) => console.error(e));
     return () => { cancelled = true; };
-  }, [idsKey]);
+  }, [idsKey, previousStudyRevision]);
 
   return (
     <AppLayout title="Pacientes">
@@ -91,8 +100,13 @@ const PatientsPage = () => {
               return (
                 <div key={patient.id} className="bg-card rounded-xl border border-border p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-bold text-foreground">{patient.name}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-foreground break-words">{patient.name}</p>
+                        {canUpload && <Tooltip><TooltipTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" aria-label={`Cargar estudio previo de ${patient.name}`} onClick={() => setUploadPatient({ id: patient.id, name: patient.name, dni: patient.dni })}><Plus className="h-4 w-4" /></Button>
+                        </TooltipTrigger><TooltipContent>Cargar estudio previo</TooltipContent></Tooltip>}
+                      </div>
                       <p className="text-sm font-light text-muted-foreground flex items-center gap-0 flex-wrap">
                         {patient.dni && (
                           <>
@@ -152,9 +166,16 @@ const PatientsPage = () => {
           patientDni={historyPatient.dni}
           patientName={historyPatient.name}
           open={!!historyPatient}
+          onChanged={() => setPreviousStudyRevision((revision) => revision + 1)}
           onOpenChange={(o) => { if (!o) setHistoryPatient(null); }}
         />
       )}
+      <Dialog open={!!uploadPatient} onOpenChange={(open) => { if (!open) { setUploadPatient(null); setUploadPreviewing(false); } }}>
+        <DialogContent className={`${uploadPreviewing ? 'max-w-4xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto`}>
+          <DialogHeader><DialogTitle className="break-words">Estudios previos de {uploadPatient?.name}</DialogTitle></DialogHeader>
+          {uploadPatient && <PreviousStudiesSection key={uploadPatient.id} patientIds={[uploadPatient.id]} primaryPatientId={uploadPatient.id} canEdit={canUpload} initiallyAdding onPreviewChange={setUploadPreviewing} onChanged={() => setPreviousStudyRevision((revision) => revision + 1)} />}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };

@@ -17,6 +17,8 @@ interface PatientHistoryModalProps {
   patientName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initiallyAdding?: boolean;
+  onChanged?: () => void;
 }
 
 const statusClass: Record<string, string> = {
@@ -26,13 +28,13 @@ const statusClass: Record<string, string> = {
   'sent': 'status-badge-sent',
 };
 
-const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenChange }: PatientHistoryModalProps) => {
+const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenChange, initiallyAdding = false, onChanged }: PatientHistoryModalProps) => {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [historyIds, setHistoryIds] = useState<string[]>([patientId]);
-  const { isViewer } = useAuth();
+  const { isViewer, role } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +138,7 @@ const PatientHistoryModal = ({ patientId, patientDni, patientName, open, onOpenC
             ))}
           </div>
         )}
-        <PreviousStudiesSection patientIds={historyIds} primaryPatientId={patientId} canEdit={!isViewer} onPreviewChange={setPreviewing} />
+        <PreviousStudiesSection patientIds={historyIds} primaryPatientId={patientId} canEdit={!!role && !isViewer} onPreviewChange={setPreviewing} initiallyAdding={initiallyAdding} onChanged={onChanged} />
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, addDays, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarDays, Wifi, Ban, ShieldOff } from 'lucide-react';
@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { Appointment } from '@/types/medical';
-import { getPatientHistoryKey, normalizeDni, isInactiveStatus } from '@/types/medical';
+import { normalizeDni } from '@/types/medical';
+import { buildPatientsWithHistory, type PreviousStudyHistoryRow } from '@/lib/agendaHistory';
 import DailyView from '@/components/DailyView';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -95,32 +96,37 @@ const Index = () => {
         const dniKey = row.patients?.dni_materno ? '' : normalizeDni(row.patients?.dni);
         return dniKey ? `dni:${dniKey}` : `patient:${row.patient_id}`;
       };
-      const [appts, previos] = await Promise.all([
-        readAll('appointments', (q) => q.not('status', 'in', '(cancelled,no-show)')),
-        readAll('estudios_previos'),
-      ]);
+      const appts = await readAll('appointments', (q) => q.not('status', 'in', '(cancelled,no-show)'));
       if (cancelled || !appts) return;
       const counts = new Map<string, number>();
       for (const row of appts) counts.set(keyOf(row), (counts.get(keyOf(row)) || 0) + 1);
       const keys = new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([key]) => key));
-      // Un paciente con estudios previos cargados (de antes del sistema) también tiene historial
-      for (const row of previos || []) keys.add(keyOf(row));
       setHistoricalPatientKeys(keys);
     })();
     return () => { cancelled = true; };
   }, [allAppointments.length]);
 
-  const patientsWithHistory = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const a of allAppointments) {
-      if (isInactiveStatus(a.status)) continue; // cancelado/ausente no es un estudio previo
-      const key = getPatientHistoryKey(a.patient);
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    const result = new Set(Array.from(counts.entries()).filter(([, c]) => c > 1).map(([id]) => id));
-    historicalPatientKeys.forEach((key) => result.add(key));
-    return result;
-  }, [allAppointments, historicalPatientKeys]);
+  const [previousStudyHistory, setPreviousStudyHistory] = useState<PreviousStudyHistoryRow[]>([]);
+  const [previousStudyRevision, setPreviousStudyRevision] = useState(0);
+  const refreshPreviousStudyHistory = useCallback(() => setPreviousStudyRevision((revision) => revision + 1), []);
+  useEffect(() => {
+    if (!role) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('estudios_previos')
+        .select('patient_id, patients(id, dni, dni_materno)')
+        .not('patient_id', 'is', null);
+      if (cancelled) return;
+      if (error) { console.error('No se pudo actualizar el historial de estudios previos:', error); return; }
+      setPreviousStudyHistory(data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [role, previousStudyRevision]);
+
+  const patientsWithHistory = useMemo(() =>
+    buildPatientsWithHistory(allAppointments, historicalPatientKeys, previousStudyHistory),
+  [allAppointments, historicalPatientKeys, previousStudyHistory]);
 
   // ROLLBACK REF: versión previa hacía 5 fetch sin manejo de error; loading podía quedar colgado si fallaba la red.
   useEffect(() => {
@@ -294,6 +300,7 @@ const Index = () => {
             selectedDate={selectedDate}
             doctorSlots={doctorSlots}
             patientsWithHistory={patientsWithHistory}
+            onPreviousStudiesChanged={refreshPreviousStudyHistory}
             selectedDoctorId={selectedDoctorId}
           />
         )}

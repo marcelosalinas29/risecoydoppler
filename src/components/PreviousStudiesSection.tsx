@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useClinicStore } from '@/store/useClinicStore';
 import PdfViewer from '@/components/PdfViewer';
+import { savePreviousStudyFile } from '@/lib/previousStudiesStorage';
 
 // La tabla/bucket "estudios_previos" son nuevos; se accede sin tipos hasta que se regeneren.
 const db = supabase as any;
@@ -28,33 +29,10 @@ interface PreviousStudy {
 
 const MAX_MB = 25;
 
-async function shrinkIfPhoto(file: File): Promise<{ blob: Blob; name: string; type: string }> {
-  if (!file.type.startsWith('image/') || file.type === 'image/gif') return { blob: file, name: file.name, type: file.type };
-  const dataUrl: string = await new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.onerror = () => rej(new Error('No se pudo leer la foto.'));
-    r.readAsDataURL(file);
-  });
-  const img: HTMLImageElement = await new Promise((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = () => rej(new Error('Formato de foto no soportado (por ejemplo HEIC).'));
-    i.src = dataUrl;
-  });
-  const ratio = Math.min(1600 / img.width, 1);
-  const canvas = document.createElement('canvas');
-  canvas.width = img.width * ratio;
-  canvas.height = img.height * ratio;
-  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const blob: Blob = await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo comprimir la foto.'))), 'image/jpeg', 0.8));
-  return { blob, name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg' };
-}
-
-interface Props { patientIds: string[]; primaryPatientId: string; canEdit: boolean; onPreviewChange?: (open: boolean) => void }
+interface Props { patientIds: string[]; primaryPatientId: string; canEdit: boolean; onPreviewChange?: (open: boolean) => void; initiallyAdding?: boolean; onChanged?: () => void }
 
 /** Estudios previos del paciente (Word, PDF, fotos de papel): se guardan tal cual y se abren desde acá. */
-const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPreviewChange }: Props) => {
+const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPreviewChange, initiallyAdding = false, onChanged }: Props) => {
   const { user, isDoctor, isAdmin } = useAuth();
   const canManage = isDoctor || isAdmin; // eliminar / reasignar
   const { searchPatients, searchPatientsRemote } = useClinicStore();
@@ -62,13 +40,14 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
   const [reassignQuery, setReassignQuery] = useState('');
   const [items, setItems] = useState<PreviousStudy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(initiallyAdding && canEdit);
   const [saving, setSaving] = useState(false);
   const [fecha, setFecha] = useState('');
-  const [tipo, setTipo] = useState('');
+  const [tipo, setTipo] = useState('Estudio previo');
   const [origen, setOrigen] = useState<'propio' | 'externo'>('propio');
   const [notas, setNotas] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const idsKey = patientIds.join(',');
   // Vista previa dentro de la misma pantalla (sin pestañas nuevas). Lo ya abierto queda en memoria.
   const [preview, setPreview] = useState<{ id: string; url: string; mime: string; name: string } | null>(null);
@@ -88,31 +67,34 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
   useEffect(() => { load(); }, [load]);
 
   const handleSave = async () => {
-    const file = fileRef.current?.files?.[0];
-    if (!file) { toast.error('Elegí el archivo del estudio'); return; }
-    if (!fecha || !tipo.trim()) { toast.error('Completá la fecha y el tipo de estudio'); return; }
-    if (file.size > MAX_MB * 1024 * 1024) { toast.error(`El archivo pesa más de ${MAX_MB} MB`); return; }
+    if (!canEdit || saving) return;
+    if (!files.length) { toast.error('Elegí el archivo del estudio'); return; }
+    if (files.some((file) => file.size > MAX_MB * 1024 * 1024)) { toast.error(`Cada archivo debe pesar hasta ${MAX_MB} MB`); return; }
     setSaving(true);
+    const failed: File[] = [];
+    let saved = 0;
     try {
-      const prepared = await shrinkIfPhoto(file);
-      const safeName = prepared.name.replace(/[^\w.\-]+/g, '_');
-      const path = `${primaryPatientId}/${Date.now()}_${safeName}`;
-      const { error: upErr } = await supabase.storage.from('estudios_previos').upload(path, prepared.blob, { contentType: prepared.type || undefined, upsert: false });
-      if (upErr) throw upErr;
-      const { error: insErr } = await db.from('estudios_previos').insert({
-        patient_id: primaryPatientId, fecha, tipo: tipo.trim(), origen, archivo_path: path, archivo_nombre: prepared.name, mime: prepared.type, notas: notas.trim() || null, created_by: user?.id,
-      });
-      if (insErr) {
-        await supabase.storage.from('estudios_previos').remove([path]);
-        throw insErr;
+      for (const file of files) {
+        try {
+          const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+          const path = `${primaryPatientId}/${crypto.randomUUID()}_${safeName}`;
+          await savePreviousStudyFile(supabase.storage.from('estudios_previos'), path, file, () => db.from('estudios_previos').insert({
+            patient_id: primaryPatientId, fecha: fecha || null, tipo: tipo.trim() || 'Estudio previo', origen,
+            archivo_path: path, archivo_nombre: file.name, mime: file.type || null,
+            notas: notas.trim() || null, created_by: user?.id, estado: 'asignado',
+          }));
+          saved++;
+        } catch (error) {
+          console.error('Error al guardar estudio previo:', error);
+          failed.push(file);
+        }
       }
-      toast.success('Estudio previo agregado');
-      setAdding(false); setFecha(''); setTipo(''); setNotas(''); setOrigen('propio');
+      setFiles(failed);
       if (fileRef.current) fileRef.current.value = '';
+      if (saved) { toast.success(`${saved} estudio(s) previo(s) agregado(s)`); onChanged?.(); }
+      if (failed.length) toast.error('No se pudo guardar el archivo, probá de nuevo');
+      else { setAdding(false); setFecha(''); setTipo('Estudio previo'); setNotas(''); setOrigen('propio'); }
       await load();
-    } catch (e: any) {
-      console.error(e);
-      toast.error(`No se pudo guardar: ${e?.message || 'error desconocido'}`);
     } finally {
       setSaving(false);
     }
@@ -128,6 +110,7 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
     if (!confirm(`¿Eliminar "${it.archivo_nombre}"? Se borra el archivo y no se puede recuperar.`)) return;
     const { data, error } = await db.from('estudios_previos').delete().eq('id', it.id).select('id');
     if (error || !data || data.length === 0) { toast.error('No se pudo eliminar (sin permiso o ya no existe).'); return; }
+    onChanged?.();
     const { error: rmErr } = await supabase.storage.from('estudios_previos').remove([it.archivo_path]);
     if (rmErr) console.warn('No se pudo borrar el archivo del almacenamiento:', rmErr.message);
     toast.success('Estudio previo eliminado');
@@ -138,6 +121,7 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
     if (newPatientId === it.patient_id) { setReassigning(null); return; }
     const { data, error } = await db.from('estudios_previos').update({ patient_id: newPatientId, estado: 'asignado' }).eq('id', it.id).select('id');
     if (error || !data || data.length === 0) { toast.error('No se pudo reasignar.'); return; }
+    onChanged?.();
     toast.success('Estudio reasignado al otro paciente');
     setReassigning(null); setReassignQuery('');
     await load();
@@ -176,16 +160,16 @@ const PreviousStudiesSection = ({ patientIds, primaryPatientId, canEdit, onPrevi
     <div className="space-y-2 border-t border-border pt-3 mt-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Estudios previos</p>
-        {canEdit && !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus className="w-3 h-3 mr-1" />Agregar</Button>
-        )}
       </div>
 
-      {adding && (
+      {canEdit && !adding && <Button className="w-full h-11" onClick={() => setAdding(true)}><Plus className="w-5 h-5 mr-2" />Agregar estudio previo</Button>}
+
+      {canEdit && adding && (
         <div className="space-y-2 bg-muted/30 border border-border rounded-lg p-3">
-          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,image/*" className="text-xs w-full" />
+          <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,image/*" aria-label="Archivos del estudio previo" className="text-xs w-full" disabled={saving} onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+          {files.length > 0 && <p className="text-xs text-muted-foreground break-words">{files.map((file) => file.name).join(' · ')}</p>}
           <div className="grid grid-cols-2 gap-2">
-            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <Input type="date" aria-label="Fecha del estudio (opcional)" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             <select value={origen} onChange={(e) => setOrigen(e.target.value as 'propio' | 'externo')} className="h-10 rounded-md border border-input bg-background px-2 text-sm">
               <option value="propio">Hecho en el consultorio</option>
               <option value="externo">De otro centro</option>
