@@ -211,11 +211,16 @@ const Index = () => {
 
   return (
     <AppLayout title="Agenda">
-      <div className="p-4 space-y-4">
+      <div className="p-4 lg:p-7 space-y-5 max-w-[1600px] mx-auto">
+        <div className="agenda-date-header flex items-center gap-4 pb-5 sm:gap-5">
+          <span className="agenda-day shrink-0 text-[64px] font-light leading-[0.9] tabular-nums sm:text-[88px]">{format(selectedDate, 'dd')}</span>
+          <span aria-hidden="true" className="h-14 w-px shrink-0 bg-border" />
+          <div className="min-w-0"><h1 className="text-lg font-medium uppercase text-foreground">{format(selectedDate, 'EEEE', { locale: es })}</h1><p className="mt-2 text-sm font-normal text-muted-foreground sm:text-base">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p></div>
+        </div>
         {/* Top bar: date nav + doctor filter */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => subDays(d, 1))}>
+            <Button variant="outline" size="sm" title="Día anterior" aria-label="Día anterior" onClick={() => setSelectedDate(d => subDays(d, 1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <Popover>
@@ -240,12 +245,12 @@ const Index = () => {
                 />
               </PopoverContent>
             </Popover>
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => addDays(d, 1))}>
+            <Button variant="outline" size="sm" title="Día siguiente" aria-label="Día siguiente" onClick={() => setSelectedDate(d => addDays(d, 1))}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
               <SelectTrigger className="h-8 text-xs w-[180px]">
                 <SelectValue placeholder="Todos los médicos" />

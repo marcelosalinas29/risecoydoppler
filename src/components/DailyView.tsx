@@ -36,9 +36,21 @@ const statusClass: Record<StudyStatus, string> = {
   'in-study': 'status-badge-in-study',
   'reported': 'status-badge-reported',
   'sent': 'status-badge-sent',
-  'cancelled': 'bg-muted text-muted-foreground line-through',
-  'no-show': 'bg-muted text-muted-foreground',
+  'cancelled': 'status-badge-cancelled line-through',
+  'no-show': 'status-badge-missed',
 };
+
+export function getAgendaSummary(appointments: Appointment[]) {
+  const active = appointments.filter(a => !isInactiveStatus(a.status));
+  const pending = active.filter(a => a.status === 'pending' && resolveArrival(a) === null);
+  return {
+    next: [...pending].sort((a, b) => a.time.localeCompare(b.time))[0],
+    arrived: active.filter(a => resolveArrival(a) === 'arrived').length,
+    late: active.filter(a => resolveArrival(a) === 'late').length,
+    missed: appointments.filter(a => a.status === 'no-show' || (a.status !== 'cancelled' && resolveArrival(a) === 'missed')).length,
+    pending: pending.length,
+  };
+}
 
 function generateDefaultTimeSlots(): string[] {
   const slots: string[] = [];
@@ -205,6 +217,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
 
   const occupiedCount = appointments.filter((a) => !isInactiveStatus(a.status)).length;
 
+  const summary = useMemo(() => getAgendaSummary(appointments), [appointments]);
+  const markArrival = async (apt: Appointment, st: Exclude<ArrivalState, null>) => {
+    try {
+      await setArrivalState(apt.id, st);
+      toast.success(`${apt.patient.name}: ${ARRIVAL_LABELS[st].toLowerCase()}`);
+    } catch { toast.error('No se pudo guardar'); }
+  };
+
 
   const startEdit = (apt: Appointment) => {
     setEditingId(apt.id);
@@ -351,12 +371,26 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-muted-foreground">
-        {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })} — {occupiedCount} cita(s)
-      </h2>
+      <section aria-label="Próximo turno" className="agenda-next mb-5 grid min-w-0 gap-6 rounded-2xl p-5 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center lg:p-6">
+        <div className="min-w-0">
+          <p className="agenda-next-secondary mb-2 text-xs font-medium uppercase">PRÓXIMO TURNO{summary.next ? ` · ${summary.next.time}` : ''}</p>
+          {summary.next ? <>
+            <Button variant="link" onClick={() => navigate(`/appointment/${summary.next.id}`)} className="agenda-next-name h-auto max-w-full justify-start whitespace-normal p-0 text-left text-2xl font-bold leading-snug">{summary.next.patient.name}</Button>
+            <p className="agenda-next-secondary mt-2 text-sm">{formatStudyType(summary.next.studyType)} · {summary.next.patient.obraSocial || 'Sin obra social'}</p>
+          </> : <h2 className="text-xl font-semibold">{appointments.length ? 'Sin turnos pendientes' : 'Sin turnos para este día'}</h2>}
+        </div>
+        <div className="grid grid-cols-4 gap-3 lg:gap-5">
+          {([[summary.arrived, 'Llegaron'], [summary.late, 'Demorados'], [summary.missed, 'No llegaron'], [summary.pending, 'Pendientes']] as const).map(([count, label]) => <div key={label} className="min-w-0 text-center"><p className="text-2xl font-bold tabular-nums">{count}</p><p className="agenda-next-secondary mt-1 text-[10px] sm:text-xs">{label}</p></div>)}
+        </div>
+        {summary.next && !isViewer && editingId !== summary.next.id && <Button variant="secondary" className="agenda-next-arrival w-full gap-2 lg:w-auto" onClick={() => { if (summary.next) void markArrival(summary.next, 'arrived'); }}><UserCheck className="h-4 w-4" />Marcar llegada</Button>}
+      </section>
+      <div className="flex items-center gap-4 border-b border-border pb-4 mb-4">
+        <span className="text-3xl font-semibold tabular-nums text-status-pending">{occupiedCount}</span>
+        <h2 className="text-sm text-muted-foreground">Turnos del día</h2>
+      </div>
 
       <div>
-        <table className="w-full text-xs border-collapse table-auto">
+        <table className="agenda-table w-full text-xs table-auto">
           <thead>
             <tr className="bg-muted/50">
               <th className="p-2 border border-border text-left font-semibold text-muted-foreground whitespace-nowrap">Hora</th>
@@ -389,41 +423,41 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                 <React.Fragment key={`slot-${slot}-${apt?.id ?? 'libre'}`}>
                   {showMorningSep && (
                     <tr key="morning-sep">
-                      <td colSpan={10} className="py-1.5 px-2 bg-primary/10 text-center text-[11px] text-primary font-bold border border-border border-t-2 border-t-primary/40 tracking-widest">
+                      <td colSpan={10} className="py-1.5 px-2 bg-primary/10 text-center text-[11px] text-primary font-bold border border-border border-t-2 border-t-primary/40 tracking-normal">
                         ☀ MAÑANA
                       </td>
                     </tr>
                   )}
                   {showAfternoonSep && (
                     <tr key="afternoon-sep">
-                      <td colSpan={10} className="py-1.5 px-2 bg-amber-500/10 text-center text-[11px] text-amber-700 dark:text-amber-400 font-bold border border-border border-t-2 border-t-amber-500/40 tracking-widest">
+                      <td colSpan={10} className="py-1.5 px-2 bg-status-late/10 text-center text-[11px] text-status-late font-bold border border-border border-t-2 border-t-status-late/40 tracking-normal">
                         🌅 TARDE
                       </td>
                     </tr>
                   )}
                   <tr
                     key={`row-${slot}-${apt?.id ?? 'libre'}`}
-                    className={`transition-colors ${apt && isInactiveStatus(apt.status) ? 'bg-muted/40 opacity-60' : arrivalOf(apt) === 'arrived' ? 'bg-green-100 dark:bg-green-900/30' : arrivalOf(apt) === 'late' ? 'bg-yellow-100 dark:bg-yellow-900/30' : arrivalOf(apt) === 'missed' ? 'bg-red-100 dark:bg-red-900/30' : extra ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500' : overbook ? 'bg-accent/30 border-l-2 border-l-accent' : isOccupied ? 'bg-card hover:bg-muted/30' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
+                    data-occupied={isOccupied} data-editing={!!isEditing} className={`agenda-row transition-colors ${apt ? apt.status === 'cancelled' ? 'agenda-cancelled' : apt.status === 'no-show' ? 'agenda-missed' : arrivalOf(apt) === 'missed' ? 'agenda-missed' : apt.status === 'reported' ? 'agenda-reported' : apt.status === 'sent' ? 'agenda-sent' : arrivalOf(apt) === 'arrived' ? 'agenda-arrived' : arrivalOf(apt) === 'late' ? 'agenda-late' : apt.status === 'in-study' ? 'agenda-in-study' : 'agenda-pending' : 'opacity-50 hover:opacity-80 hover:bg-muted/20'}`}
                   >
-                    <td className="p-1.5 border border-border font-mono text-center text-muted-foreground font-semibold">
+                    <td data-label="Hora" className="p-1.5 border border-border tabular-nums text-center text-muted-foreground font-semibold">
                       {slot}
-                      {overbook && <span className="ml-1 text-[9px] text-accent-foreground font-bold">ST</span>}
+                      {overbook && <span className="ml-1 text-[9px] text-accent font-bold">ST</span>}
                       {(extra || apt?.esSobreturno) && (
                         <span
-                          className="ml-1 text-[9px] text-amber-700 font-bold"
+                          className="ml-1 text-[9px] text-status-late font-bold"
                           title={`Sobreturno${apt?.doctorId ? ' de ' + doctorName(apt.doctorId) : ''}${apt?.sobreturnoAcordadoCon ? ' · acordado con: ' + apt.sobreturnoAcordadoCon : ''}`}
                         >
                           SOB{apt?.doctorId && apt.doctorId !== selectedDoctorId ? ` · ${doctorName(apt.doctorId).split(' ').slice(0, 2).join(' ')}` : ''}
                         </span>
                       )}
                       {apt && !apt.esSobreturno && !extra && apt.doctorId && apt.status === 'pending' && !worksAt(apt.doctorId, apt.date, apt.time) && (
-                        <span className="ml-1 text-[9px] text-red-600 font-bold" title={`${doctorName(apt.doctorId)} ya no atiende a esta hora. Hay que mover el turno.`}>⚠ FUERA DE HORARIO</span>
+                        <span className="ml-1 text-[9px] text-status-missed font-bold" title={`${doctorName(apt.doctorId)} ya no atiende a esta hora. Hay que mover el turno.`}>⚠ FUERA DE HORARIO</span>
                       )}
                     </td>
 
                     {isOccupied && apt ? (
                       <>
-                        <td className="p-1.5 border border-border whitespace-nowrap">
+                        <td data-label="Paciente" className="p-1.5 border border-border whitespace-nowrap">
                           {isEditing ? (
                             <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Nombre" />
                           ) : (
@@ -432,7 +466,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </span>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border">
+                        <td data-label="Estudio" className="p-1.5 border border-border">
                           {isEditing ? (
                             <div className="space-y-1">
                               <Input value={editData.studyType} onChange={(e) => setEditData(d => ({ ...d, studyType: e.target.value }))} className="h-7 text-xs" />
@@ -446,17 +480,17 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                               )}
                             </div>
                           ) : (
-                            <span className="uppercase font-bold">{formatStudyType(apt.studyType)}</span>
+                            <div><span className="uppercase font-semibold">{formatStudyType(apt.studyType)}</span>{apt.doctorId && <p className="mt-1 text-[11px] text-muted-foreground">{doctorName(apt.doctorId)}</p>}</div>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border text-muted-foreground">
+                        <td data-label="DNI" className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <Input value={editData.patientDni} onChange={(e) => setEditData(d => ({ ...d, patientDni: e.target.value }))} className="h-7 text-xs" placeholder="DNI" />
                           ) : (
                             <span className="flex items-center gap-1">
                               {apt.patient.dni || '-'}
                               {hasHistory ? (
-                                <button
+                                <Button variant="ghost" size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setHistoryAdding(false);
@@ -464,15 +498,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                      setHistoryPatientDni(apt.patient.dni || '');
                                     setHistoryPatientName(apt.patient.name);
                                   }}
-                                  className="text-primary hover:text-primary/80 transition-colors"
+                                  className="h-7 w-7 text-primary hover:text-primary/80 transition-colors"
                                   title="Ver historial de estudios"
                                 >
                                   <ClipboardList className="w-3.5 h-3.5" />
-                                </button>
+                                </Button>
                               ) : canUpload ? (
-                                <Button
-                                  variant="ghost" size="icon" className="h-6 w-6 p-0 text-primary shrink-0"
-                                  title="Cargar estudio previo" aria-label="Cargar estudio previo"
+                                <Button variant="ghost" size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setHistoryAdding(true);
@@ -480,12 +512,17 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                     setHistoryPatientDni(apt.patient.dni || '');
                                     setHistoryPatientName(apt.patient.name);
                                   }}
-                                ><Plus className="w-3.5 h-3.5" /></Button>
+                                  className="h-7 w-7 text-primary hover:text-primary/80 transition-colors"
+                                  title="Cargar estudio previo"
+                                  aria-label="Cargar estudio previo"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </Button>
                               ) : null}
                             </span>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border text-muted-foreground">
+                        <td data-label="F.Nac. / Edad" className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <div className="flex flex-col gap-0.5">
                               <Input type="date" value={editData.patientFechaNacimiento} onChange={(e) => setEditData(d => ({ ...d, patientFechaNacimiento: e.target.value }))} className="h-7 text-xs" />
@@ -509,21 +546,21 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </div>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border text-muted-foreground">
+                        <td data-label="Teléfono" className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <Input value={editData.patientPhone} onChange={(e) => setEditData(d => ({ ...d, patientPhone: e.target.value }))} className="h-7 text-xs" placeholder="Teléfono" />
                           ) : (
                             apt.patient.phone?.replace(/^\+54\s?/, '') || '-'
                           )}
                         </td>
-                        <td className="p-1.5 border border-border text-muted-foreground">
+                        <td data-label="Obra Social" className="p-1.5 border border-border text-muted-foreground">
                           {isEditing ? (
                             <Input value={editData.patientObraSocial} onChange={(e) => setEditData(d => ({ ...d, patientObraSocial: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Obra Social" />
                           ) : (
                             apt.patient.obraSocial || '-'
                           )}
                         </td>
-                        <td className="p-1.5 border border-border">
+                        <td data-label="Estado" className="p-1.5 border border-border">
                           {isEditing ? (
                             <Select value={editData.status} onValueChange={(v) => setEditData(d => ({ ...d, status: v as StudyStatus }))}>
                               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
@@ -552,50 +589,45 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                             </Badge>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border">
+                        <td data-label="Observaciones" className="p-1.5 border border-border">
                           {isEditing ? (
                             <Input value={editData.observations} onChange={(e) => setEditData(d => ({ ...d, observations: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Observaciones..." />
                           ) : (
                             <span className="text-muted-foreground">{apt.observations || '-'}</span>
                           )}
                         </td>
-                        <td className="p-1.5 border border-border text-center">
+                        <td data-label="Acciones" className="p-1.5 border border-border text-center">
                           {isEditing ? (
                             <div className="flex items-center justify-center gap-0.5">
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => saveEdit(apt)}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => saveEdit(apt)}>
                                 <Save className="w-3 h-3 text-primary" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={cancelEdit}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={cancelEdit}>
                                 <X className="w-3 h-3 text-destructive" />
                               </Button>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button
-                                    variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                    variant="ghost" size="sm" className="h-8 w-8 p-0"
                                     onClick={(e) => e.stopPropagation()}
                                     title={arrivalOf(apt) ? ARRIVAL_LABELS[arrivalOf(apt) as 'arrived' | 'late' | 'missed'] : 'Marcar llegada'}
                                   >
-                                    <UserCheck className={`w-3 h-3 ${arrivalOf(apt) === 'arrived' ? 'text-green-600' : arrivalOf(apt) === 'late' ? 'text-yellow-500' : arrivalOf(apt) === 'missed' ? 'text-red-600' : 'text-muted-foreground'}`} />
+                                    <UserCheck className={`w-3 h-3 ${arrivalOf(apt) === 'arrived' ? 'text-status-arrived' : arrivalOf(apt) === 'late' ? 'text-status-late' : arrivalOf(apt) === 'missed' ? 'text-status-missed' : 'text-muted-foreground'}`} />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-48 p-1" align="end" onClick={(e) => e.stopPropagation()}>
                                   {([
-                                    ['arrived', 'bg-green-500'],
-                                    ['late', 'bg-yellow-400'],
-                                    ['missed', 'bg-red-500'],
+                                    ['arrived', 'bg-status-arrived'],
+                                    ['late', 'bg-status-late'],
+                                    ['missed', 'bg-status-missed'],
                                   ] as const).map(([st, dot]) => (
                                     <button
                                       key={st}
                                       className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted text-left"
-                                      onClick={async () => {
-                                        try {
-                                          await setArrivalState(apt.id, st);
-                                          toast.success(`${apt.patient.name}: ${ARRIVAL_LABELS[st].toLowerCase()}`);
-                                        } catch { toast.error('No se pudo guardar'); }
-                                      }}
+                                      onClick={() => markArrival(apt, st)}
                                     >
                                       <span className={`w-3 h-3 rounded-full ${dot}`} />
                                       {ARRIVAL_LABELS[st]}{arrivalOf(apt) === st ? ' ✓' : ''}
@@ -611,13 +643,13 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                   )}
                                 </PopoverContent>
                               </Popover>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(apt)} title="Editar">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => startEdit(apt)} title="Editar">
                                 <Edit2 className="w-3 h-3 text-muted-foreground" />
                               </Button>
                               {apt.status === 'sent' ? (
                                 <>
                                   <Button
-                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-40 cursor-not-allowed"
                                     disabled
                                     title="Bloqueado: estudio enviado"
                                     onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: traslado bloqueado por seguridad'); }}
@@ -625,7 +657,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                     <Lock className="w-3 h-3 text-muted-foreground" />
                                   </Button>
                                   <Button
-                                    variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-40 cursor-not-allowed"
+                                    variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-40 cursor-not-allowed"
                                     disabled
                                     title="Bloqueado: estudio enviado"
                                     onClick={(e) => { e.stopPropagation(); toast.info('Estudio enviado: eliminación bloqueada por seguridad'); }}
@@ -635,10 +667,10 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                                 </>
                               ) : (
                                 <>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openReschedule(apt)} title="Trasladar">
                                     <CalendarDays className="w-3 h-3 text-muted-foreground" />
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setDeleteTarget(apt)} title="Eliminar">
                                     <Trash2 className="w-3 h-3 text-destructive" />
                                   </Button>
                                 </>
@@ -660,7 +692,7 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                     ) : blockedBySpecial.has(slot) ? (
                       <td
                         colSpan={9}
-                        className="p-1.5 border border-border text-center text-amber-700 dark:text-amber-400 italic bg-amber-500/5 text-[11px]"
+                        className="p-1.5 border border-border text-center text-status-late italic bg-status-late/5 text-[11px]"
                         title={`Ocupado por estudio especial previo (${formatStudyType(blockedBySpecial.get(slot)!.studyType)} - ${blockedBySpecial.get(slot)!.time})`}
                       >
                         ⏳ Continuación de {blockedBySpecial.get(slot)!.time} ({formatStudyType(blockedBySpecial.get(slot)!.studyType)})
