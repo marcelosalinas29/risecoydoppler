@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STUDY_TYPES, studyTitle, studyProtocol } from '@/types/medical';
+import { STUDY_TYPES, studyTitle, studyProtocol, resolveStudyTypeText, orderStudyParts, PENDING_DEFINITION_SUFFIX } from '@/types/medical';
 import { suggestTemplates } from '@/data/studyTemplateMap';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,10 +35,26 @@ const StudyTypeSelector = ({ open, onOpenChange, onApply, currentValue }: StudyT
   const handleApply = () => {
     const parts: string[] = [...selected];
     if (customText.trim()) {
-      parts.push(customText.trim());
+      const resolved = resolveStudyTypeText(customText);
+      if (resolved.kind === 'bare') {
+        const ok = window.confirm(
+          'Escribiste solo "Ecografía", sin especificar de qué. Eso no es un estudio en sí mismo.\n\n' +
+          'Aceptar: lo dejo cargado como PENDIENTE DE DEFINIR (marcado en rojo) hasta que se corrija.\n' +
+          'Cancelar: vuelvo a escribirlo.'
+        );
+        if (!ok) return;
+        parts.push('Ecografía' + PENDING_DEFINITION_SUFFIX);
+      } else if (resolved.kind === 'needs_confirmation') {
+        const ok = window.confirm(`"${customText.trim()}" no es un estudio médico real. ¿Es "${resolved.suggestion}"?`);
+        parts.push(ok ? resolved.suggestion : customText.trim());
+      } else if (resolved.kind === 'matched') {
+        parts.push(resolved.canonical);
+      } else if (resolved.kind === 'freeform') {
+        parts.push(resolved.text);
+      }
     }
     if (parts.length === 0) return;
-    onApply(parts.join(' + '));
+    onApply(orderStudyParts(parts).join(' + '));
     onOpenChange(false);
   };
 
@@ -101,7 +117,10 @@ const StudyTypeSelector = ({ open, onOpenChange, onApply, currentValue }: StudyT
               <p className="text-sm font-medium">
                 {[...selected, ...(customText.trim() ? [customText.trim()] : [])].join(' + ')}
               </p>
-              {customText.trim() && suggestTemplates(customText.trim()).length === 0 && (
+              {customText.trim() && resolveStudyTypeText(customText).kind === 'bare' && (
+                <p className="text-xs text-destructive font-semibold mt-2">⚠ "Ecografía" sola no es un estudio: al aplicar se va a pedir confirmación para dejarlo PENDIENTE DE DEFINIR.</p>
+              )}
+              {customText.trim() && resolveStudyTypeText(customText).kind === 'freeform' && suggestTemplates(customText.trim()).length === 0 && (
                 <p className="text-xs text-amber-700 mt-2">Este estudio escrito a mano no tiene plantilla: el informe se escribe desde cero.</p>
               )}
             </div>

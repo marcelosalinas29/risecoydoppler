@@ -182,7 +182,7 @@ No observo signos de redistribución del flujo.
 CONCLUSION: Estudio dentro de parámetros normales.`,
   },
   {
-    name: 'Scan Fetal',
+    name: 'Ecografía Obstétrica Morfológica',
     content: `Cabeza: Cráneo de morfología conservada. Línea media entrada, cavum del septum pellucidum presente. Hemisferios cerebrales y cerebelo de características conservadas. Ventrículos no dilatados.
 Cara: órbitas, nariz y labios conservados.
 Cuello fetal: de aspecto conservado.
@@ -231,12 +231,14 @@ Las maniobras de stress no provocan luxación ni subluxación de las cabezas fem
 CONCLUSION: estudio dentro de los parámetros normales.`,
   },
   {
-    name: 'Ecografía Cerebral',
-    content: `Línea media centrada, sin desplazamientos.
+    name: 'Ecografía Cerebral Transfontanelar',
+    content: `Estudio realizado a través de fontanela anterior permeable.
+Línea media centrada, sin desplazamientos.
 Cuerpo calloso presente.
-Sistema ventricular: no dilatado.
-Fosa posterior de características ecográficas conservadas.
-No observo signos de hemorragia ni otras lesiones a destacar en el presente estudio.`,
+Sistema ventricular: no dilatado. Astas frontales y occipitales de amplitud conservada.
+Plexos coroideos de ecogenicidad homogénea.
+Fosa posterior y cerebelo de características ecográficas conservadas.
+No observo signos de hemorragia intra/periventricular ni otras lesiones a destacar en el presente estudio.`,
   },
   {
     name: 'Doppler Venoso MMII (Completo)',
@@ -416,7 +418,7 @@ CONCLUSION:
 Adecuada respuesta del endotelio a la prueba de disfunción endotelial.`,
   },
   {
-    name: 'Eco Doppler Sustancia Nigra',
+    name: 'Doppler de Sustancia Nigra',
     content: `Adecuada ventana para la exploración del tronco cerebral.
 Se observa -------- ecogenicidad de la sustancia nigra de ambos lados
 Area derecha: 
@@ -436,7 +438,291 @@ Visualizadas en origen y segmentos V1 y V2 con flujo de dirección y velocidad n
 ARTERIAS SUBCLAVIAS: 
 Flujo de velocidad normal en ambos vasos.
 
-CONCLUSIONES: 
+CONCLUSIONES:
 Vasos con morfología, endotelio y características hemodinámicas normales.`,
+  },
+  {
+    name: 'Doppler Arterial de Vasos de Cuello (Carótidas)',
+    content: `EJES CAROTÍDEOS:
+Flujo laminar de velocidad normal en ambas carótidas primitivas, internas y externas.
+Complejo íntima media en carótida primitiva derecha: mm
+Complejo íntima media en carótida primitiva izquierda: mm
+No se observan placas de ateroma.
+Arterias vertebrales visualizadas en origen y segmentos V1-V2, con flujo de dirección y velocidad normales.
+
+CONCLUSIÓN:
+Ejes carotídeos y vertebrales de morfología y hemodinamia conservadas.`,
+  },
+  {
+    name: 'Doppler Venoso de Vasos de Cuello (Yugulares)',
+    content: `Venas yugulares internas derecha e izquierda: permeables, compresibles, con flujo espontáneo y variación respiratoria/cardíaca conservada. Sin imágenes endoluminales.
+Venas subclavias: permeables.
+
+CONCLUSIÓN:
+Sistema venoso yugular permeable, sin signos de trombosis.`,
+  },
+  {
+    name: 'Doppler de Troncos Supraaórticos',
+    content: `EJES CAROTÍDEOS:
+Flujo laminar de velocidad normal en ambas carótidas primitivas, internas y externas. Arterias oftálmicas con flujo anterógrado.
+Complejo íntima media en carótida primitiva derecha: mm
+Complejo íntima media en carótida primitiva izquierda: mm
+No se observan placas de ateroma.
+
+ARTERIAS VERTEBRALES:
+Visualizadas en origen y segmentos V1 y V2 con flujo de dirección y velocidad normales.
+
+ARTERIAS SUBCLAVIAS:
+Flujo de velocidad normal en ambos vasos.
+
+SISTEMA VENOSO YUGULAR:
+Venas yugulares internas permeables y compresibles, con flujo espontáneo conservado.
+
+CONCLUSIÓN:
+Troncos supraaórticos de morfología, endotelio y hemodinamia normales.`,
+  },
+  {
+    name: 'Doppler Testicular',
+    content: `Testículo derecho: Long: mm. AP: mm. Axial: mm. Ecoestructura homogénea. Vascularización intratesticular presente y simétrica al Doppler color.
+Testículo izquierdo: Long: mm. AP: mm. Axial: mm. Ecoestructura homogénea. Vascularización intratesticular presente y simétrica al Doppler color.
+Epidídimos: de tamaño y ecoestructura conservados, sin aumento de señal Doppler.
+Cordones espermáticos: sin imágenes de várices (sin reflujo con maniobra de Valsalva).
+No se observa hidrocele significativo.
+
+CONCLUSIÓN: estudio testicular con flujo Doppler conservado y simétrico, sin hallazgos patológicos.`,
+  },
+  {
+    name: 'Doppler Peneano',
+    content: `Estudio basal (sin/con inducción farmacológica, según indicación):
+Cuerpos cavernosos de ecoestructura homogénea y simétrica.
+Arterias cavernosas derecha e izquierda: velocidad pico sistólica (VPS): cm/seg. Velocidad de fin de diástole (VFD): cm/seg. Índice de resistencia: .
+Placas de fibrosis/calcificación: no se observan.
+
+CONCLUSIÓN: parámetros hemodinámicos dentro de límites normales (VPS > 30 cm/seg, sin insuficiencia venosa asociada).`,
+  },
+  {
+    name: 'Doppler Tiroideo',
+    content: `Glándula tiroidea de forma, tamaño y ecoestructura conservados.
+LÓBULO DERECHO: Long.: mm. AP.: mm. Trans.: mm.
+LÓBULO IZQUIERDO: Long.: mm. AP.: mm. Trans.: mm.
+ISTMO: mm.
+Vascularización al Doppler color: patrón conservado, sin hipervascularización difusa ni focal.
+No se observan nódulos ni adenomegalias cervicales a destacar.`,
+  },
+  {
+    name: 'Doppler Hepático',
+    content: `Venas suprahepáticas (derecha, media e izquierda) con flujo trifásico hepatófugo.
+Vena porta de mm, permeable, con flujo hepatopetal, variación respiratoria, de velocidad normal.
+Arteria hepática con IR: , conservado.
+Vena esplénica de mm, con flujo hepatopetal de velocidad normal.
+No se observa circulación colateral.
+
+CONCLUSIÓN: Doppler esplenoportal dentro de parámetros normales.`,
+  },
+  {
+    name: 'Doppler Oftálmico',
+    content: `Arteria oftálmica derecha: IR: . VPS: cm/seg. Flujo anterógrado conservado.
+Arteria oftálmica izquierda: IR: . VPS: cm/seg. Flujo anterógrado conservado.
+Arterias centrales de la retina: flujo simétrico y conservado bilateral.
+Venas centrales de la retina: flujo venoso continuo bilateral.
+
+CONCLUSIÓN: estudio Doppler orbitario dentro de parámetros normales.`,
+  },
+  {
+    name: 'Ecografía Ocular',
+    content: `Estudio realizado con transductor de alta frecuencia, párpado cerrado, con gel estéril.
+Cámara vítrea: transparente, sin imágenes ecogénicas en su interior. Sin desprendimiento de retina ni de coroides.
+Cristalino: presente, de ecoestructura conservada.
+Nervio óptico: de calibre y trayecto conservados.
+Globo ocular contralateral con hallazgos comparables.
+
+CONCLUSIÓN: estudio ocular bilateral sin alteraciones a destacar por este método.`,
+  },
+  {
+    name: 'Doppler de Arterias Temporales',
+    content: `Arteria temporal superficial derecha: paredes finas y regulares, sin signo de halo. Flujo trifásico conservado. Diámetro: mm.
+Arteria temporal superficial izquierda: paredes finas y regulares, sin signo de halo. Flujo trifásico conservado. Diámetro: mm.
+Ramas frontal y parietal exploradas bilateralmente sin hallazgos a destacar.
+
+CONCLUSIÓN: sin signos ecográficos de arteritis de células gigantes (ausencia de signo de halo, sin estenosis ni oclusión).`,
+  },
+  {
+    name: 'Doppler Power Articular',
+    content: `Se explora la articulación referida con modo B y Power Doppler.
+Superficies óseas de contorno regular, sin erosiones a destacar.
+Receso articular/sinovial: sin derrame significativo.
+Membrana sinovial: espesor conservado, sin señal Power Doppler patológica (sin hipervascularización sinovial).
+Estructuras tendinosas periarticulares de ecoestructura fibrilar conservada.
+
+CONCLUSIÓN: sin signos ecográficos de sinovitis activa en la articulación explorada.`,
+  },
+  {
+    name: 'Ecografía de Tendón de Aquiles',
+    content: `Tendón de Aquiles derecho: espesor conservado, fibras de ecoestructura fibrilar homogénea en todo su trayecto. Sin colecciones peritendinosas.
+Tendón de Aquiles izquierdo: espesor conservado, fibras de ecoestructura fibrilar homogénea en todo su trayecto. Sin colecciones peritendinosas.
+Bursa retrocalcánea: sin distensión líquida.
+Inserción calcánea sin entesofitos ni irregularidades corticales a destacar.`,
+  },
+  {
+    name: 'Ecografía de Rodilla',
+    content: `Se explora la rodilla referida en los planos anterior, medial, lateral y posterior.
+Tendón cuadricipital y rotuliano: de ecoestructura fibrilar conservada.
+Receso suprapatelar: sin derrame articular significativo.
+Meniscos (abordaje accesible): sin imágenes de extrusión a destacar.
+Ligamentos colaterales medial y lateral: de ecoestructura conservada.
+Quiste de Baker: no se observa.
+Bursa anserina y prepatelar: sin distensión líquida.`,
+  },
+  {
+    name: 'Ecografía de Muñeca',
+    content: `Se explora la muñeca referida en cara dorsal y palmar.
+Compartimentos tendinosos extensores y flexores: de ecoestructura fibrilar conservada, sin tenosinovitis.
+Túnel carpiano: nervio mediano de calibre conservado, sin signos de compresión.
+Articulación radiocarpiana: sin derrame ni sinovitis.
+No se observan quistes sinoviales (gangliones) a destacar.`,
+  },
+  {
+    name: 'Ecografía de Tobillo',
+    content: `Se explora el tobillo referido en los planos anterior, medial, lateral y posterior.
+Ligamentos peroneoastragalino anterior y peroneocalcáneo: de ecoestructura conservada, sin signos de lesión aguda.
+Tendones peroneos, tibial posterior y flexores: de ecoestructura fibrilar conservada, sin tenosinovitis.
+Receso articular tibioastragalino: sin derrame significativo.
+Seno del tarso: sin alteraciones a destacar.`,
+  },
+  {
+    name: 'Ecografía de Codo',
+    content: `Se explora el codo referido en compartimentos anterior, medial, lateral y posterior.
+Tendón distal del bíceps: de ecoestructura fibrilar conservada.
+Epicóndilo lateral (tendón extensor común) y epitróclea (tendón flexor común): sin signos de epicondilitis/epitrocleítis.
+Bursa olecraniana: sin distensión líquida.
+Nervio cubital en el canal epitrócleo-olecraniano: de calibre conservado, normoposicionado.`,
+  },
+  {
+    name: 'Ecografía de Tejido Celular Subcutáneo',
+    content: `Se realiza rastreo ecográfico de la región referida, observándose el tejido celular subcutáneo de espesor y ecogenicidad conservados para el panículo del paciente.
+No se evidencian colecciones, trayectos fistulosos ni formaciones nodulares a destacar por este método.
+Plano fascial muscular subyacente sin alteraciones.
+Si la clínica lo sugiere completar con otros métodos diagnósticos.`,
+  },
+  {
+    name: 'Ecografía de Partes Blandas de Cuello',
+    content: `Glándulas submaxilares: de tamaño y ecoestructura homogénea conservados, sin imágenes litiásicas ni dilatación ductal.
+Glándulas parótidas: de tamaño y ecoestructura homogénea conservados bilateralmente.
+Niveles ganglionares cervicales explorados: se observan ganglios de morfología conservada (relación córtico-hiliar preservada), sin adenomegalias patológicas.
+No se observan colecciones ni formaciones nodulares a destacar en partes blandas de cuello.`,
+  },
+  {
+    name: 'Ecografía de Pared Abdominal',
+    content: `Se explora la pared abdominal en la región referida (umbilical / inguinal), en reposo y con maniobra de Valsalva.
+Orificio herniario: [presente / no se evidencia] defecto de la pared de mm.
+Contenido del saco herniario: [no se identifica protrusión / se identifica protrusión de grasa preperitoneal / asa intestinal], [reductible / no reductible] con la maniobra.
+Región contralateral de características conservadas.
+
+CONCLUSIÓN: [sin evidencia de hernia de la pared abdominal en la región explorada / hernia descripta arriba].`,
+  },
+  {
+    name: 'Ecografía Pleural',
+    content: `Ambos campos pulmonares explorados por vía intercostal.
+Deslizamiento pleural (lung sliding) presente y conservado bilateralmente.
+No se observa derrame pleural en los senos costofrénicos explorados.
+No se observan imágenes de consolidación subpleural a destacar por este método.
+
+CONCLUSIÓN: sin derrame pleural ni otras alteraciones pleurales a destacar.`,
+  },
+  {
+    name: 'Ecografía Ginecológica',
+    content: `Vejiga: de paredes finas y contenido líquido homogéneo (como ventana acústica).
+Útero: en AVF, de forma, tamaño y ecoestructura miometrial conservados.
+Medidas: Long: mm. AP: mm. Axial: mm.
+Endometrio lineal / homogéneo de mm.
+Ovario derecho: mm x mm.
+Ovario izquierdo: mm x mm.
+Ambos ovarios de características conservadas para la edad.
+Fondo de saco de Douglas libre.`,
+  },
+  {
+    name: 'Ecografía Obstétrica TN',
+    content: `FUM: \t\tAmenorrea:
+Útero ocupado por feto único, vital y móvil. FCF: lat. x min.
+LCC: mm correspondientes a semanas de EG (+/- 5 días).
+Translucencia nucal: mm.
+Hueso nasal: presente.
+Trofoblasto: envolvente, homogéneo.
+Cuello: con ambos orificios cervicales cerrados al momento del estudio.
+Regiones anexiales: de características conservadas.
+Fondo de saco de Douglas: libre.
+FPP:
+
+CONCLUSIÓN: embarazo único y vital de semanas de EG. Translucencia nucal y hueso nasal dentro de parámetros normales.`,
+  },
+  {
+    name: 'Ecografía Obstétrica 3D/4D/5D',
+    content: `Útero ocupado por feto único, vital y móvil. FCF: lat. x min.
+Biometría fetal acorde a la EG de referencia (ver estudio morfológico/obstétrico previo).
+Se obtienen reconstrucciones volumétricas de superficie (3D/4D) de cara y/o segmento corporal solicitado, de adecuada calidad técnica según posición fetal y cantidad de líquido amniótico.
+Rasgos faciales/segmento explorado sin alteraciones morfológicas a destacar.
+Líquido amniótico: normal cantidad.
+Placenta: normoinserta.
+
+CONCLUSIÓN: estudio volumétrico (3D/4D) complementario sin hallazgos a destacar; biometría acorde a EG.`,
+  },
+  {
+    name: 'Ginecológica con Recuento Folicular',
+    content: `Vía: [transvaginal / transabdominal].
+Útero: en AVF, de forma, tamaño y ecoestructura miometrial conservados.
+Medidas: Long: mm. AP: mm. Axial: mm.
+Endometrio homogéneo de mm.
+
+Ovario derecho: mm x mm. Folículos antrales: n° __, mayor de __ mm.
+Ovario izquierdo: mm x mm. Folículos antrales: n° __, mayor de __ mm.
+
+Fondo de saco de Douglas libre.
+
+CONCLUSIÓN: recuento de folículos antrales consignado arriba por ovario.`,
+  },
+  {
+    name: 'Ginecológica con Monitoreo de la Ovulación',
+    content: `Vía: [transvaginal / transabdominal].
+
+CONTROL 1 — Fecha: __/__/____. Día del ciclo: __
+Útero: en AVF, de forma, tamaño y ecoestructura miometrial conservados.
+Medidas: Long: mm. AP: mm. Axial: mm.
+Endometrio: mm, patrón [trilaminar / homogéneo].
+Ovario derecho: mm x mm. Folículo dominante: __ mm.
+Ovario izquierdo: mm x mm. Folículo dominante: __ mm.
+Fondo de saco de Douglas libre.
+
+CONTROL 2 — Fecha: __/__/____. Día del ciclo: __
+Endometrio: mm, patrón [trilaminar / homogéneo].
+Ovario derecho: folículo dominante __ mm.
+Ovario izquierdo: folículo dominante __ mm.
+
+CONTROL 3 — Fecha: __/__/____. Día del ciclo: __
+Endometrio: mm, patrón [trilaminar / homogéneo].
+Ovario derecho: folículo dominante __ mm [/ signos de ovulación: colapso folicular, líquido libre en Douglas].
+Ovario izquierdo: folículo dominante __ mm.
+
+CONCLUSIÓN: evolución folicular y endometrial descripta en los controles seriados de arriba.`,
+  },
+  {
+    name: 'Doppler Ginecológico Transvaginal',
+    content: `Útero: en AVF, de forma, tamaño y ecoestructura miometrial conservados.
+Medidas: Long: mm. AP: mm. Axial: mm.
+Endometrio homogéneo de mm, con adecuada vascularización al Doppler color.
+Arteria uterina derecha: IP: . IR: .
+Arteria uterina izquierda: IP: . IR: .
+Ovario derecho: mm x mm, vascularización conservada al Doppler color.
+Ovario izquierdo: mm x mm, vascularización conservada al Doppler color.
+Fondo de saco de Douglas libre.
+
+CONCLUSIÓN: estudio Doppler ginecológico transvaginal dentro de parámetros normales.`,
+  },
+  {
+    name: 'Doppler de Partes Blandas',
+    content: `Se realiza rastreo ecográfico con modo B y Doppler color/power de la región referida.
+Planos cutáneo, celular subcutáneo y muscular de características ecográficas conservadas.
+No se evidencian colecciones ni formaciones nodulares a destacar por este método.
+Vascularización al Doppler: sin hipervascularización focal ni signos de proceso inflamatorio/vascular activo.
+Si la clínica lo sugiere completar con otros métodos diagnósticos.`,
   },
 ];

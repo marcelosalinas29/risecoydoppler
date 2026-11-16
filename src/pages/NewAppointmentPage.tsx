@@ -9,7 +9,7 @@ import { checkPlacement, secondSlotsOf, type SlottedAppointment } from '@/lib/ag
 import { verifyPlacement } from '@/lib/agendaCheck';
 import { firstUncoveredSlot, doctorsAtSlot } from '@/lib/doctorHours';
 import OutOfHoursDialog from '@/components/OutOfHoursDialog';
-import { STUDY_TYPES, DNI_TIPOS, cleanDniInput, composePatientName, calcularEdad, calcularEdadDetallada, getStudyDuration, PHONE_DEFAULT_PREFIX, cleanPhoneInput, hasPhoneNumber, phoneToSave, isInactiveStatus } from '@/types/medical';
+import { STUDY_TYPES, DNI_TIPOS, cleanDniInput, composePatientName, calcularEdad, calcularEdadDetallada, getStudyDuration, PHONE_DEFAULT_PREFIX, cleanPhoneInput, hasPhoneNumber, phoneToSave, isInactiveStatus, resolveStudyTypeText, orderStudyParts, PENDING_DEFINITION_SUFFIX } from '@/types/medical';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,7 +143,27 @@ const NewAppointmentPage = () => {
   const getStudyTypeString = () => {
     const parts = [...selectedStudies];
     if (customStudy.trim()) parts.push(customStudy.trim());
-    return parts.join(' + ');
+    return orderStudyParts(parts).join(' + ');
+  };
+
+  /** Resuelve el texto libre al aplicar (confirma "Ecografía" sola / términos sin sentido médico); devuelve el texto final a guardar en customStudy, o null si el usuario canceló. */
+  const resolveCustomStudyOnSubmit = (): string | null => {
+    if (!customStudy.trim()) return '';
+    const resolved = resolveStudyTypeText(customStudy);
+    if (resolved.kind === 'bare') {
+      const ok = window.confirm(
+        'Escribiste solo "Ecografía", sin especificar de qué. Eso no es un estudio en sí mismo.\n\n' +
+        'Aceptar: lo dejo cargado como PENDIENTE DE DEFINIR (marcado) hasta que se corrija.\n' +
+        'Cancelar: vuelvo a escribirlo.'
+      );
+      return ok ? 'Ecografía' + PENDING_DEFINITION_SUFFIX : null;
+    }
+    if (resolved.kind === 'needs_confirmation') {
+      const ok = window.confirm(`"${customStudy.trim()}" no es un estudio médico real. ¿Es "${resolved.suggestion}"?`);
+      return ok ? resolved.suggestion : customStudy.trim();
+    }
+    if (resolved.kind === 'matched') return resolved.canonical;
+    return customStudy.trim();
   };
 
   // Calculate duration based on study type
@@ -176,7 +196,9 @@ const NewAppointmentPage = () => {
   }, [studyTypeStr]);
 
   const handleSubmit = async (acordadoCon?: string) => {
-    const studyType = getStudyTypeString();
+    const resolvedCustom = resolveCustomStudyOnSubmit();
+    if (resolvedCustom === null) return; // el usuario canceló la confirmación de "Ecografía" sola o del término sin sentido
+    const studyType = orderStudyParts([...selectedStudies, ...(resolvedCustom ? [resolvedCustom] : [])]).join(' + ');
     if (!selectedDoctorId) {
       toast.error('Debe seleccionar el médico al que se asigna la cita');
       return;

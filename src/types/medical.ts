@@ -97,46 +97,262 @@ export function getPatientHistoryKey(patient: Pick<Patient, 'id' | 'dni' | 'dniM
 }
 
 export const STUDY_TYPES: string[] = [
+  // Abdominal / general
   'Ecografía Abdominal',
   'Ecografía Hepatobiliopancreática (Abdomen Superior)',
-  'Ecografía Tiroidea',
-  'Ecografía Obstétrica',
-  'Ecografía Pélvica',
+  'Ecografía de Pared Abdominal',
   'Ecografía Renal',
-  'Ecografía Mamaria',
+  'Ecografía Renal y Vesicoprostática',
   'Ecografía Vesical',
   'Ecografía Prostática',
   'Ecografía Vesical y Prostática',
-  'Ecografía Transvaginal',
+  'Ecografía Pélvica',
+  // Tiroides / cuello
+  'Ecografía Tiroidea',
+  'Ecografía de Partes Blandas de Cuello',
+  // Mamaria / ginecológica
+  'Ecografía Mamaria',
   'Ecografía Ginecológica',
-  'Ecografía Mamaria y Transvaginal',
+  'Ecografía Ginecológica Transvaginal',
+  'Ecografía Mamaria y Ecografía Ginecológica Transvaginal',
+  'Ecografía Ginecológica con Recuento Folicular',
+  'Ecografía Ginecológica con Monitoreo de la Ovulación',
+  'Doppler Ginecológico Transvaginal',
+  // Obstétrica
+  'Ecografía Obstétrica',
+  'Ecografía Obstétrica Morfológica',
+  'Ecografía Obstétrica TN',
+  'TN y Doppler Uterino',
+  'Ecografía Obstétrica 3D',
+  'Ecografía Obstétrica 4D',
+  'Ecografía Obstétrica 5D',
+  'Doppler Materno-Fetal',
+  // Testicular / peneano
   'Ecografía Testicular',
+  'Doppler Testicular',
+  'Doppler Peneano',
+  // Otros órganos (Doppler)
+  'Doppler Tiroideo',
+  'Doppler Hepático',
+  'Doppler Renal',
+  'Doppler Aorta Abdominal',
+  'Doppler Oftálmico',
+  'Ecografía Ocular',
+  'Doppler de Arterias Temporales',
+  // Partes blandas / articular
   'Ecografía de Partes Blandas',
+  'Doppler de Partes Blandas',
   'Ecografía Muscular',
   'Ecografía Articular',
-  'Ecografía Doppler de Vasos de Cuello',
-  'Ecografía Mamaria y Ginecológica TV',
-  'Ecografía Renal y Vesicoprostática',
-  'Ecografía Cerebral',
-  'Ecografía de Caderas',
+  'Doppler Power Articular',
   'Ecografía de Hombro',
-  'TN y Doppler Uterino',
-  'Scan Fetal',
-  'Doppler Materno-Fetal',
-  'Eco Doppler Aorta Abdominal',
-  'Eco Doppler Arterias Renales',
-  'Eco Doppler Hepático',
-  'Eco Doppler TSA',
-  'Eco Doppler Sustancia Nigra',
-  'Eco Doppler Arterial MMII',
-  'Eco Doppler Venoso MMII (TVP)',
-  'Eco Doppler Venoso MMII (Insuficiencia / Mapeo)',
-  'Eco Doppler Arterial MMSS',
-  'Eco Doppler Venoso MMSS',
+  'Ecografía de Tendón de Aquiles',
+  'Ecografía de Rodilla',
+  'Ecografía de Muñeca',
+  'Ecografía de Tobillo',
+  'Ecografía de Codo',
+  'Ecografía de Tejido Celular Subcutáneo',
+  'Ecografía de Caderas',
+  // Pleural / cerebral
+  'Ecografía Pleural',
+  'Ecografía Cerebral Transfontanelar',
+  // Doppler de cuello
+  'Doppler Arterial de Vasos de Cuello',
+  'Doppler Venoso de Vasos de Cuello',
+  'Doppler de Troncos Supraaórticos',
+  'Doppler de Sustancia Nigra',
+  // Doppler de miembros
+  'Doppler Arterial de Miembros Inferiores',
+  'Doppler Venoso de Miembros Inferiores (TVP)',
+  'Doppler Venoso de Miembros Inferiores (Insuficiencia / Mapeo)',
+  'Doppler Arterial de Miembros Superiores',
+  'Doppler Venoso de Miembros Superiores',
+  // Funcional / procedimientos
   'Test de Función Endotelial',
   'Punción Aspiración con Aguja Fina (PAAF) guiada por Ecografía',
   'Biopsia con Aguja Gruesa (Trucut) guiada por Ecografía',
 ];
+
+/** Texto "pelado" para comparar (sin tildes, mayúsculas, sin puntuación de los costados). */
+function normalizeForMatch(s: string): string {
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // saca tildes
+    .toUpperCase()
+    .replace(/[.,;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Diccionario de sinónimos / jerga / abreviaturas que anotan las secretarias,
+ * mapeado al nombre OFICIAL del estudio (el que figura en STUDY_TYPES). La
+ * clave ya está normalizada (ver normalizeForMatch). Esto es lo que permite
+ * que no importe cómo se tipee: el título final siempre es el oficial.
+ */
+const STUDY_TYPE_SYNONYMS: Record<string, string> = {
+  'SCAN FETAL': 'Ecografía Obstétrica Morfológica',
+  'ECOGRAFIA MORFOLOGICA': 'Ecografía Obstétrica Morfológica',
+  'ECOGRAFIA OBSTETRICA MORFOLOGICA': 'Ecografía Obstétrica Morfológica',
+  'MORFOLOGICA': 'Ecografía Obstétrica Morfológica',
+  '5D': 'Ecografía Obstétrica 5D',
+  'ECOGRAFIA 5D': 'Ecografía Obstétrica 5D',
+  'ECOGRAFIA OBSTETRICA 5D': 'Ecografía Obstétrica 5D',
+  '4D': 'Ecografía Obstétrica 4D',
+  'ECOGRAFIA 4D': 'Ecografía Obstétrica 4D',
+  'ECOGRAFIA OBSTETRICA 4D': 'Ecografía Obstétrica 4D',
+  '3D': 'Ecografía Obstétrica 3D',
+  'ECOGRAFIA 3D': 'Ecografía Obstétrica 3D',
+  'ECOGRAFIA OBSTETRICA 3D': 'Ecografía Obstétrica 3D',
+  'TN': 'Ecografía Obstétrica TN',
+  'ECOGRAFIA OBSTETRICA TN': 'Ecografía Obstétrica TN',
+  'TB': 'Ecografía de Partes Blandas',
+  'PB': 'Ecografía de Partes Blandas',
+  'PARTES': 'Ecografía de Partes Blandas',
+  'ECOGRAFIA TB': 'Ecografía de Partes Blandas',
+  'ECOGRAFIA PB': 'Ecografía de Partes Blandas',
+  'TEJIDOS BLANDOS': 'Ecografía de Partes Blandas',
+  'ECOGRAFIA DE TEJIDOS BLANDOS': 'Ecografía de Partes Blandas',
+  'ECOGRAFIA DE TEJIDO BLANDO': 'Ecografía de Partes Blandas',
+  'DOPPLER PB': 'Doppler de Partes Blandas',
+  'DOPPLER TB': 'Doppler de Partes Blandas',
+  'TV': 'Ecografía Ginecológica Transvaginal',
+  'ECOGRAFIA TV': 'Ecografía Ginecológica Transvaginal',
+  'ECOGRAFIA TRANSVAGINAL': 'Ecografía Ginecológica Transvaginal',
+  'TRANSVAGINAL': 'Ecografía Ginecológica Transvaginal',
+  'GINECOLOGICA TV': 'Ecografía Ginecológica Transvaginal',
+  'ECOGRAFIA GINECOLOGICA TV': 'Ecografía Ginecológica Transvaginal',
+  'GINECOLOGICA TRANSVAGINAL': 'Ecografía Ginecológica Transvaginal',
+  'MAMARIA Y TRANSVAGINAL': 'Ecografía Mamaria y Ecografía Ginecológica Transvaginal',
+  'ECOGRAFIA MAMARIA Y TRANSVAGINAL': 'Ecografía Mamaria y Ecografía Ginecológica Transvaginal',
+  'MAMARIA Y GINECOLOGICA TV': 'Ecografía Mamaria y Ecografía Ginecológica Transvaginal',
+  'ECOGRAFIA MAMARIA Y GINECOLOGICA TV': 'Ecografía Mamaria y Ecografía Ginecológica Transvaginal',
+  'RECUENTO FOLICULAR': 'Ecografía Ginecológica con Recuento Folicular',
+  'MONITOREO DE LA OVULACION': 'Ecografía Ginecológica con Monitoreo de la Ovulación',
+  'MONITOREO OVULACION': 'Ecografía Ginecológica con Monitoreo de la Ovulación',
+  'CADERITAS': 'Ecografía de Caderas',
+  'CADERA': 'Ecografía de Caderas',
+  'CEREBRO': 'Ecografía Cerebral Transfontanelar',
+  'ECOGRAFIA CEREBRAL': 'Ecografía Cerebral Transfontanelar',
+  'TRANSFONTANELAR': 'Ecografía Cerebral Transfontanelar',
+  'PLEURA': 'Ecografía Pleural',
+  'ECOGRAFIA PLEURAL': 'Ecografía Pleural',
+  'MAPEO': 'Doppler Venoso de Miembros Inferiores (Insuficiencia / Mapeo)',
+  'MAPEO VENOSO': 'Doppler Venoso de Miembros Inferiores (Insuficiencia / Mapeo)',
+  'TVP': 'Doppler Venoso de Miembros Inferiores (TVP)',
+  'TSA': 'Doppler de Troncos Supraaórticos',
+  'ECO DOPPLER TSA': 'Doppler de Troncos Supraaórticos',
+  'DOPPLER TSA': 'Doppler de Troncos Supraaórticos',
+  'DOPPLER DE TRONCOS SUPRAAORTICOS': 'Doppler de Troncos Supraaórticos',
+  'DOPPLER DE VASOS DE CUELLO': 'Doppler de Troncos Supraaórticos',
+  'ECOGRAFIA DOPPLER DE VASOS DE CUELLO': 'Doppler de Troncos Supraaórticos',
+  'DOPPLER ARTERIAL MMII': 'Doppler Arterial de Miembros Inferiores',
+  'ECO DOPPLER ARTERIAL MMII': 'Doppler Arterial de Miembros Inferiores',
+  'DOPPLER VENOSO MMII': 'Doppler Venoso de Miembros Inferiores (Insuficiencia / Mapeo)',
+  'ECO DOPPLER VENOSO MMII': 'Doppler Venoso de Miembros Inferiores (Insuficiencia / Mapeo)',
+  'ECO DOPPLER VENOSO MMII TVP': 'Doppler Venoso de Miembros Inferiores (TVP)',
+  'DOPPLER ARTERIAL MMSS': 'Doppler Arterial de Miembros Superiores',
+  'ECO DOPPLER ARTERIAL MMSS': 'Doppler Arterial de Miembros Superiores',
+  'DOPPLER VENOSO MMSS': 'Doppler Venoso de Miembros Superiores',
+  'ECO DOPPLER VENOSO MMSS': 'Doppler Venoso de Miembros Superiores',
+  'DOPPLER RENAL': 'Doppler Renal',
+  'ECO DOPPLER ARTERIAS RENALES': 'Doppler Renal',
+  'ECO DOPPLER RENAL': 'Doppler Renal',
+  'DOPPLER HEPATICO': 'Doppler Hepático',
+  'ECO DOPPLER HEPATICO': 'Doppler Hepático',
+  'DOPPLER AORTA ABDOMINAL': 'Doppler Aorta Abdominal',
+  'ECO DOPPLER AORTA ABDOMINAL': 'Doppler Aorta Abdominal',
+  'SUSTANCIA NIGRA': 'Doppler de Sustancia Nigra',
+  'ECO DOPPLER SUSTANCIA NIGRA': 'Doppler de Sustancia Nigra',
+  'DOPPLER TESTICULAR': 'Doppler Testicular',
+  'DOPPLER TIROIDEO': 'Doppler Tiroideo',
+  'DOPPLER OFTALMICO': 'Doppler Oftálmico',
+  'OCULAR': 'Ecografía Ocular',
+  'ECOGRAFIA OCULAR': 'Ecografía Ocular',
+  'DOPPLER ARTERIAS TEMPORALES': 'Doppler de Arterias Temporales',
+  'DOPPLER TEMPORALES': 'Doppler de Arterias Temporales',
+  'DOPPLER PENEANO': 'Doppler Peneano',
+  'DOPPLER DE ARTERIAS PENEANAS': 'Doppler Peneano',
+  'POWER DOPPLER ARTICULAR': 'Doppler Power Articular',
+  'DOPPLER POWER ARTICULAR': 'Doppler Power Articular',
+  'DOPPLER ARTICULAR': 'Doppler Power Articular',
+  'AQUILES': 'Ecografía de Tendón de Aquiles',
+  'TENDON DE AQUILES': 'Ecografía de Tendón de Aquiles',
+  'MUÑECA': 'Ecografía de Muñeca',
+  'MUNECA': 'Ecografía de Muñeca',
+  'TOBILLO': 'Ecografía de Tobillo',
+  'CODO': 'Ecografía de Codo',
+  'RODILLA': 'Ecografía de Rodilla',
+  'TEJIDO CELULAR SUBCUTANEO': 'Ecografía de Tejido Celular Subcutáneo',
+  'TCS': 'Ecografía de Tejido Celular Subcutáneo',
+  'PARTES BLANDAS DE CUELLO': 'Ecografía de Partes Blandas de Cuello',
+  'PAROTIDA': 'Ecografía de Partes Blandas de Cuello',
+  'GLANDULAS SALIVALES': 'Ecografía de Partes Blandas de Cuello',
+  'PARED ABDOMINAL': 'Ecografía de Pared Abdominal',
+  'HERNIA': 'Ecografía de Pared Abdominal',
+  'HERNIA INGUINAL': 'Ecografía de Pared Abdominal',
+  'HERNIA UMBILICAL': 'Ecografía de Pared Abdominal',
+};
+
+/**
+ * Términos que las secretarias a veces anotan pero que NO son un estudio
+ * médico real: en vez de mapear solo, hay que preguntar y sugerir la opción
+ * correcta (ej. "pulmón" no existe como ecografía; lo real es pleural).
+ */
+const STUDY_TYPE_NEEDS_CONFIRMATION: Record<string, string> = {
+  'PULMON': 'Ecografía Pleural',
+  'PULMONES': 'Ecografía Pleural',
+  'ECOGRAFIA DE PULMON': 'Ecografía Pleural',
+  'ECOGRAFIA DE PULMONES': 'Ecografía Pleural',
+  'ECOGRAFIA PULMONAR': 'Ecografía Pleural',
+};
+
+/** Marca visible (en rojo) cuando se cargó "Ecografía" sin especificar de qué, a la espera de que se corrija. */
+export const PENDING_DEFINITION_SUFFIX = ' (PENDIENTE DE DEFINIR)';
+
+export function isPendingDefinition(studyType: string): boolean {
+  return studyType.includes(PENDING_DEFINITION_SUFFIX);
+}
+
+export type StudyTextResolution =
+  | { kind: 'empty' }
+  | { kind: 'bare' } // "Ecografía" sola, sin especificar
+  | { kind: 'needs_confirmation'; suggestion: string }
+  | { kind: 'matched'; canonical: string }
+  | { kind: 'freeform'; text: string };
+
+/**
+ * Analiza lo que escribió la secretaria en el campo de texto libre y decide
+ * qué hacer: reconocerlo y traducirlo al nombre oficial, dejarlo pasar tal
+ * cual (si no hay ninguna coincidencia, es un estudio realmente nuevo/raro),
+ * o pedir confirmación (si es ambiguo o no es un estudio real).
+ */
+export function resolveStudyTypeText(raw: string): StudyTextResolution {
+  const trimmed = raw.trim();
+  if (!trimmed) return { kind: 'empty' };
+  const norm = normalizeForMatch(trimmed);
+  if (norm === 'ECOGRAFIA' || norm === 'ECO') return { kind: 'bare' };
+  if (STUDY_TYPE_NEEDS_CONFIRMATION[norm]) {
+    return { kind: 'needs_confirmation', suggestion: STUDY_TYPE_NEEDS_CONFIRMATION[norm] };
+  }
+  if (STUDY_TYPE_SYNONYMS[norm]) return { kind: 'matched', canonical: STUDY_TYPE_SYNONYMS[norm] };
+  // ¿Ya es exactamente uno de los nombres oficiales (con otra may/min o tildes)?
+  const exact = STUDY_TYPES.find((t) => normalizeForMatch(t) === norm);
+  if (exact) return { kind: 'matched', canonical: exact };
+  return { kind: 'freeform', text: trimmed };
+}
+
+/**
+ * Orden fijo de las combinaciones (ej. "Mamaria + Ginecológica" siempre en
+ * el mismo orden, sin importar en qué orden se tildaron). Los estudios que
+ * no están en el catálogo oficial (texto libre) van al final, en el orden
+ * en que se escribieron.
+ */
+export function orderStudyParts(parts: string[]): string[] {
+  const known = parts.filter((p) => STUDY_TYPES.includes(p));
+  const unknown = parts.filter((p) => !STUDY_TYPES.includes(p));
+  known.sort((a, b) => STUDY_TYPES.indexOf(a) - STUDY_TYPES.indexOf(b));
+  return [...known, ...unknown];
+}
 
 export const STATUS_LABELS: Record<StudyStatus, string> = {
   'pending': 'Pendiente',
@@ -268,7 +484,10 @@ export function expandStudyName(name: string): string {
 
 /** El protocolo (TVP, Insuficiencia/Mapeo) solo orienta al médico qué plantilla usar: no va en el título del estudio. */
 export function studyTitle(name: string): string {
-  return expandStudyName(name.replace(/\s*\((TVP|Insuficiencia\s*\/\s*Mapeo)\)/gi, ''));
+  const pending = isPendingDefinition(name);
+  const clean = name.replace(PENDING_DEFINITION_SUFFIX, '').replace(/\s*\((TVP|Insuficiencia\s*\/\s*Mapeo)\)/gi, '');
+  const title = expandStudyName(clean);
+  return pending ? `${title} ⚠ PENDIENTE DE DEFINIR` : title;
 }
 
 /** Protocolo entre paréntesis (solo identificativo para el médico), si lo tiene. */
