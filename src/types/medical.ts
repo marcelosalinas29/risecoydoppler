@@ -178,7 +178,7 @@ function normalizeForMatch(s: string): string {
   return s
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // saca tildes
     .toUpperCase()
-    .replace(/[.,;:]/g, ' ')
+    .replace(/[.,;:()]/g, ' ') // paréntesis también se ignoran (ej. "MMII (TVP)")
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatStudyType, STUDY_TYPES } from './medical';
+import { formatStudyType, resolveStudyTypeText, STUDY_TYPES } from './medical';
 
 describe('nombres de estudio completos', () => {
   it('expande abreviaturas', () => {
@@ -12,5 +12,16 @@ describe('nombres de estudio completos', () => {
   });
   it('ningún estudio de la lista queda abreviado', () => {
     for (const t of STUDY_TYPES) expect(formatStudyType(t)).not.toMatch(/\b(MMII|MMSS|TV|TVP|TSA|TN|ECO)\b/);
+  });
+});
+
+describe('reconocimiento de estudios escritos a mano (resolveStudyTypeText)', () => {
+  it('ignora paréntesis al reconocer abreviaturas, aunque se tipeen a mano', () => {
+    expect(resolveStudyTypeText('Eco Doppler Venoso MMII (TVP)')).toEqual({
+      kind: 'matched', canonical: 'Doppler Venoso de Miembros Inferiores (TVP)',
+    });
+    expect(resolveStudyTypeText('eco doppler venoso mmii (tvp)')).toEqual({
+      kind: 'matched', canonical: 'Doppler Venoso de Miembros Inferiores (TVP)',
+    });
   });
 });
