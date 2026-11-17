@@ -42,7 +42,9 @@ const statusClass: Record<StudyStatus, string> = {
 
 export function getAgendaSummary(appointments: Appointment[]) {
   const active = appointments.filter(a => !isInactiveStatus(a.status));
-  const pending = active.filter(a => a.status === 'pending' && resolveArrival(a) === null);
+  // "Próximo turno" avanza cuando el estudio deja de estar pendiente
+  // (pasa a 'in-study' o 'reported'), no cuando se marca la llegada.
+  const pending = active.filter(a => a.status === 'pending');
   return {
     next: [...pending].sort((a, b) => a.time.localeCompare(b.time))[0],
     arrived: active.filter(a => resolveArrival(a) === 'arrived').length,
