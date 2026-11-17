@@ -44,7 +44,7 @@ interface ClinicStore {
 }
 
 const APPOINTMENTS_WINDOW_DAYS = 180;
-const APPOINTMENT_LIST_COLUMNS = 'id, patient_id, study_type, status, date, time, observations, reported_by, asistio, arrival_state, created_at, created_by, doctor_id, es_sobreturno, sobreturno_acordado_con, patients(*)';
+const APPOINTMENT_LIST_COLUMNS = 'id, patient_id, study_type, status, date, time, observations, reported_by, asistio, arrival_state, was_bypassed, rejoined_at, created_at, created_by, doctor_id, es_sobreturno, sobreturno_acordado_con, patients(*)';
 
 function mapPatient(p: any): Patient {
   return {
@@ -76,6 +76,8 @@ function mapAppointment(a: any): Appointment {
     reportedBy: a.reported_by || null,
     asistio: a.asistio ?? false,
     arrivalState: (a.arrival_state ?? (a.asistio ? 'arrived' : null)) as ArrivalState,
+    wasBypassed: !!a.was_bypassed,
+    rejoinedAt: a.rejoined_at ?? null,
     createdAt: a.created_at,
     doctorId: a.doctor_id ?? null,
     esSobreturno: !!a.es_sobreturno,
@@ -346,10 +348,30 @@ export const useClinicStore = create<ClinicStore>()((set, get) => ({
   setArrivalState: async (id, state) => {
     trackMutation(id);
     const asistio = state === 'arrived';
-    const { error } = await supabase.from('appointments').update({ arrival_state: state, asistio } as any).eq('id', id);
+    const current = get().appointments.find((a) => a.id === id);
+    const wasBypassedBefore = current?.wasBypassed ?? false;
+    // "tarde" o "no vino" saltan el turno (deja de ser "próximo" automáticamente).
+    // Si vuelve a marcarse "llegó" después de haber sido salteado, se reinserta
+    // como pendiente especial (rejoinedAt marca cuándo reapareció). "Sin marcar"
+    // (null) limpia todo, como si nunca hubiera pasado.
+    let wasBypassed = wasBypassedBefore;
+    let rejoinedAt: string | null = current?.rejoinedAt ?? null;
+    if (state === 'late' || state === 'missed') {
+      wasBypassed = true;
+      rejoinedAt = null;
+    } else if (state === 'arrived') {
+      rejoinedAt = wasBypassedBefore ? new Date().toISOString() : null;
+      // wasBypassed se mantiene igual que antes (true si ya venía salteado)
+    } else {
+      wasBypassed = false;
+      rejoinedAt = null;
+    }
+    const { error } = await supabase.from('appointments')
+      .update({ arrival_state: state, asistio, was_bypassed: wasBypassed, rejoined_at: rejoinedAt } as any)
+      .eq('id', id);
     if (error) throw error;
     set((s) => ({
-      appointments: s.appointments.map((a) => (a.id === id ? { ...a, arrivalState: state, asistio } : a)),
+      appointments: s.appointments.map((a) => (a.id === id ? { ...a, arrivalState: state, asistio, wasBypassed, rejoinedAt } : a)),
     }));
   },
 

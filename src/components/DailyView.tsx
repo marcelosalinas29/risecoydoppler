@@ -45,8 +45,17 @@ export function getAgendaSummary(appointments: Appointment[]) {
   // "Próximo turno" avanza cuando el estudio deja de estar pendiente
   // (pasa a 'in-study' o 'reported'), no cuando se marca la llegada.
   const pending = active.filter(a => a.status === 'pending');
+  // Un turno "salteado" (tarde / no vino en su momento) deja de competir por
+  // ser el próximo automático, aunque siga pendiente. Si reaparece ("llegó"
+  // después de haber sido salteado) se muestra aparte, en "reinserted",
+  // ordenado por cuándo reapareció — no vuelve a tomar su lugar por horario.
+  const nextCandidates = pending.filter(a => !a.wasBypassed);
+  const reinserted = pending
+    .filter(a => a.wasBypassed && resolveArrival(a) === 'arrived')
+    .sort((a, b) => (a.rejoinedAt || '').localeCompare(b.rejoinedAt || ''));
   return {
-    next: [...pending].sort((a, b) => a.time.localeCompare(b.time))[0],
+    next: [...nextCandidates].sort((a, b) => a.time.localeCompare(b.time))[0],
+    reinserted,
     arrived: active.filter(a => resolveArrival(a) === 'arrived').length,
     late: active.filter(a => resolveArrival(a) === 'late').length,
     missed: appointments.filter(a => a.status === 'no-show' || (a.status !== 'cancelled' && resolveArrival(a) === 'missed')).length,
@@ -386,6 +395,20 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
         </div>
         {summary.next && !isViewer && editingId !== summary.next.id && <Button variant="secondary" className="agenda-next-arrival w-full gap-2 lg:w-auto" onClick={() => { if (summary.next) void markArrival(summary.next, 'arrived'); }}><UserCheck className="h-4 w-4" />Marcar llegada</Button>}
       </section>
+      {summary.reinserted.length > 0 && (
+        <div className="agenda-reinserted -mt-3 mb-5 flex flex-wrap items-center gap-x-4 gap-y-1 px-1" aria-label="Turnos reinsertados">
+          {summary.reinserted.map((apt) => (
+            <button
+              key={apt.id}
+              type="button"
+              onClick={() => navigate(`/appointment/${apt.id}`)}
+              className="text-status-missed text-xs font-medium hover:underline"
+            >
+              {apt.patient.name} ({apt.time}) · llegó tarde, pendiente
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-4 border-b border-border pb-4 mb-4">
         <span className="text-3xl font-semibold tabular-nums text-status-pending">{occupiedCount}</span>
         <h2 className="text-sm text-muted-foreground">Turnos del día</h2>

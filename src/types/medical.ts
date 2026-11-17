@@ -45,6 +45,8 @@ export interface Appointment {
   reportedBy?: string | null;
   asistio: boolean;
   arrivalState?: ArrivalState; // llegada del paciente: null = sin marcar
+  wasBypassed?: boolean; // se lo saltó el "próximo turno" (llegó tarde o no vino en su momento)
+  rejoinedAt?: string | null; // cuándo volvió a marcarse "llegó" después de haber sido salteado
   createdAt: string;
   doctorId?: string | null; // médico asignado al turno (los turnos viejos no tienen)
   sobreturnoAcordadoCon?: string | null; // con quién se acordó un sobreturno fuera del horario del médico

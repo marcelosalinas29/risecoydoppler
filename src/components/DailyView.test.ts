@@ -37,6 +37,38 @@ describe('resumen de la agenda cargada', () => {
     expect(summary.next?.id).toBe('llego');
   });
   it('un día vacío no tiene próximo turno ni contadores', () => {
-    expect(getAgendaSummary([])).toEqual({ next: undefined, arrived: 0, late: 0, missed: 0, pending: 0 });
+    expect(getAgendaSummary([])).toEqual({ next: undefined, reinserted: [], arrived: 0, late: 0, missed: 0, pending: 0 });
+  });
+});
+
+describe('turnos salteados y reinsertados (tarde / no vino y su reaparición)', () => {
+  it('un turno salteado (wasBypassed) no compite por "próximo", aunque siga pending', () => {
+    const summary = getAgendaSummary([
+      appointment('salteado', '08:00', { arrivalState: 'late', wasBypassed: true }),
+      appointment('siguiente', '08:10'),
+    ]);
+    expect(summary.next?.id).toBe('siguiente');
+  });
+  it('si el salteado reaparece ("llegó"), se lista en "reinserted" y no vuelve a ser "próximo" por horario', () => {
+    const summary = getAgendaSummary([
+      appointment('salteado', '08:00', { asistio: true, arrivalState: 'arrived', wasBypassed: true, rejoinedAt: '2026-06-09T12:00:00Z' }),
+      appointment('siguiente', '08:10'),
+    ]);
+    expect(summary.next?.id).toBe('siguiente');
+    expect(summary.reinserted.map((a) => a.id)).toEqual(['salteado']);
+  });
+  it('varios reinsertados se ordenan por cuándo reaparecieron, no por su horario original', () => {
+    const summary = getAgendaSummary([
+      appointment('tarde-10', '10:00', { arrivalState: 'arrived', wasBypassed: true, rejoinedAt: '2026-06-09T12:00:00Z' }),
+      appointment('tarde-08', '08:00', { arrivalState: 'arrived', wasBypassed: true, rejoinedAt: '2026-06-09T13:00:00Z' }),
+    ]);
+    expect(summary.reinserted.map((a) => a.id)).toEqual(['tarde-10', 'tarde-08']);
+  });
+  it('salteado que todavía no reapareció (sigue "tarde"/"no vino") no entra a la lista de reinsertados', () => {
+    const summary = getAgendaSummary([
+      appointment('todavia-tarde', '08:00', { arrivalState: 'late', wasBypassed: true }),
+    ]);
+    expect(summary.reinserted).toEqual([]);
+    expect(summary.next).toBeUndefined();
   });
 });
