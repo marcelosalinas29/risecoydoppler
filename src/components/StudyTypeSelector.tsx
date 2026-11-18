@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STUDY_TYPES, studyTitle, studyProtocol, resolveStudyTypeText, orderStudyParts, PENDING_DEFINITION_SUFFIX } from '@/types/medical';
+import { STUDY_TYPES, studyTitle, studyProtocol, resolveMultipleStudyTexts, suggestStudyTypes, orderStudyParts, PENDING_DEFINITION_SUFFIX } from '@/types/medical';
 import { suggestTemplates } from '@/data/studyTemplateMap';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,30 +32,46 @@ const StudyTypeSelector = ({ open, onOpenChange, onApply, currentValue }: StudyT
     );
   };
 
+  const addPart = (parts: string[], value: string) => {
+    if (!parts.includes(value)) parts.push(value);
+  };
+
   const handleApply = () => {
     const parts: string[] = [...selected];
-    if (customText.trim()) {
-      const resolved = resolveStudyTypeText(customText);
-      if (resolved.kind === 'bare') {
-        const ok = window.confirm(
-          'Escribiste solo "Ecografía", sin especificar de qué. Eso no es un estudio en sí mismo.\n\n' +
-          'Aceptar: lo dejo cargado como PENDIENTE DE DEFINIR (marcado en rojo) hasta que se corrija.\n' +
-          'Cancelar: vuelvo a escribirlo.'
-        );
-        if (!ok) return;
-        parts.push('Ecografía' + PENDING_DEFINITION_SUFFIX);
-      } else if (resolved.kind === 'needs_confirmation') {
-        const ok = window.confirm(`"${customText.trim()}" no es un estudio médico real. ¿Es "${resolved.suggestion}"?`);
-        parts.push(ok ? resolved.suggestion : customText.trim());
-      } else if (resolved.kind === 'matched') {
-        parts.push(resolved.canonical);
-      } else if (resolved.kind === 'freeform') {
-        parts.push(resolved.text);
+    const raw = customText.trim();
+    if (raw) {
+      // Se separa por "+"/"," y cada estudio se reconoce por separado, así
+      // aunque se escriban varios juntos en el cuadro de texto, cada uno que
+      // ya exista en la lista se tilda solo en vez de quedar como texto libre.
+      for (const { text, resolution } of resolveMultipleStudyTexts(raw)) {
+        if (resolution.kind === 'bare') {
+          const ok = window.confirm(
+            'Escribiste solo "Ecografía", sin especificar de qué. Eso no es un estudio en sí mismo.\n\n' +
+            'Aceptar: lo dejo cargado como PENDIENTE DE DEFINIR (marcado en rojo) hasta que se corrija.\n' +
+            'Cancelar: vuelvo a escribirlo.'
+          );
+          if (!ok) return;
+          addPart(parts, 'Ecografía' + PENDING_DEFINITION_SUFFIX);
+        } else if (resolution.kind === 'needs_confirmation') {
+          const ok = window.confirm(`"${text}" no es un estudio médico real. ¿Es "${resolution.suggestion}"?`);
+          addPart(parts, ok ? resolution.suggestion : text);
+        } else if (resolution.kind === 'matched') {
+          addPart(parts, resolution.canonical);
+        } else if (resolution.kind === 'freeform') {
+          addPart(parts, text);
+        }
       }
     }
     if (parts.length === 0) return;
     onApply(orderStudyParts(parts).join(' + '));
     onOpenChange(false);
+  };
+
+  const suggestions = suggestStudyTypes(customText).filter((s) => !selected.includes(s));
+
+  const pickSuggestion = (name: string) => {
+    toggleType(name);
+    setCustomText('');
   };
 
   const handleReset = () => {
@@ -82,13 +98,28 @@ const StudyTypeSelector = ({ open, onOpenChange, onApply, currentValue }: StudyT
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Estudio personalizado (opcional)
+              Estudio personalizado (solo si no está en la lista de abajo)
             </label>
             <Input
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               placeholder="Ej: Ecografía de cadera"
             />
+            {suggestions.length > 0 && (
+              <div className="mt-1.5 space-y-1 rounded-lg border border-border overflow-hidden">
+                {suggestions.map((s) => (
+                  <button
+                    type="button"
+                    key={s}
+                    onClick={() => pickSuggestion(s)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/50 transition-colors border-b border-border last:border-0"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span>Ya existe: <span className="font-semibold">{studyTitle(s)}</span> — tildar</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -117,12 +148,16 @@ const StudyTypeSelector = ({ open, onOpenChange, onApply, currentValue }: StudyT
               <p className="text-sm font-medium">
                 {[...selected, ...(customText.trim() ? [customText.trim()] : [])].join(' + ')}
               </p>
-              {customText.trim() && resolveStudyTypeText(customText).kind === 'bare' && (
-                <p className="text-xs text-destructive font-semibold mt-2">⚠ "Ecografía" sola no es un estudio: al aplicar se va a pedir confirmación para dejarlo PENDIENTE DE DEFINIR.</p>
-              )}
-              {customText.trim() && resolveStudyTypeText(customText).kind === 'freeform' && suggestTemplates(customText.trim()).length === 0 && (
-                <p className="text-xs text-amber-700 mt-2">Este estudio escrito a mano no tiene plantilla: el informe se escribe desde cero.</p>
-              )}
+              {customText.trim() && resolveMultipleStudyTexts(customText).map(({ text, resolution }) => (
+                <span key={text}>
+                  {resolution.kind === 'bare' && (
+                    <p className="text-xs text-destructive font-semibold mt-2">⚠ "Ecografía" sola no es un estudio: al aplicar se va a pedir confirmación para dejarlo PENDIENTE DE DEFINIR.</p>
+                  )}
+                  {resolution.kind === 'freeform' && suggestTemplates(text).length === 0 && (
+                    <p className="text-xs text-amber-700 mt-2">"{text}" se guarda como estudio escrito a mano, sin plantilla: el informe se escribe desde cero.</p>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>

@@ -340,7 +340,46 @@ export function resolveStudyTypeText(raw: string): StudyTextResolution {
   // ¿Ya es exactamente uno de los nombres oficiales (con otra may/min o tildes)?
   const exact = STUDY_TYPES.find((t) => normalizeForMatch(t) === norm);
   if (exact) return { kind: 'matched', canonical: exact };
+  // Última chance antes de darlo por texto libre: si coincide, sin ambigüedad,
+  // con el nombre de un solo estudio de la lista (coincidencia parcial), se
+  // toma ese. Si hay más de uno que coincide, queda como texto libre (mejor
+  // pedir que se aclare que adivinar mal).
+  if (norm.length >= 4) {
+    const partial = STUDY_TYPES.filter((t) => normalizeForMatch(t).includes(norm));
+    if (partial.length === 1) return { kind: 'matched', canonical: partial[0] };
+  }
   return { kind: 'freeform', text: trimmed };
+}
+
+/**
+ * Divide un texto en varios estudios (separados por "+" o coma) y resuelve
+ * cada uno por separado. Así, aunque se escriban varios estudios juntos en
+ * el cuadro de texto libre, cada uno se reconoce individualmente en vez de
+ * quedar todo como un solo texto libre sin reconocer.
+ */
+export function resolveMultipleStudyTexts(raw: string): { text: string; resolution: StudyTextResolution }[] {
+  return raw.split(/[+,]/).map((s) => s.trim()).filter(Boolean)
+    .map((text) => ({ text, resolution: resolveStudyTypeText(text) }));
+}
+
+/**
+ * Sugerencias de estudios oficiales (de la lista, o por apodo/abreviatura
+ * conocida) que coinciden con lo que se va escribiendo. Para el autocompletado
+ * del cuadro de texto libre: así, si ya existe en la lista, se tilda en vez
+ * de dejarlo como texto libre.
+ */
+export function suggestStudyTypes(query: string, limit = 6): string[] {
+  const q = normalizeForMatch(query);
+  if (!q) return [];
+  const results: string[] = [];
+  const add = (name: string) => { if (!results.includes(name)) results.push(name); };
+  for (const t of STUDY_TYPES) {
+    if (normalizeForMatch(t).includes(q)) add(t);
+  }
+  for (const [alias, canonical] of Object.entries(STUDY_TYPE_SYNONYMS)) {
+    if (alias.includes(q)) add(canonical);
+  }
+  return results.slice(0, limit);
 }
 
 /**
