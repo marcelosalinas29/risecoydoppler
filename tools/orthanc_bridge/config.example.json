@@ -1,0 +1,22 @@
+{
+  "orthanc_url": "http://localhost:8042",
+  "orthanc_username": null,
+  "orthanc_password": null,
+
+  "supabase_url": "https://vjcwgjhqspvupkweisaq.supabase.co",
+  "supabase_anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqY3dnamhxc3B2dXBrd2Vpc2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMjYxOTIsImV4cCI6MjA4ODYwMjE5Mn0.UZcM8WpWk4GRPhd84yWxFtzf4X2_VsChEQM5wQ_PCpI",
+
+  "_comentario_credenciales": "El bridge necesita autenticarse para poder ESCRIBIR en el RIS (la clave de arriba, 'anon', solo sirve para leer/probar). Completar UNA de las dos opciones de abajo. Mientras ambas queden vacías, el script corre en modo SIMULACRO: hace todo (detecta estudios, filtra videos, arma el paquete de imágenes) pero no escribe nada en el RIS real, y deja todo registrado en logs/bridge.log para revisar.",
+
+  "bridge_email": null,
+  "bridge_password": null,
+
+  "supabase_service_role_key": null,
+
+  "poll_interval_seconds": 20,
+  "stable_seconds": 45,
+  "state_file": "state.json",
+  "pendientes_dir": "pendientes",
+  "log_file": "logs/bridge.log",
+  "dry_run": true
+}
