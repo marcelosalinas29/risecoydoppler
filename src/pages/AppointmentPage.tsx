@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, History, PanelRightClose, PanelRightOpen, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil, Mic, Sparkles } from 'lucide-react';
+import { ArrowLeft, History, PanelRightClose, PanelRightOpen, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil, Mic, Sparkles, X, ZoomIn } from 'lucide-react';
 import PreviousStudiesSection from '@/components/PreviousStudiesSection';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -90,6 +90,7 @@ const AppointmentPage = () => {
   // Llave de administrador: puede corregir el informe de otro médico (el firmante original no cambia).
   const lockedByOther = isOtherDoctorsReport && !isAdmin;
   const [previousPanelOpen, setPreviousPanelOpen] = useState<boolean | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const doctors = useScheduleStore((s) => s.doctors);
   const patients = useClinicStore((s) => s.patients);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -109,6 +110,15 @@ const AppointmentPage = () => {
     obraSocial: '',
     fechaNacimiento: '',
   });
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomedImage(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [zoomedImage]);
 
   useEffect(() => {
     if (appointment) {
@@ -1369,11 +1379,14 @@ const AppointmentPage = () => {
           {currentAppointment.imageUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.imageUrls.map((url, i) => (
-                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedImage(url)}>
                   <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-90 drop-shadow transition-opacity" />
+                  </div>
                   {!isReadOnly && (
                     <button
-                      onClick={async () => { if (id) await removeStorageImage(id, i); }}
+                      onClick={async (e) => { e.stopPropagation(); if (id) await removeStorageImage(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1388,11 +1401,14 @@ const AppointmentPage = () => {
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border">
+                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedImage(img)}>
                   <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-90 drop-shadow transition-opacity" />
+                  </div>
                   {!isReadOnly && (
                     <button
-                      onClick={async () => { if (id) await removeImageFromAppointment(id, i); }}
+                      onClick={async (e) => { e.stopPropagation(); if (id) await removeImageFromAppointment(id, i); }}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1414,6 +1430,30 @@ const AppointmentPage = () => {
         </aside>
         </div>
       </div>
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 sm:p-8 animate-in fade-in-0"
+          onClick={() => setZoomedImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Imagen ampliada"
+        >
+          <button
+            onClick={() => setZoomedImage(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            aria-label="Cerrar"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={zoomedImage}
+            alt="Imagen ampliada"
+            crossOrigin="anonymous"
+            className="max-w-[92vw] max-h-[92vh] object-contain rounded-lg shadow-2xl select-none"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </AppLayout>
   );
 };
