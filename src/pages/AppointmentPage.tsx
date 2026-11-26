@@ -1435,7 +1435,7 @@ const AppointmentPage = () => {
       </div>
       {zoomedGallery && (
         <div
-          className="fixed top-20 right-4 z-[100] w-[min(40vw,480px)] max-h-[45vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
+          className="fixed top-16 right-4 z-[100] w-[min(50vw,600px)] max-h-[55vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
           role="dialog"
           aria-label="Imagen ampliada"
         >
@@ -1456,7 +1456,7 @@ const AppointmentPage = () => {
               src={zoomedImage}
               alt="Imagen ampliada"
               crossOrigin="anonymous"
-              className="max-w-full max-h-[38vh] object-contain select-none"
+              className="max-w-full max-h-[48vh] object-contain select-none"
             />
             {zoomedGallery.images.length > 1 && (
               <>
