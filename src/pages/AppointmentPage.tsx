@@ -1432,26 +1432,28 @@ const AppointmentPage = () => {
       </div>
       {zoomedImage && (
         <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 sm:p-8 animate-in fade-in-0"
-          onClick={() => setZoomedImage(null)}
+          className="fixed top-20 right-4 z-[100] w-[min(40vw,480px)] max-h-[45vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
           role="dialog"
-          aria-modal="true"
           aria-label="Imagen ampliada"
         >
-          <button
-            onClick={() => setZoomedImage(null)}
-            className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
-            aria-label="Cerrar"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <img
-            src={zoomedImage}
-            alt="Imagen ampliada"
-            crossOrigin="anonymous"
-            className="max-w-[92vw] max-h-[92vh] object-contain rounded-lg shadow-2xl select-none"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/50">
+            <span className="text-xs font-medium text-muted-foreground">Imagen ampliada</span>
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors"
+              aria-label="Cerrar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 bg-black/5 flex items-center justify-center p-2">
+            <img
+              src={zoomedImage}
+              alt="Imagen ampliada"
+              crossOrigin="anonymous"
+              className="max-w-full max-h-[38vh] object-contain select-none"
+            />
+          </div>
         </div>
       )}
     </AppLayout>
