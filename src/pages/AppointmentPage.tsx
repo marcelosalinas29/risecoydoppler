@@ -1435,7 +1435,7 @@ const AppointmentPage = () => {
       </div>
       {zoomedGallery && (
         <div
-          className="fixed top-16 right-4 z-[100] w-[min(50vw,600px)] max-h-[55vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
+          className="fixed top-16 inset-x-4 sm:inset-x-auto sm:right-4 z-[100] sm:w-[min(50vw,600px)] max-h-[55vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
           role="dialog"
           aria-label="Imagen ampliada"
         >
