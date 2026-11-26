@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, History, PanelRightClose, PanelRightOpen, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, Edit2, Save, Pencil, Mic, Sparkles, X, ZoomIn } from 'lucide-react';
+import { ArrowLeft, History, PanelRightClose, PanelRightOpen, Phone, Calendar, FileText, ImagePlus, Send, Download, Trash2, ChevronDown, ChevronLeft, ChevronRight, Edit2, Save, Pencil, Mic, Sparkles, X, ZoomIn } from 'lucide-react';
 import PreviousStudiesSection from '@/components/PreviousStudiesSection';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -90,7 +90,8 @@ const AppointmentPage = () => {
   // Llave de administrador: puede corregir el informe de otro médico (el firmante original no cambia).
   const lockedByOther = isOtherDoctorsReport && !isAdmin;
   const [previousPanelOpen, setPreviousPanelOpen] = useState<boolean | null>(null);
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [zoomedGallery, setZoomedGallery] = useState<{ images: string[]; index: number } | null>(null);
+  const zoomedImage = zoomedGallery ? zoomedGallery.images[zoomedGallery.index] : null;
   const doctors = useScheduleStore((s) => s.doctors);
   const patients = useClinicStore((s) => s.patients);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -112,13 +113,15 @@ const AppointmentPage = () => {
   });
 
   useEffect(() => {
-    if (!zoomedImage) return;
+    if (!zoomedGallery) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomedImage(null);
+      if (e.key === 'Escape') setZoomedGallery(null);
+      if (e.key === 'ArrowRight') setZoomedGallery(g => g ? { ...g, index: (g.index + 1) % g.images.length } : g);
+      if (e.key === 'ArrowLeft') setZoomedGallery(g => g ? { ...g, index: (g.index - 1 + g.images.length) % g.images.length } : g);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [zoomedImage]);
+  }, [zoomedGallery]);
 
   useEffect(() => {
     if (appointment) {
@@ -1379,7 +1382,7 @@ const AppointmentPage = () => {
           {currentAppointment.imageUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.imageUrls.map((url, i) => (
-                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedImage(url)}>
+                <div key={`url-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedGallery({ images: currentAppointment.imageUrls, index: i })}>
                   <img src={url} alt={`Ecografía ${i + 1}`} className="w-full h-32 object-cover" crossOrigin="anonymous" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                     <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-90 drop-shadow transition-opacity" />
@@ -1401,7 +1404,7 @@ const AppointmentPage = () => {
           {currentAppointment.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {currentAppointment.images.map((img, i) => (
-                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedImage(img)}>
+                <div key={`legacy-${i}`} className="relative group rounded-lg overflow-hidden border border-border cursor-zoom-in" onClick={() => setZoomedGallery({ images: currentAppointment.images, index: i })}>
                   <img src={img} alt={`Ecografía legacy ${i + 1}`} className="w-full h-32 object-cover" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                     <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-90 drop-shadow transition-opacity" />
@@ -1430,29 +1433,49 @@ const AppointmentPage = () => {
         </aside>
         </div>
       </div>
-      {zoomedImage && (
+      {zoomedGallery && (
         <div
           className="fixed top-20 right-4 z-[100] w-[min(40vw,480px)] max-h-[45vh] bg-card border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-0 slide-in-from-right-2"
           role="dialog"
           aria-label="Imagen ampliada"
         >
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/50">
-            <span className="text-xs font-medium text-muted-foreground">Imagen ampliada</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              Imagen ampliada{zoomedGallery.images.length > 1 ? ` (${zoomedGallery.index + 1}/${zoomedGallery.images.length})` : ''}
+            </span>
             <button
-              onClick={() => setZoomedImage(null)}
+              onClick={() => setZoomedGallery(null)}
               className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors"
               aria-label="Cerrar"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex-1 min-h-0 bg-black/5 flex items-center justify-center p-2">
+          <div className="relative flex-1 min-h-0 bg-black/5 flex items-center justify-center p-2">
             <img
               src={zoomedImage}
               alt="Imagen ampliada"
               crossOrigin="anonymous"
               className="max-w-full max-h-[38vh] object-contain select-none"
             />
+            {zoomedGallery.images.length > 1 && (
+              <>
+                <button
+                  onClick={() => setZoomedGallery(g => g ? { ...g, index: (g.index - 1 + g.images.length) % g.images.length } : g)}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background text-foreground rounded-full p-1.5 shadow transition-colors"
+                  aria-label="Imagen anterior"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setZoomedGallery(g => g ? { ...g, index: (g.index + 1) % g.images.length } : g)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background text-foreground rounded-full p-1.5 shadow transition-colors"
+                  aria-label="Siguiente imagen"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
