@@ -11,7 +11,7 @@ import { calcularEdad, calcularEdadDetallada, formatEdad, cleanDniInput, normali
 import AppLayout from '@/components/AppLayout';
 import { useClinicStore } from '@/store/useClinicStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { STATUS_LABELS, type StudyStatus, formatStudyType, isInactiveStatus } from '@/types/medical';
+import { STATUS_LABELS, type StudyStatus, formatStudyType, isInactiveStatus, hasIncompleteData } from '@/types/medical';
 import { verifyPlacement } from '@/lib/agendaCheck';
 import TemplateSelector from '@/components/TemplateSelector';
 import TemplateSuggestion from '@/components/TemplateSuggestion';
@@ -1150,6 +1150,11 @@ const AppointmentPage = () => {
               <Badge variant="outline" className={statusClass[currentAppointment.status]}>
                 {STATUS_LABELS[currentAppointment.status]}
               </Badge>
+              {!editingPatient && hasIncompleteData(appointment.patient) && (
+                <Badge variant="destructive" title="Falta DNI y/o fecha de nacimiento del paciente">
+                  ⚠ Datos incompletos
+                </Badge>
+              )}
               {editingPatient ? (
                 <Button variant="ghost" size="icon" className="h-9 w-9" title="Guardar datos del paciente" aria-label="Guardar datos del paciente" onClick={handleSavePatient}>
                   <Save className="w-4 h-4 text-primary" />

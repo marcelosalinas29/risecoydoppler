@@ -8,7 +8,7 @@ import { checkPlacement, slotsNeeded as slotsNeededFor, type SlottedAppointment 
 import { firstUncoveredSlot, doctorsAtSlot } from '@/lib/doctorHours';
 import OutOfHoursDialog from '@/components/OutOfHoursDialog';
 import { verifyPlacement } from '@/lib/agendaCheck';
-import { STATUS_LABELS, ARRIVAL_LABELS, resolveArrival, type ArrivalState, formatStudyType, calcularEdad, calcularEdadDetallada, getStudyDuration } from '@/types/medical';
+import { STATUS_LABELS, ARRIVAL_LABELS, resolveArrival, type ArrivalState, formatStudyType, calcularEdad, calcularEdadDetallada, getStudyDuration, hasIncompleteData } from '@/types/medical';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -230,6 +230,14 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
 
   const summary = useMemo(() => getAgendaSummary(appointments), [appointments]);
   const markArrival = async (apt: Appointment, st: Exclude<ArrivalState, null>) => {
+    // Si el paciente efectivamente llegó (a horario o tarde) y la secretaria guardó el turno
+    // sin DNI/fecha de nacimiento, se completa ahora en recepción — no se puede seguir sin eso
+    // (entre otras cosas, el puente automático a Orthanc necesita el DNI para encontrar el turno).
+    if ((st === 'arrived' || st === 'late') && hasIncompleteData(apt.patient)) {
+      toast.error('Faltan DNI y/o fecha de nacimiento del paciente. Completalos para marcar la llegada.');
+      startEdit(apt);
+      return;
+    }
     try {
       await setArrivalState(apt.id, st);
       toast.success(`${apt.patient.name}: ${ARRIVAL_LABELS[st].toLowerCase()}`);
@@ -486,8 +494,15 @@ const DailyView = ({ appointments, selectedDate, doctorSlots, patientsWithHistor
                           {isEditing ? (
                             <Input value={editData.patientName} onChange={(e) => setEditData(d => ({ ...d, patientName: e.target.value.toUpperCase() }))} className="h-7 text-xs uppercase" placeholder="Nombre" />
                           ) : (
-                            <span className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/appointment/${apt.id}`)}>
-                              {apt.patient.name}
+                            <span className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/appointment/${apt.id}`)}>
+                                {apt.patient.name}
+                              </span>
+                              {hasIncompleteData(apt.patient) && (
+                                <Badge variant="destructive" className="text-[9px] w-fit" title="Falta DNI y/o fecha de nacimiento. Completar antes de marcar la llegada.">
+                                  ⚠ Datos incompletos
+                                </Badge>
+                              )}
                             </span>
                           )}
                         </td>

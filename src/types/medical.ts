@@ -98,6 +98,18 @@ export function getPatientHistoryKey(patient: Pick<Patient, 'id' | 'dni' | 'dniM
   return normalizedDni ? `dni:${normalizedDni}` : `patient:${patient.id}`;
 }
 
+/**
+ * Turno guardado por la secretaria sin DNI y/o fecha de nacimiento del paciente (por ejemplo,
+ * cuando pide el turno por WhatsApp y todavía no pasó esos datos). Se marca en rojo en la
+ * agenda hasta que se complete — a más tardar en recepción, antes de marcar la llegada.
+ * Importante: mientras falte el DNI, el puente automático Orthanc→RIS no va a poder
+ * encontrar el turno (empareja por DNI + fecha), así que las imágenes de ese estudio
+ * van a quedar pendientes de carga manual hasta que se complete el dato.
+ */
+export function hasIncompleteData(patient: Pick<Patient, 'dni' | 'fechaNacimiento'>): boolean {
+  return !normalizeDni(patient.dni) || !patient.fechaNacimiento;
+}
+
 export const STUDY_TYPES: string[] = [
   // Abdominal / general
   'Ecografía Abdominal',

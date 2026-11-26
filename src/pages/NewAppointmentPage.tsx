@@ -203,10 +203,6 @@ const NewAppointmentPage = () => {
       toast.error('Debe seleccionar el médico al que se asigna la cita');
       return;
     }
-    if (!cleanDniInput(dni)) {
-      toast.error('El documento es obligatorio (en recién nacidos, el de la madre)');
-      return;
-    }
     if (!apellido.trim() || (!selectedPatientId && !nombres.trim()) || !hasPhoneNumber(phone) || !finalTime || !studyType) {
       toast.error('Por favor complete todos los campos obligatorios');
       return;
@@ -217,10 +213,10 @@ const NewAppointmentPage = () => {
       return;
     }
 
-    if (!fechaNacimiento) {
-      toast.error('La fecha de nacimiento es obligatoria');
-      return;
-    }
+    // DNI y fecha de nacimiento ya no son obligatorios para guardar el turno: a veces el
+    // paciente pide el turno por WhatsApp y todavía no pasó esos datos. El turno queda
+    // marcado como "datos incompletos" (hasIncompleteData) hasta que se completen —
+    // a más tardar en recepción, antes de marcar la llegada (ver DailyView.markArrival).
 
     // Horario del médico: un turno normal no se puede fuera de su horario (se avisa y se ofrece otro médico);
     // un sobreturno se puede, pero con confirmación explícita y dejando con quién se acordó.
@@ -298,7 +294,7 @@ const NewAppointmentPage = () => {
       <div className="p-4 space-y-5 max-w-lg mx-auto">
         {/* DNI field */}
         <div className="space-y-2">
-          <Label>Documento (obligatorio)</Label>
+          <Label>Documento (si todavía no lo tenés, lo podés dejar vacío)</Label>
           <div className="flex gap-2">
             {DNI_TIPOS.map((t) => (
               <Button key={t.value} type="button" size="sm" variant={dniTipo === t.value ? 'default' : 'outline'} onClick={() => { setDniTipo(t.value); setSelectedPatientId(null); }}>
@@ -352,7 +348,7 @@ const NewAppointmentPage = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Fecha de Nacimiento *</Label>
+            <Label>Fecha de Nacimiento (si no la tenés, dejalo vacío)</Label>
             <Input
               type="date"
               value={fechaNacimiento}
